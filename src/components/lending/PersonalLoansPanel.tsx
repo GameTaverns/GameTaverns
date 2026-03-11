@@ -160,9 +160,14 @@ function LoanCard({ loan, onReturn, onDelete }: { loan: PersonalLoan; onReturn?:
                 </span>
               )}
             </div>
+            {loan.copy && (
+              <Badge variant="outline" className="text-[10px]">
+                <Package className="h-2.5 w-2.5 mr-0.5" /> Copy #{loan.copy.copy_number}{loan.copy.copy_label ? ` — ${loan.copy.copy_label}` : ""}
+              </Badge>
+            )}
             {loan.condition_out && (
               <Badge variant="outline" className="text-[10px]">
-                <Package className="h-2.5 w-2.5 mr-0.5" /> Out: {loan.condition_out}
+                Out: {loan.condition_out}
               </Badge>
             )}
             {loan.condition_in && (
@@ -198,12 +203,13 @@ function CreateLoanDialog({ open, onOpenChange, libraryId, onSubmit }: {
   onSubmit: (data: any) => Promise<void>;
 }) {
   const [gameSearch, setGameSearch] = useState("");
-  const [selectedGame, setSelectedGame] = useState<{ id: string; title: string; image_url: string | null } | null>(null);
+  const [selectedGame, setSelectedGame] = useState<{ id: string; title: string; image_url: string | null; copies_owned?: number } | null>(null);
   const [borrowerName, setBorrowerName] = useState("");
   const [borrowerContact, setBorrowerContact] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [conditionOut, setConditionOut] = useState("");
   const [notes, setNotes] = useState("");
+  const [selectedCopyId, setSelectedCopyId] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const { data: searchResults = [] } = useQuery({
@@ -212,13 +218,59 @@ function CreateLoanDialog({ open, onOpenChange, libraryId, onSubmit }: {
       if (gameSearch.length < 2) return [];
       const { data } = await (supabase as any)
         .from("games")
-        .select("id, title, image_url")
+        .select("id, title, image_url, copies_owned")
         .eq("library_id", libraryId)
         .ilike("title", `%${gameSearch}%`)
         .limit(8);
       return data || [];
     },
     enabled: gameSearch.length >= 2,
+  });
+
+  // Fetch copies for selected game
+  const { data: gameCopies = [] } = useQuery({
+    queryKey: ["personal-loan-copies", selectedGame?.id],
+    queryFn: async () => {
+      if (!selectedGame) return [];
+      const { data } = await (supabase as any)
+        .from("game_copies")
+        .select("id, copy_number, copy_label, condition, edition, language")
+        .eq("game_id", selectedGame.id)
+        .order("copy_number");
+      return data || [];
+    },
+    enabled: !!selectedGame?.id,
+  });
+
+  // Fetch availability for selected game
+  const { data: availability } = useQuery({
+    queryKey: ["personal-loan-availability", selectedGame?.id],
+    queryFn: async () => {
+      if (!selectedGame) return null;
+      const copiesOwned = selectedGame.copies_owned ?? 1;
+
+      const { count: personalCount } = await (supabase as any)
+        .from("personal_loans")
+        .select("id", { count: "exact", head: true })
+        .eq("game_id", selectedGame.id)
+        .in("status", ["active", "overdue"]);
+
+      const { count: clubCount } = await (supabase as any)
+        .from("club_loans")
+        .select("id", { count: "exact", head: true })
+        .eq("game_id", selectedGame.id)
+        .eq("status", "checked_out");
+
+      const { count: libraryLoanCount } = await (supabase as any)
+        .from("game_loans")
+        .select("id", { count: "exact", head: true })
+        .eq("game_id", selectedGame.id)
+        .in("status", ["approved", "active"]);
+
+      const totalOut = (personalCount ?? 0) + (clubCount ?? 0) + (libraryLoanCount ?? 0);
+      return { copiesOwned, totalOut, available: Math.max(0, copiesOwned - totalOut) };
+    },
+    enabled: !!selectedGame?.id,
   });
 
   const handleSubmit = async () => {
@@ -233,6 +285,7 @@ function CreateLoanDialog({ open, onOpenChange, libraryId, onSubmit }: {
         due_date: dueDate || undefined,
         condition_out: conditionOut || undefined,
         notes: notes.trim() || undefined,
+        copy_id: selectedCopyId && selectedCopyId !== "none" ? selectedCopyId : undefined,
       });
       // Reset
       setSelectedGame(null);
@@ -242,10 +295,13 @@ function CreateLoanDialog({ open, onOpenChange, libraryId, onSubmit }: {
       setDueDate("");
       setConditionOut("");
       setNotes("");
+      setSelectedCopyId("");
     } finally {
       setSubmitting(false);
     }
   };
+
+  const noAvailability = availability && availability.available <= 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -258,12 +314,25 @@ function CreateLoanDialog({ open, onOpenChange, libraryId, onSubmit }: {
           <div>
             <Label>Game *</Label>
             {selectedGame ? (
-              <div className="flex items-center gap-2 p-2 border rounded-lg mt-1">
-                <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
-                  {selectedGame.image_url && <GameImage imageUrl={selectedGame.image_url} alt={selectedGame.title} className="w-full h-full object-cover" />}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 p-2 border rounded-lg mt-1">
+                  <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
+                    {selectedGame.image_url && <GameImage imageUrl={selectedGame.image_url} alt={selectedGame.title} className="w-full h-full object-cover" />}
+                  </div>
+                  <span className="text-sm font-medium flex-1 truncate">{selectedGame.title}</span>
+                  <Button variant="ghost" size="sm" onClick={() => { setSelectedGame(null); setGameSearch(""); setSelectedCopyId(""); }}>Change</Button>
                 </div>
-                <span className="text-sm font-medium flex-1 truncate">{selectedGame.title}</span>
-                <Button variant="ghost" size="sm" onClick={() => { setSelectedGame(null); setGameSearch(""); }}>Change</Button>
+                {/* Availability indicator */}
+                {availability && (
+                  <div className={cn(
+                    "text-xs px-2 py-1 rounded-md flex items-center gap-1.5",
+                    noAvailability ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+                  )}>
+                    <Package className="h-3 w-3" />
+                    {availability.available} of {availability.copiesOwned} available
+                    {availability.totalOut > 0 && ` (${availability.totalOut} out on loan)`}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="relative mt-1">
@@ -291,6 +360,27 @@ function CreateLoanDialog({ open, onOpenChange, libraryId, onSubmit }: {
               </div>
             )}
           </div>
+
+          {/* Copy picker (optional, shown when copies exist) */}
+          {gameCopies.length > 0 && selectedGame && (
+            <div>
+              <Label>Select Copy (optional)</Label>
+              <Select value={selectedCopyId} onValueChange={setSelectedCopyId}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Any copy" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Any copy</SelectItem>
+                  {gameCopies.map((copy: any) => (
+                    <SelectItem key={copy.id} value={copy.id}>
+                      Copy #{copy.copy_number}
+                      {copy.copy_label ? ` — ${copy.copy_label}` : ""}
+                      {copy.edition ? ` (${copy.edition})` : ""}
+                      {copy.condition ? ` [${copy.condition}]` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Borrower */}
           <div className="grid grid-cols-2 gap-3">
@@ -325,6 +415,12 @@ function CreateLoanDialog({ open, onOpenChange, libraryId, onSubmit }: {
             <Label>Notes (optional)</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any details..." className="mt-1" rows={2} />
           </div>
+
+          {noAvailability && (
+            <p className="text-xs text-destructive bg-destructive/10 p-2 rounded-md">
+              ⚠ All copies are currently out on loan. You can still log this loan but availability will show as negative.
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

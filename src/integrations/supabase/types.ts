@@ -1877,33 +1877,57 @@ export type Database = {
       }
       game_copies: {
         Row: {
+          acquisition_source: string | null
           condition: string | null
           copy_label: string | null
           copy_number: number
           created_at: string
+          edition: string | null
           game_id: string
           id: string
+          language: string | null
+          location_misc: string | null
+          location_room: string | null
+          location_shelf: string | null
           notes: string | null
+          purchase_date: string | null
+          purchase_price: number | null
           updated_at: string
         }
         Insert: {
+          acquisition_source?: string | null
           condition?: string | null
           copy_label?: string | null
           copy_number?: number
           created_at?: string
+          edition?: string | null
           game_id: string
           id?: string
+          language?: string | null
+          location_misc?: string | null
+          location_room?: string | null
+          location_shelf?: string | null
           notes?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
           updated_at?: string
         }
         Update: {
+          acquisition_source?: string | null
           condition?: string | null
           copy_label?: string | null
           copy_number?: number
           created_at?: string
+          edition?: string | null
           game_id?: string
           id?: string
+          language?: string | null
+          location_misc?: string | null
+          location_room?: string | null
+          location_shelf?: string | null
           notes?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
           updated_at?: string
         }
         Relationships: [
