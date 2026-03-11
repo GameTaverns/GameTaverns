@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, Clock, Weight, BookOpen, PenTool, Plus, Loader2, Heart, Calendar } from "lucide-react";
+import { getComplexity } from "@/lib/complexity";
 import { decodeHtmlEntities } from "@/lib/utils";
 
 export interface CatalogGameItem {
