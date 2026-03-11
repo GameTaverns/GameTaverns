@@ -359,6 +359,13 @@ export default function PlatformAdmin() {
                   <Newspaper className="h-4 w-4 mr-1 sm:mr-2" />
                   News
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="strategy"
+                  className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+                >
+                  <Target className="h-4 w-4 mr-1 sm:mr-2" />
+                  Strategy
+                </TabsTrigger>
               </>
             )}
           </TabsList>
