@@ -337,7 +337,7 @@ export default function Platform() {
               Browse public libraries, find someone lending that game you've been eyeing, or just see what other collectors are into.
             </p>
             <div className="space-y-3 mb-8">
-              {["Search by name or location", "Interactive map to find libraries near you", "Browse combined club catalogs", "Request to borrow games directly", "Follow libraries to see their activity"].map(b => (
+              {["Search by name or location", "Map view to find libraries nearby", "Browse combined club catalogs", "Request to borrow games directly", "Follow libraries you like"].map(b => (
                 <div key={b} className="flex items-center gap-3 text-sm text-muted-foreground">
                   <CheckCircle2 className="h-4 w-4 text-secondary shrink-0" />
                   {b}
