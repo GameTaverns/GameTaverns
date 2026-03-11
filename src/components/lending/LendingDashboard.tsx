@@ -132,6 +132,27 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
   // Fetch lending rules
   const { data: lendingRules } = useLendingRules(libraryId);
 
+  // Fetch active personal loan counts to include in inventory overview
+  const gameIdsFromLoans = [...new Set(myLentLoans.filter(l => l.game).map(l => l.game_id))];
+  const { data: personalLoanCounts } = useQuery({
+    queryKey: ["personal-loan-counts-for-inventory", libraryId, gameIdsFromLoans.join(",")],
+    queryFn: async () => {
+      if (!libraryId || gameIdsFromLoans.length === 0) return new Map<string, number>();
+      const { data } = await (supabase as any)
+        .from("personal_loans")
+        .select("game_id")
+        .eq("library_id", libraryId)
+        .in("game_id", gameIdsFromLoans)
+        .in("status", ["active", "overdue"]);
+      const counts = new Map<string, number>();
+      (data || []).forEach((l: any) => {
+        counts.set(l.game_id, (counts.get(l.game_id) || 0) + 1);
+      });
+      return counts;
+    },
+    enabled: !!libraryId && gameIdsFromLoans.length > 0,
+  });
+
   const handleAction = async () => {
     if (!selectedLoan) return;
 
