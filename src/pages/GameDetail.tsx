@@ -161,6 +161,7 @@ const GameDetail = () => {
   const catalogImages = (!gameHasImages && catalogData?.additional_images) ? catalogData.additional_images : [];
   const yearPublished = (game as any)?.year_published ?? catalogData?.year_published;
   const { data: gtScore } = useGTScore(catalogId);
+  const { data: availability } = useGameAvailability(game?.id, library?.id);
 
 
   if (isLoading) {
