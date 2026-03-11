@@ -15,9 +15,7 @@
 */
 
 @layer base {
-  html {
-    font-size: 87.5%; /* 14px base instead of 16px (~12.5% reduction) */
-  }
+  /* Font size set below in second @layer base block */
 
   :root {
     /* Typography tokens (overridden by ThemeApplicator/DemoThemeApplicator) */

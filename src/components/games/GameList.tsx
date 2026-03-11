@@ -97,23 +97,23 @@ export function GameList({ games, hasActiveFilters }: GameListProps) {
                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                   {game.game_type && <span>{game.game_type}</span>}
                   {forSale && game.is_for_sale && (
-                    <Badge className="text-[9px] px-1 py-0 bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
+                    <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary border-primary/30">
                       <DollarSign className="h-2.5 w-2.5 mr-0.5" />
                       {game.sale_price ? `$${game.sale_price}` : 'Sale'}
                     </Badge>
                   )}
                   {comingSoon && game.is_coming_soon && (
-                    <Badge className="text-[9px] px-1 py-0 bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                    <Badge variant="secondary" className="text-[9px] px-1 py-0">
                       Soon
                     </Badge>
                   )}
                   {(game as any).ownership_status === "played_only" && (
-                    <Badge className="text-[9px] px-1 py-0 bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                    <Badge variant="outline" className="text-[9px] px-1 py-0">
                       Played Only
                     </Badge>
                   )}
                   {(game as any).ownership_status === "previously_owned" && (
-                    <Badge className="text-[9px] px-1 py-0 bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30">
+                    <Badge variant="outline" className="text-[9px] px-1 py-0">
                       Prev. Owned
                     </Badge>
                   )}
@@ -135,7 +135,7 @@ export function GameList({ games, hasActiveFilters }: GameListProps) {
               {game.play_time?.replace(' Minutes', 'm').replace(' Hours', 'h') || "—"}
             </span>
             <span className="hidden sm:block text-center text-xs text-muted-foreground">
-              {game.difficulty?.replace(/^\d+ - /, '') || "—"}
+              {game.difficulty?.replace(/^\d+\s*-\s*/, '') || "—"}
             </span>
             <span className="hidden sm:flex items-center justify-center">
               <GTScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
