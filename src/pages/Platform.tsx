@@ -390,8 +390,8 @@ export default function Platform() {
           </p>
           <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <Link to="/share-card" className="group">
-              <div className="rounded-2xl border border-border/30 bg-muted/50 p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
-                <Upload className="h-8 w-8 text-secondary" />
+              <div className="card-handcrafted p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
+                <Upload className="h-8 w-8 text-accent" />
                 <div>
                 <h3 className="font-display font-bold text-foreground mb-1">Stats Cards</h3>
                   <p className="text-sm text-muted-foreground">Turn your collection stats into a shareable image. Great for flexing on social media.</p>
@@ -399,7 +399,7 @@ export default function Platform() {
               </div>
             </Link>
             <Link to="/grow" className="group">
-              <div className="rounded-2xl border border-secondary/30 bg-secondary/10 ring-1 ring-secondary/20 p-7 text-center hover:bg-secondary/15 transition-colors h-full flex flex-col items-center gap-4">
+              <div className="card-handcrafted p-7 text-center bg-secondary/5 border-secondary/25 hover:bg-secondary/10 transition-colors h-full flex flex-col items-center gap-4">
                 <Star className="h-8 w-8 text-secondary" />
                 <div>
                 <h3 className="font-display font-bold text-foreground mb-1">Referral Program</h3>
@@ -408,8 +408,8 @@ export default function Platform() {
               </div>
             </Link>
             <Link to="/embed" className="group">
-              <div className="rounded-2xl border border-border/30 bg-muted/50 p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
-                <Zap className="h-8 w-8 text-secondary" />
+              <div className="card-handcrafted p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
+                <Zap className="h-8 w-8 text-accent" />
                 <div>
                 <h3 className="font-display font-bold text-foreground mb-1">Embed Widget</h3>
                   <p className="text-sm text-muted-foreground">Drop your library into your blog, Discord server, or forum with a snippet of code.</p>
