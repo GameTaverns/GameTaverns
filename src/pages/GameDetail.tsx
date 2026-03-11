@@ -584,7 +584,7 @@ const GameDetail = () => {
                 )}
               </TabsList>
 
-              <TabsContent value="description" className="mt-0">
+              <TabsContent value="description" className="mt-0 min-h-[400px]">
                 <div className="prose prose-sm max-w-none">
                   <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
                     {t('game.description')}
