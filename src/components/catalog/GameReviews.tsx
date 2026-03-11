@@ -376,7 +376,7 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
         content,
         recommended,
         play_count_at_review: playCount ? parseInt(playCount) : undefined,
-        ownership_status: "owned",
+        ownership_status: ownershipStatus,
         best_for: bestFor || undefined,
         skip_if: skipIf || undefined,
         best_player_count: bestPlayerCount || undefined,
