@@ -516,11 +516,12 @@ function FeatureHighlight({ icon, title, description }: { icon: React.ReactNode;
 function ShowcaseRow({ image, alt, title, description, reverse }: { image: string; alt: string; title: string; description: string; reverse: boolean }) {
   return (
     <div className={`flex flex-col ${reverse ? "md:flex-row-reverse" : "md:flex-row"} gap-8 items-center`}>
-      <div className="md:w-1/2">
+      <div className={`md:w-1/2 ${reverse ? "md:pl-4" : "md:pr-4"}`}>
         <img
           src={image}
           alt={alt}
-          className={`rounded-2xl border border-border/30 shadow-lg w-full ${reverse ? "md:rotate-[0.5deg]" : "md:-rotate-[0.5deg]"}`}
+          className={`card-handcrafted shadow-lg w-full ${reverse ? "md:rotate-[0.3deg]" : "md:-rotate-[0.4deg]"}`}
+          style={{ padding: '3px' }}
           loading="lazy"
         />
       </div>
