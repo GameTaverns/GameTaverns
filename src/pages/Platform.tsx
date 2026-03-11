@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Library, Users, Dice6, ArrowLeftRight, Calendar, MessageSquare,
   Trophy, Star, Upload, Zap, Shield, BarChart3, Building2,
-  ChevronRight, CheckCircle2, Flame, Vote, Shuffle, BookOpen, RefreshCw,
+  ChevronRight, Flame, Vote, Shuffle, BookOpen, RefreshCw,
   MapPin,
 } from "lucide-react";
 import { SEO, websiteJsonLd } from "@/components/seo/SEO";
