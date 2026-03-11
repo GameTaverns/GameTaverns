@@ -319,9 +319,9 @@ export default function Platform() {
             Most people have their whole collection imported before their coffee gets cold.
           </p>
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <Step n={1} title="Create your library" description="Sign up, pick a name and slug — your public library URL is ready instantly." />
-            <Step n={2} title="Import your collection" description="Enter your BGG username and import your entire collection with box art, descriptions and details in one go." />
-            <Step n={3} title="Share & invite" description="Send your library link to friends, set up lending rules, and start building your community." />
+            <Step n={1} title="Pick a name" description="Sign up, choose a slug — you've got a public URL before you finish your first sip." />
+            <Step n={2} title="Import from BGG" description="Type your BGG username, hit import. Box art, descriptions, player counts — all of it, done." />
+            <Step n={3} title="Send the link" description="Share your library with friends. Set up lending. Start a poll. You're live." />
           </div>
         </div>
       </section>
