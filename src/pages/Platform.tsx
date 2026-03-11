@@ -313,10 +313,10 @@ export default function Platform() {
       <section className="bg-muted/30 border-y border-border/20">
         <div className="container mx-auto px-4 py-20">
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
-            Up and Running in Minutes
+            Three Steps. That's It.
           </h2>
           <p className="text-muted-foreground text-center mb-14 max-w-md mx-auto">
-            From signup to a fully cataloged library — faster than you'd expect.
+            Most people have their whole collection imported before their coffee gets cold.
           </p>
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <Step n={1} title="Create your library" description="Sign up, pick a name and slug — your public library URL is ready instantly." />
