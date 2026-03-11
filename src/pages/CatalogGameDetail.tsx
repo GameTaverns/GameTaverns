@@ -481,7 +481,7 @@ export default function CatalogGameDetail() {
                     )}
                     {complexity && (
                       <TableRow>
-                         <TableCell className="font-medium text-muted-foreground">{complexity.label}</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">Difficulty</TableCell>
                         <TableCell className="text-foreground">
                           <Badge className={`${complexity.badgeClass}`}>
                             <span className={`h-2 w-2 rounded-full ${complexity.dotClass} mr-1 inline-block`} />
