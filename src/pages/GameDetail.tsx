@@ -556,33 +556,41 @@ const GameDetail = () => {
               </Card>
             )}
 
-            {/* Categories as clickable badges */}
-            <div className="flex flex-wrap gap-2 mb-6 max-w-[calc(100vw-2rem)] overflow-hidden">
-              {yearPublished != null && (
-                <Badge variant="outline" className="text-sm">
-                  <Calendar className="h-3.5 w-3.5 mr-1" />
-                  {yearPublished}
-                </Badge>
-              )}
-              {allCategories.map((cat, idx) => {
-                const filterParams = new URLSearchParams();
-                filterParams.set("filter", cat.type);
-                filterParams.set("value", cat.label);
-                if (isDemoMode) filterParams.set("demo", "true");
-                else if (tenantSlug) filterParams.set("tenant", tenantSlug);
-                
-                return (
-                  <Link key={idx} to={`/?${filterParams.toString()}`}>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-sm"
-                    >
-                      {cat.label}
+            {/* Categories as collapsible badges */}
+            {allCategories.length > 0 && (
+              <details className="mb-6 group/details">
+                <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors select-none list-none flex items-center gap-1.5 mb-2">
+                  <ChevronRight className="h-4 w-4 transition-transform group-open/details:rotate-90" />
+                  Details · {allCategories.length} tags
+                </summary>
+                <div className="flex flex-wrap gap-2 max-w-[calc(100vw-2rem)] overflow-hidden pl-5">
+                  {yearPublished != null && (
+                    <Badge variant="outline" className="text-sm">
+                      <Calendar className="h-3.5 w-3.5 mr-1" />
+                      {yearPublished}
                     </Badge>
-                  </Link>
-                );
-              })}
-            </div>
+                  )}
+                  {allCategories.map((cat, idx) => {
+                    const filterParams = new URLSearchParams();
+                    filterParams.set("filter", cat.type);
+                    filterParams.set("value", cat.label);
+                    if (isDemoMode) filterParams.set("demo", "true");
+                    else if (tenantSlug) filterParams.set("tenant", tenantSlug);
+                    
+                    return (
+                      <Link key={idx} to={`/?${filterParams.toString()}`}>
+                        <Badge
+                          variant="secondary"
+                          className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-sm"
+                        >
+                          {cat.label}
+                        </Badge>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </details>
+            )}
 
             {/* Catalog Link + Purchase Links */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-6">
