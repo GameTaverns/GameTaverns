@@ -45,7 +45,7 @@ export interface ReviewFormData {
   content: string;
   recommended?: boolean;
   play_count_at_review?: number;
-  ownership_status: "owned" | "previously_owned";
+  ownership_status: "owned" | "previously_owned" | "played_only";
   best_for?: string;
   skip_if?: string;
   best_player_count?: string;
