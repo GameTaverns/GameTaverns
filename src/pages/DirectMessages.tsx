@@ -78,7 +78,7 @@ export default function DirectMessages() {
           </Card>
 
           {/* Main panel */}
-          <Card className="bg-wood-medium/30 border-wood-medium/50 overflow-hidden flex flex-col">
+          <Card className="bg-card border-border/60 overflow-hidden flex flex-col">
             {showDiscovery ? (
               <div className="p-4 overflow-auto">
               <p className="text-sm text-cream/60 mb-4">
