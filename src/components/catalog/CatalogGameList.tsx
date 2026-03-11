@@ -22,7 +22,7 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
         <span>Title</span>
         <span className="text-center">Players</span>
         <span className="text-center">Time</span>
-        <span className="text-center">Complexity</span>
+        <span className="text-center">Difficulty</span>
         <span className="text-center">GT</span>
         <span />
       </div>
