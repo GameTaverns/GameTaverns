@@ -183,12 +183,12 @@ export default function Platform() {
             <AudienceCard
               icon={<BookOpen className="h-7 w-7" />}
               title="Collectors"
-              subtitle="Your collection, beautifully organised"
+              subtitle="You know exactly how many games you own. (No judgement.)"
               bullets={[
-                "Import from BGG in one click",
-                "Track location, condition & value",
-                "Log every play session",
-                "Earn achievements as you play",
+                "Import your BGG collection in one click",
+                "Know where every game is and what shape it's in",
+                "Log plays — finally prove you don't only buy games",
+                "Unlock achievements for actually playing your shelf",
               ]}
               cta="Start tracking"
               href="/signup"
@@ -196,12 +196,12 @@ export default function Platform() {
             <AudienceCard
               icon={<Users className="h-7 w-7" />}
               title="Game Groups"
-              subtitle="Organise your friend group's library"
+              subtitle="Stop texting 'what should we play tonight'"
               bullets={[
-                "Lend games with request tracking",
-                "Game night polls with shareable links",
-                "Random game picker for decision fatigue",
-                "Trade games with other groups",
+                "Lend games without losing them into the void",
+                "Polls that settle the 'what do we play' debate",
+                "Random picker when nobody can decide",
+                "See what other groups near you have on their shelves",
               ]}
               cta="Create a group library"
               href="/signup"
@@ -210,12 +210,12 @@ export default function Platform() {
             <AudienceCard
               icon={<Building2 className="h-7 w-7" />}
               title="Community Libraries"
-              subtitle="Run a public lending library"
+              subtitle="For cafés, churches, schools — anyone lending games"
               bullets={[
-                "Full borrower management & ratings",
+                "Track who borrowed what (and when it's overdue)",
                 "QR codes for physical shelves",
-                "Events, forums & announcements",
-                "Multi-library Clubs for networks",
+                "Events, forums & announcements built in",
+                "Link multiple libraries into a Club network",
               ]}
               cta="Set up your library"
               href="/signup"
