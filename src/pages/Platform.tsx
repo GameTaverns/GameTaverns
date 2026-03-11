@@ -331,10 +331,10 @@ export default function Platform() {
         <div className="grid md:grid-cols-2 gap-12 items-center max-w-5xl mx-auto">
           <div>
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Discover Public Libraries Near You
+              There Are Other Shelves Out There
             </h2>
             <p className="text-muted-foreground mb-6 leading-relaxed">
-              Browse the Library Directory to find active game libraries, borrow games from your community, and connect with other enthusiasts.
+              Browse public libraries, find someone lending that game you've been eyeing, or just see what other collectors are into.
             </p>
             <div className="space-y-3 mb-8">
               {["Search by name or location", "Interactive map to find libraries near you", "Browse combined club catalogs", "Request to borrow games directly", "Follow libraries to see their activity"].map(b => (
