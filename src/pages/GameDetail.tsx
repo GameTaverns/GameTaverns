@@ -729,6 +729,11 @@ const GameDetail = () => {
                       </TableCell>
                       <TableCell className="text-foreground">
                         {(game as any).copies_owned ?? 1}
+                        {availability && (availability.activePersonalLoans + availability.activeClubLoans) > 0 && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({availability.available} available)
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                     {(game as any).upc && (
