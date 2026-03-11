@@ -15,7 +15,7 @@ import { PersonalLoansPanel } from "@/components/lending/PersonalLoansPanel";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { isSelfHostedSupabaseStack } from "@/config/runtime";
 
-const cardClass = "bg-wood-medium/30 border-wood-medium/50 text-cream";
+const cardClass = "bg-card border-border/60 text-card-foreground";
 
 export default function LendingPage() {
   const { t } = useTranslation();

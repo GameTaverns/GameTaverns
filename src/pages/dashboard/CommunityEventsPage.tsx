@@ -24,9 +24,9 @@ import { isSelfHostedSupabaseStack } from "@/config/runtime";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { InfoPopover } from "@/components/ui/InfoPopover";
 
-const cardClass = "bg-wood-medium/30 border-wood-medium/50 text-cream";
+const cardClass = "bg-card border-border/60 text-card-foreground";
 const btnPrimary = "bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7 gap-1.5";
-const btnOutline = "border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-7 gap-1.5";
+const btnOutline = "border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted text-xs h-7 gap-1.5";
 
 export default function CommunityEventsPage() {
   const { t } = useTranslation();

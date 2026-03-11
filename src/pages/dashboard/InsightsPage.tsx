@@ -14,8 +14,8 @@ import { AchievementsDisplay } from "@/components/achievements/AchievementsDispl
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 
-const cardClass = "bg-wood-medium/30 border-wood-medium/50 text-cream";
-const btnOutline = "border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-7 gap-1.5";
+const cardClass = "bg-card border-border/60 text-card-foreground";
+const btnOutline = "border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted text-xs h-7 gap-1.5";
 
 export default function InsightsPage() {
   const { t } = useTranslation();
