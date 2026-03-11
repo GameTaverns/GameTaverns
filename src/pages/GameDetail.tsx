@@ -37,6 +37,7 @@ import { GameRecommendations } from "@/components/games/GameRecommendations";
 import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
 import { GameDocuments } from "@/components/games/GameDocuments";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { GameReviews } from "@/components/catalog/GameReviews";
 import { useGTScore } from "@/hooks/useGTScore";
 import { useAddTradeListing, useMyTradeListings, useRemoveTradeListing, type SaleCondition } from "@/hooks/useTrades";
@@ -367,8 +368,31 @@ const GameDetail = () => {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Image Gallery Section */}
           <div className="space-y-4">
-            {/* Main Image - short aspect ratio on mobile, square on desktop, hard max-h safety */}
-            <div className="aspect-[4/3] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group w-full mx-auto lg:max-w-none max-w-[calc(100vw-2rem)]">
+            {/* Main Image - swipeable gallery with touch support */}
+            <div 
+              className="aspect-[4/3] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group w-full mx-auto lg:max-w-none max-w-[calc(100vw-2rem)]"
+              onTouchStart={(e) => {
+                const touch = e.touches[0];
+                (e.currentTarget as any)._touchStartX = touch.clientX;
+                (e.currentTarget as any)._touchStartY = touch.clientY;
+              }}
+              onTouchEnd={(e) => {
+                const startX = (e.currentTarget as any)._touchStartX;
+                const startY = (e.currentTarget as any)._touchStartY;
+                if (startX == null || startY == null) return;
+                const touch = e.changedTouches[0];
+                const dx = touch.clientX - startX;
+                const dy = touch.clientY - startY;
+                // Only swipe if horizontal movement is dominant and significant
+                if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && allImages.length > 1) {
+                  if (dx < 0) {
+                    setSelectedImageIndex((prev) => prev === allImages.length - 1 ? 0 : prev + 1);
+                  } else {
+                    setSelectedImageIndex((prev) => prev === 0 ? allImages.length - 1 : prev - 1);
+                  }
+                }
+              }}
+            >
               {allImages.length > 0 ? (
                 <>
                   {(() => {
@@ -379,43 +403,49 @@ const GameDetail = () => {
                     const selectedUrl = allImages[safeIndex];
 
                     return (
-                       <GameImage
-                         imageUrl={selectedUrl}
-                         alt={game.title}
-                         loading="eager"
-                         priority={true}
-                         className="h-full w-full object-contain sm:object-cover"
-                         fallback={
-                           <div className="flex h-full items-center justify-center bg-muted">
-                             <span className="text-8xl text-muted-foreground/50">🎲</span>
-                           </div>
-                         }
-                       />
+                      <ImageLightbox src={selectedUrl} alt={game.title}>
+                        <GameImage
+                          imageUrl={selectedUrl}
+                          alt={game.title}
+                          loading="eager"
+                          priority={true}
+                          className="h-full w-full object-contain sm:object-cover"
+                          fallback={
+                            <div className="flex h-full items-center justify-center bg-muted">
+                              <span className="text-8xl text-muted-foreground/50">🎲</span>
+                            </div>
+                          }
+                        />
+                      </ImageLightbox>
                     );
                   })()}
-                  {/* Navigation arrows for multiple images */}
+                  {/* Navigation arrows - always visible on mobile, hover on desktop */}
                   {allImages.length > 1 && (
                     <>
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => setSelectedImageIndex((prev) => 
+                        className="absolute left-2 top-1/2 -translate-y-1/2 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm h-10 w-10 sm:h-8 sm:w-8"
+                        onClick={(e) => { e.stopPropagation(); setSelectedImageIndex((prev) => 
                           prev === 0 ? allImages.length - 1 : prev - 1
-                        )}
+                        ); }}
                       >
-                        <ChevronLeft className="h-4 w-4" />
+                        <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
                       </Button>
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => setSelectedImageIndex((prev) => 
+                        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm h-10 w-10 sm:h-8 sm:w-8"
+                        onClick={(e) => { e.stopPropagation(); setSelectedImageIndex((prev) => 
                           prev === allImages.length - 1 ? 0 : prev + 1
-                        )}
+                        ); }}
                       >
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
                       </Button>
+                      {/* Image counter badge on mobile */}
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 sm:hidden bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-medium text-foreground">
+                        {Math.min(selectedImageIndex, allImages.length - 1) + 1} / {allImages.length}
+                      </div>
                     </>
                   )}
                   <span className="sr-only">{game.title}</span>
@@ -427,17 +457,17 @@ const GameDetail = () => {
               )}
             </div>
 
-            {/* Thumbnail Gallery */}
+            {/* Thumbnail Gallery - larger on mobile for easier tapping */}
             {allImages.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-2 max-w-full">
+              <div className="flex gap-2 sm:gap-2 overflow-x-auto pb-2 max-w-full snap-x snap-mandatory">
                 {allImages.map((img, idx) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImageIndex(idx)}
-                    className={`flex-shrink-0 w-20 h-20 overflow-hidden rounded-lg border-2 transition-all ${
+                    className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 overflow-hidden rounded-lg border-2 transition-all snap-start ${
                       selectedImageIndex === idx
                         ? "border-primary ring-2 ring-primary/20"
-                        : "border-border hover:border-primary/50"
+                        : "border-border hover:border-primary/50 active:border-primary/50"
                     }`}
                    >
                        <GameImage
