@@ -16,8 +16,8 @@ import { TwoFactorSettings } from "@/components/settings/TwoFactorSettings";
 import { ReferralPanel } from "@/components/referral/ReferralPanel";
 import { DangerZone } from "@/components/settings/DangerZone";
 
-const cardClass = "bg-wood-medium/30 border-wood-medium/50 text-cream";
-const btnOutline = "border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-7 gap-1.5";
+const cardClass = "bg-card border-border/60 text-card-foreground";
+const btnOutline = "border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted text-xs h-7 gap-1.5";
 const btnPrimary = "bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7 gap-1.5";
 
 export default function SettingsPage() {
@@ -49,7 +49,7 @@ export default function SettingsPage() {
                 <User className="h-4 w-4 text-secondary" />
                 {t('dashboard.myProfile')}
               </CardTitle>
-              <CardDescription className="text-cream/60 text-xs">{t('dashboard.myProfileDesc')}</CardDescription>
+              <CardDescription className="text-muted-foreground text-xs">{t('dashboard.myProfileDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="px-4 pb-4">
               <Link to={`/u/${profile.username}`}>
@@ -69,7 +69,7 @@ export default function SettingsPage() {
               <SettingsIcon className="h-4 w-4 text-secondary" />
               {t('dashboard.accountSettings')}
             </CardTitle>
-            <CardDescription className="text-cream/70 text-xs">{t('dashboard.accountSettingsDesc')}</CardDescription>
+            <CardDescription className="text-muted-foreground text-xs">{t('dashboard.accountSettingsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <Tabs value={settingsTab} onValueChange={setSettingsTab}>
@@ -101,7 +101,7 @@ export default function SettingsPage() {
               <Share2 className="h-4 w-4 text-secondary" />
               {t('dashboard.shareGrow')}
             </CardTitle>
-            <CardDescription className="text-cream/60 text-xs">{t('dashboard.shareGrowDesc')}</CardDescription>
+            <CardDescription className="text-muted-foreground text-xs">{t('dashboard.shareGrowDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <div className="space-y-4">
@@ -116,13 +116,13 @@ export default function SettingsPage() {
         </Card>
 
         {/* Danger Zone */}
-        <Card className="bg-red-950/60 border-red-700/50 text-cream">
+        <Card className="bg-destructive/10 border-destructive/30 text-card-foreground">
           <CardHeader className="px-4 pt-4 pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-red-400">
+            <CardTitle className="flex items-center gap-2 text-sm text-destructive">
               <AlertTriangle className="h-4 w-4" />
               {t('dashboard.dangerZone')}
             </CardTitle>
-            <CardDescription className="text-red-300/70 text-xs">{t('dashboard.dangerZoneDesc')}</CardDescription>
+            <CardDescription className="text-destructive/70 text-xs">{t('dashboard.dangerZoneDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4"><DangerZone /></CardContent>
         </Card>

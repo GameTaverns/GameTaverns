@@ -54,13 +54,13 @@ export default function DirectMessages() {
     <Layout>
       <div className="container mx-auto px-4 py-6 max-w-5xl">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-display font-bold text-cream flex items-center gap-2">
+          <h1 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
             <MessageSquare className="h-6 w-6 text-secondary" />
             {t('messages.title')}
           </h1>
           <Link
             to="/dashboard"
-            className="flex items-center gap-1.5 text-sm text-cream/60 hover:text-cream transition-colors"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <LayoutDashboard className="h-4 w-4" />
             {t('messages.backToDashboard')}
@@ -69,7 +69,7 @@ export default function DirectMessages() {
 
         <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 h-[calc(100dvh-200px)] md:h-[calc(100vh-200px)] min-h-[500px]">
           {/* Sidebar */}
-          <Card className="bg-wood-medium/30 border-wood-medium/50 overflow-hidden flex flex-col">
+          <Card className="bg-card border-border/60 overflow-hidden flex flex-col">
             <DMInbox
               selectedUserId={selectedConv?.user_id ?? null}
               onSelectConversation={handleSelectConv}
@@ -78,10 +78,10 @@ export default function DirectMessages() {
           </Card>
 
           {/* Main panel */}
-          <Card className="bg-wood-medium/30 border-wood-medium/50 overflow-hidden flex flex-col">
+          <Card className="bg-card border-border/60 overflow-hidden flex flex-col">
             {showDiscovery ? (
               <div className="p-4 overflow-auto">
-              <p className="text-sm text-cream/60 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                   {t('messages.findUser')}
                 </p>
                 <SocialDiscovery />
@@ -95,8 +95,8 @@ export default function DirectMessages() {
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <MessageSquare className="h-12 w-12 text-cream/20 mb-4" />
-                <p className="text-cream/50 text-sm">{t('messages.selectConversation')}</p>
+                <MessageSquare className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                <p className="text-muted-foreground text-sm">{t('messages.selectConversation')}</p>
               </div>
             )}
           </Card>

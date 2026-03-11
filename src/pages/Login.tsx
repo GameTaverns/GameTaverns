@@ -289,7 +289,7 @@ const Login = () => {
         <LanguageSwitcher />
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md bg-card/80 dark:bg-sidebar/80 border-border/50 backdrop-blur-sm">
+      <Card className="w-full max-w-md bg-card dark:bg-sidebar border-border/50">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-3 mb-4">
             <img src={logoImage} alt="GameTaverns" className="h-16 w-auto" />
