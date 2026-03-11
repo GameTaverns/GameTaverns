@@ -16,20 +16,37 @@
  *     regress toward the platform mean (preventing 1-review 10/10 outliers)
  *   - SentimentBonus: net positive tag ratio adds up to +0.3
  *
- * The result is a 1-10 score where:
- *   9.0+ = Exceptional (requires broad consensus + depth)
- *   8.0-8.9 = Excellent
- *   7.0-7.9 = Very Good
- *   6.0-6.9 = Good
- *   5.0-5.9 = Average
- *   Below 5 = Below Average
+ * DUAL SCORING:
+ *   Like Rotten Tomatoes, the GT Score splits into two aggregates:
+ *   - Owner Score: Reviews from users who own/owned the game (higher weight, always shown)
+ *   - Player Score: Reviews from users who've played but don't own (shown when 3+ reviews)
+ *   Reviews dynamically reclassify when ownership status changes.
+ *
+ * WEIGHT FACTORS:
+ *   - Play count affects reviewer weight (more plays = higher weight)
+ *   - Account age adds weight (6mo+, 1yr+ bonuses)
+ *   - Collection size adds weight
+ *   - Owner reviews carry a 1.2x multiplier over player reviews
  */
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 
+export interface GTScoreSegment {
+  /** The composite score (1-10 scale) */
+  score: number;
+  /** Letter grade derived from score */
+  grade: string;
+  /** Number of reviews contributing */
+  reviewCount: number;
+  /** Confidence level: 'low' (<3), 'medium' (3-9), 'high' (10+) */
+  confidence: "low" | "medium" | "high";
+  /** What percentage of reviewers recommend this game */
+  recommendRate: number | null;
+}
+
 export interface GTScore {
-  /** The composite GT Score (1-10 scale) */
+  /** The combined GT Score (1-10 scale) */
   score: number;
   /** Letter grade derived from score */
   grade: string;
@@ -49,11 +66,45 @@ export interface GTScore {
   recommendRate: number | null;
   /** Net sentiment from tags (positive minus negative ratio) */
   sentimentScore: number | null;
+  /** Owner Score segment (users who own/owned the game) */
+  ownerScore: GTScoreSegment | null;
+  /** Player Score segment (users who played but don't own) */
+  playerScore: GTScoreSegment | null;
 }
 
 // Bayesian prior: platform average and minimum reviews for full confidence
 const PRIOR_MEAN = 6.5;
 const CONFIDENCE_THRESHOLD = 10; // Reviews needed for full confidence
+const OWNER_WEIGHT_MULTIPLIER = 1.2; // Owner reviews count 20% more in combined score
+
+function calculateSegmentScore(
+  reviews: ReviewData[],
+): GTScoreSegment | null {
+  if (!reviews || reviews.length === 0) return null;
+
+  const n = reviews.length;
+  const totalWeight = reviews.reduce((sum, r) => sum + r.reviewer_weight, 0);
+  const weightedOverall = reviews.reduce((sum, r) => sum + r.rating_overall * r.reviewer_weight, 0) / totalWeight;
+
+  // Bayesian smoothing
+  const bayesianScore = (n * weightedOverall + CONFIDENCE_THRESHOLD * PRIOR_MEAN) / (n + CONFIDENCE_THRESHOLD);
+  const finalScore = Math.max(1, Math.min(10, Math.round(bayesianScore * 10) / 10));
+
+  const withRecommendation = reviews.filter(r => r.recommended !== null);
+  const recommendRate = withRecommendation.length > 0
+    ? withRecommendation.filter(r => r.recommended === true).length / withRecommendation.length
+    : null;
+
+  const confidence: GTScoreSegment["confidence"] = n < 3 ? "low" : n < 10 ? "medium" : "high";
+
+  return {
+    score: finalScore,
+    grade: getGrade(finalScore),
+    reviewCount: n,
+    confidence,
+    recommendRate,
+  };
+}
 
 function calculateGTScore(
   reviews: ReviewData[],
@@ -64,9 +115,23 @@ function calculateGTScore(
 
   const n = reviews.length;
 
-  // 1. Weighted Overall Rating
-  const totalWeight = reviews.reduce((sum, r) => sum + r.reviewer_weight, 0);
-  const weightedOverall = reviews.reduce((sum, r) => sum + r.rating_overall * r.reviewer_weight, 0) / totalWeight;
+  // Split reviews by reviewer_type
+  const ownerReviews = reviews.filter(r => r.reviewer_type === "owner");
+  const playerReviews = reviews.filter(r => r.reviewer_type === "player");
+
+  // Calculate segment scores
+  const ownerScore = calculateSegmentScore(ownerReviews);
+  const playerScore = calculateSegmentScore(playerReviews);
+
+  // 1. Weighted Overall Rating (with owner multiplier for combined score)
+  const totalWeight = reviews.reduce((sum, r) => {
+    const multiplier = r.reviewer_type === "owner" ? OWNER_WEIGHT_MULTIPLIER : 1.0;
+    return sum + r.reviewer_weight * multiplier;
+  }, 0);
+  const weightedOverall = reviews.reduce((sum, r) => {
+    const multiplier = r.reviewer_type === "owner" ? OWNER_WEIGHT_MULTIPLIER : 1.0;
+    return sum + r.rating_overall * r.reviewer_weight * multiplier;
+  }, 0) / totalWeight;
 
   // 2. Sub-rating weighted averages
   const calcDimension = (field: keyof ReviewData): number | null => {
@@ -81,24 +146,20 @@ function calculateGTScore(
   const replayability = calcDimension("rating_replayability");
   const value = calcDimension("rating_value");
 
-  // 3. Sub-Rating Adjustment: if sub-ratings exist, they shift the score
-  //    Each sub-rating can contribute ±0.125 (max ±0.5 total)
+  // 3. Sub-Rating Adjustment
   let subRatingAdjustment = 0;
   const subRatings = [gameplay, components, replayability, value].filter(v => v !== null) as number[];
   if (subRatings.length > 0) {
     const subAvg = subRatings.reduce((a, b) => a + b, 0) / subRatings.length;
-    // Difference from overall, capped at ±0.5
     subRatingAdjustment = Math.max(-0.5, Math.min(0.5, (subAvg - weightedOverall) * 0.25));
   }
 
-  // 4. Review Depth Multiplier: rewards reviews with rich detail
-  //    Range: 1.0 (no depth) to 1.05 (maximum depth bonus)
+  // 4. Review Depth Multiplier
   let depthMultiplier = 1.0;
   if (reviewDepthData && reviewDepthData.total > 0) {
     const tagRatio = reviewDepthData.withTags / reviewDepthData.total;
     const pcRatio = reviewDepthData.withPlayerCounts / reviewDepthData.total;
     const promptRatio = reviewDepthData.withPrompts / reviewDepthData.total;
-    // Each dimension contributes up to ~1.67% bonus
     depthMultiplier = 1.0 + (tagRatio * 0.02 + pcRatio * 0.015 + promptRatio * 0.015);
   }
 
@@ -108,13 +169,10 @@ function calculateGTScore(
   if (tagSentiment && (tagSentiment.positive + tagSentiment.negative) > 0) {
     const totalTags = tagSentiment.positive + tagSentiment.negative + tagSentiment.neutral;
     sentimentScore = (tagSentiment.positive - tagSentiment.negative) / totalTags;
-    // Positive net sentiment adds up to +0.3, negative subtracts up to -0.3
     sentimentBonus = Math.max(-0.3, Math.min(0.3, sentimentScore * 0.3));
   }
 
   // 6. Bayesian Confidence Smoothing
-  //    With few reviews, score regresses toward PRIOR_MEAN
-  //    Formula: (n × rawScore + C × prior) / (n + C)
   const rawScore = (weightedOverall + subRatingAdjustment) * depthMultiplier + sentimentBonus;
   const bayesianScore = (n * rawScore + CONFIDENCE_THRESHOLD * PRIOR_MEAN) / (n + CONFIDENCE_THRESHOLD);
 
@@ -147,6 +205,8 @@ function calculateGTScore(
     },
     recommendRate,
     sentimentScore,
+    ownerScore,
+    playerScore,
   };
 }
 
@@ -193,6 +253,7 @@ interface ReviewData {
   skip_if: string | null;
   best_player_count: string | null;
   compared_to: string | null;
+  reviewer_type: string;
 }
 
 /**
@@ -202,10 +263,10 @@ export function useGTScore(catalogId: string | undefined) {
   return useQuery({
     queryKey: ["gt-score", catalogId],
     queryFn: async (): Promise<GTScore | null> => {
-      // 1. Fetch all published reviews
+      // 1. Fetch all published reviews (now including reviewer_type)
       const { data: reviews, error: revErr } = await supabase
         .from("game_reviews")
-        .select("rating_overall, rating_gameplay, rating_components, rating_replayability, rating_value, reviewer_weight, recommended, best_for, skip_if, best_player_count, compared_to")
+        .select("rating_overall, rating_gameplay, rating_components, rating_replayability, rating_value, reviewer_weight, recommended, best_for, skip_if, best_player_count, compared_to, reviewer_type")
         .eq("catalog_id", catalogId!)
         .eq("status", "published");
       if (revErr) throw revErr;

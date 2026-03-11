@@ -31,6 +31,8 @@ import { formatDistanceToNow } from "date-fns";
 import { ReviewTagSelector } from "./ReviewTagSelector";
 import { PlayerCountRatingInput } from "./PlayerCountRatingInput";
 import { ReviewInsights } from "./ReviewInsights";
+import { ReviewUpdatePromptBanner } from "./ReviewUpdatePromptBanner";
+import { InfoPopover } from "@/components/ui/InfoPopover";
 import { cn } from "@/lib/utils";
 
 function StarRating({ value, onChange, size = "md" }: { value: number; onChange?: (v: number) => void; size?: "sm" | "md" }) {
@@ -290,6 +292,7 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
   const [title, setTitle] = useState(savedDraft?.title ?? "");
   const [content, setContent] = useState(savedDraft?.content ?? "");
   const [recommended, setRecommended] = useState(savedDraft?.recommended ?? true);
+  const [ownershipStatus, setOwnershipStatus] = useState<"owned" | "previously_owned" | "played_only">(savedDraft?.ownershipStatus ?? "owned");
   const [playCount, setPlayCount] = useState(savedDraft?.playCount ?? "");
   const [bestFor, setBestFor] = useState(savedDraft?.bestFor ?? "");
   const [skipIf, setSkipIf] = useState(savedDraft?.skipIf ?? "");
@@ -302,7 +305,7 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
   useEffect(() => {
     const draft = {
       ratingOverall, ratingGameplay, ratingComponents, ratingReplayability, ratingValue,
-      title, content, recommended, playCount, bestFor, skipIf, bestPlayerCount, comparedTo,
+      title, content, recommended, ownershipStatus, playCount, bestFor, skipIf, bestPlayerCount, comparedTo,
       selectedTagIds, playerCountRatings,
     };
     // Only persist if there's meaningful input
@@ -311,7 +314,7 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
       sessionStorage.setItem(draftKey, JSON.stringify(draft));
     }
   }, [ratingOverall, ratingGameplay, ratingComponents, ratingReplayability, ratingValue,
-      title, content, recommended, playCount, bestFor, skipIf, bestPlayerCount, comparedTo,
+      title, content, recommended, ownershipStatus, playCount, bestFor, skipIf, bestPlayerCount, comparedTo,
       selectedTagIds, playerCountRatings, draftKey]);
 
   // Clear draft helper
@@ -373,7 +376,7 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
         content,
         recommended,
         play_count_at_review: playCount ? parseInt(playCount) : undefined,
-        ownership_status: "owned",
+        ownership_status: ownershipStatus,
         best_for: bestFor || undefined,
         skip_if: skipIf || undefined,
         best_player_count: bestPlayerCount || undefined,
@@ -447,12 +450,32 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
                 <RatingBar label="Value" value={aggregate.value} />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Ratings are weighted by reviewer activity and experience.
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs text-muted-foreground">
+                Ratings are weighted by reviewer activity and experience.
+              </p>
+              <InfoPopover
+                title="How Review Weight Works"
+                description="Your review weight is calculated based on several factors that establish credibility:"
+                tips={[
+                  "Number of plays logged — more plays = higher weight",
+                  "Collection size contributes to weight",
+                  "Account age (6+ months and 1+ year bonuses)",
+                  "Owner reviews carry 20% more weight than player reviews",
+                  "Detailed reviews (tags, player counts, prompts) boost score accuracy",
+                ]}
+                iconSize={3}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Review Update Prompt */}
+      <ReviewUpdatePromptBanner
+        catalogId={catalogId}
+        onUpdateReview={() => setShowForm(true)}
+      />
 
       {/* Review Insights (tags + player count aggregation) */}
       <ReviewInsights catalogId={catalogId} />
@@ -582,8 +605,20 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
               <p className="text-xs text-muted-foreground mt-1">{content.length}/100 minimum</p>
             </div>
 
-            {/* Play count + recommend */}
-            <div className="flex items-center gap-6">
+            {/* Ownership status + Play count + recommend */}
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm shrink-0">I have</Label>
+                <select
+                  value={ownershipStatus}
+                  onChange={e => setOwnershipStatus(e.target.value as any)}
+                  className="text-sm border rounded-md px-2 py-1.5 bg-background text-foreground"
+                >
+                  <option value="owned">Owned this game</option>
+                  <option value="previously_owned">Previously owned</option>
+                  <option value="played_only">Only played (don't own)</option>
+                </select>
+              </div>
               <div className="flex items-center gap-3">
                 <Label className="text-sm">Times played</Label>
                 <Input

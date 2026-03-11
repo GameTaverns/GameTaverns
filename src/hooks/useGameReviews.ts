@@ -45,7 +45,7 @@ export interface ReviewFormData {
   content: string;
   recommended?: boolean;
   play_count_at_review?: number;
-  ownership_status: "owned" | "previously_owned";
+  ownership_status: "owned" | "previously_owned" | "played_only";
   best_for?: string;
   skip_if?: string;
   best_player_count?: string;
@@ -160,9 +160,11 @@ export function useSubmitReview() {
     mutationFn: async (data: ReviewFormData) => {
       if (!user) throw new Error("Must be logged in");
 
+      const reviewer_type = data.ownership_status === "played_only" ? "player" : "owner";
       const payload = {
         ...data,
         user_id: user.id,
+        reviewer_type,
       };
 
       // Try upsert (one review per user per game)
@@ -176,6 +178,8 @@ export function useSubmitReview() {
       queryClient.invalidateQueries({ queryKey: ["game-reviews", variables.catalog_id] });
       queryClient.invalidateQueries({ queryKey: ["my-review", variables.catalog_id] });
       queryClient.invalidateQueries({ queryKey: ["review-aggregate", variables.catalog_id] });
+      queryClient.invalidateQueries({ queryKey: ["gt-score", variables.catalog_id] });
+      queryClient.invalidateQueries({ queryKey: ["review-update-prompt", variables.catalog_id] });
     },
   });
 }
