@@ -532,19 +532,19 @@ const GameDetail = () => {
 
             {/* For Sale Banner */}
             {forSale && game.is_for_sale && (
-              <Card className="mb-6 border-green-500/30 bg-green-500/10">
+              <Card className="mb-6 border-primary/30 bg-primary/10">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-full bg-green-500/20">
-                        <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <div className="p-2 rounded-full bg-primary/20">
+                        <DollarSign className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-semibold text-green-700 dark:text-green-300">
+                        <p className="font-semibold text-foreground">
                           {game.sale_price ? `$${game.sale_price.toFixed(2)}` : t('game.forSale')}
                         </p>
                         {game.sale_condition && (
-                          <p className="text-sm text-green-600/80 dark:text-green-400/80 flex items-center gap-1">
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
                             <Tag className="h-3 w-3" />
                             Condition: {game.sale_condition}
                           </p>

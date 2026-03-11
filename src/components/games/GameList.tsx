@@ -135,7 +135,7 @@ export function GameList({ games, hasActiveFilters }: GameListProps) {
               {game.play_time?.replace(' Minutes', 'm').replace(' Hours', 'h') || "—"}
             </span>
             <span className="hidden sm:block text-center text-xs text-muted-foreground">
-              {game.difficulty?.replace(/^\d+ - /, '') || "—"}
+              {game.difficulty?.replace(/^\d+\s*-\s*/, '') || "—"}
             </span>
             <span className="hidden sm:flex items-center justify-center">
               <GTScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
