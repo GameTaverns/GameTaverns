@@ -449,12 +449,32 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
                 <RatingBar label="Value" value={aggregate.value} />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Ratings are weighted by reviewer activity and experience.
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs text-muted-foreground">
+                Ratings are weighted by reviewer activity and experience.
+              </p>
+              <InfoPopover
+                title="How Review Weight Works"
+                description="Your review weight is calculated based on several factors that establish credibility:"
+                tips={[
+                  "Number of plays logged — more plays = higher weight",
+                  "Collection size contributes to weight",
+                  "Account age (6+ months and 1+ year bonuses)",
+                  "Owner reviews carry 20% more weight than player reviews",
+                  "Detailed reviews (tags, player counts, prompts) boost score accuracy",
+                ]}
+                iconSize={3}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Review Update Prompt */}
+      <ReviewUpdatePromptBanner
+        catalogId={catalogId}
+        onUpdateReview={() => setShowForm(true)}
+      />
 
       {/* Review Insights (tags + player count aggregation) */}
       <ReviewInsights catalogId={catalogId} />
