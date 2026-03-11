@@ -685,16 +685,26 @@ const GameDetail = () => {
                         </TableCell>
                       </TableRow>
                     )}
-                    {game.difficulty && (
-                      <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">
-                          {t('game.difficulty')}
-                        </TableCell>
-                        <TableCell className="text-foreground">
-                          {game.difficulty.replace(/^\d+\s*-\s*/, '')}
-                        </TableCell>
-                      </TableRow>
-                    )}
+                    {(() => {
+                      const diffInfo = getDifficultyDisplay(game.difficulty);
+                      return game.difficulty ? (
+                        <TableRow>
+                          <TableCell className="font-medium text-muted-foreground">
+                            {t('game.difficulty')}
+                          </TableCell>
+                          <TableCell className="text-foreground">
+                            {diffInfo ? (
+                              <Badge className={diffInfo.badgeClass}>
+                                <span className={cn("h-2 w-2 rounded-full inline-block mr-1", diffInfo.dotClass)} />
+                                {diffInfo.label}
+                              </Badge>
+                            ) : (
+                              game.difficulty.replace(/^\d+\s*-\s*/, '')
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ) : null;
+                    })()}
                     {game.game_type && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
