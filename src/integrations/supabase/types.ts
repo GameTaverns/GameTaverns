@@ -2532,12 +2532,14 @@ export type Database = {
           id: string
           ownership_status: string
           play_count_at_review: number | null
+          plays_at_last_prompt: number | null
           rating_components: number | null
           rating_gameplay: number | null
           rating_overall: number
           rating_replayability: number | null
           rating_value: number | null
           recommended: boolean | null
+          reviewer_type: string
           reviewer_weight: number
           skip_if: string | null
           status: string
@@ -2559,12 +2561,14 @@ export type Database = {
           id?: string
           ownership_status: string
           play_count_at_review?: number | null
+          plays_at_last_prompt?: number | null
           rating_components?: number | null
           rating_gameplay?: number | null
           rating_overall: number
           rating_replayability?: number | null
           rating_value?: number | null
           recommended?: boolean | null
+          reviewer_type?: string
           reviewer_weight?: number
           skip_if?: string | null
           status?: string
@@ -2586,12 +2590,14 @@ export type Database = {
           id?: string
           ownership_status?: string
           play_count_at_review?: number | null
+          plays_at_last_prompt?: number | null
           rating_components?: number | null
           rating_gameplay?: number | null
           rating_overall?: number
           rating_replayability?: number | null
           rating_value?: number | null
           recommended?: boolean | null
+          reviewer_type?: string
           reviewer_weight?: number
           skip_if?: string | null
           status?: string
