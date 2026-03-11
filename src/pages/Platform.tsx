@@ -274,7 +274,7 @@ export default function Platform() {
             image={showcaseActivityFeed}
             alt="Social activity feed showing photo posts, game additions, and community interactions"
             title="Social Activity Feed"
-            description="Follow other collectors and see their activity in a real-time feed. Photo posts with @mentions, batched game additions, play sessions, and achievements — all in one stream."
+            description="Follow other collectors and see what they're up to. Photo posts with @mentions, play sessions, new additions, and achievements show up in your feed."
             reverse
           />
           <ShowcaseRow
