@@ -528,14 +528,23 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <div className="space-y-1">
-                  {gameInventory.map((g) => (
-                    <div key={g.title} className="flex items-center justify-between text-sm">
-                      <span className="truncate mr-2">{g.title}</span>
-                      <span className="text-muted-foreground whitespace-nowrap">
-                        {Math.max(0, g.copiesOwned - g.activeCount)}/{g.copiesOwned} available
-                      </span>
-                    </div>
-                  ))}
+                  {gameInventory.map((g) => {
+                    const totalOut = g.activeCount + g.personalCount;
+                    const avail = Math.max(0, g.copiesOwned - totalOut);
+                    return (
+                      <div key={g.title} className="flex items-center justify-between text-sm">
+                        <span className="truncate mr-2">{g.title}</span>
+                        <span className={cn("whitespace-nowrap", avail <= 0 ? "text-destructive" : "text-muted-foreground")}>
+                          {avail}/{g.copiesOwned} available
+                          {g.personalCount > 0 && (
+                            <span className="text-xs ml-1 text-muted-foreground">
+                              ({g.personalCount} personal)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
