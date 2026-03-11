@@ -81,7 +81,7 @@ export default function DirectMessages() {
           <Card className="bg-card border-border/60 overflow-hidden flex flex-col">
             {showDiscovery ? (
               <div className="p-4 overflow-auto">
-              <p className="text-sm text-cream/60 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                   {t('messages.findUser')}
                 </p>
                 <SocialDiscovery />
