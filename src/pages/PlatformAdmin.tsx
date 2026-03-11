@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { isAdminSubdomain } from "@/lib/subdomainDetection";
-import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut, Clock, Globe, AlertTriangle, Mail, Accessibility, Newspaper, Star } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut, Clock, Globe, AlertTriangle, Mail, Accessibility, Newspaper, Star, Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,6 +46,9 @@ const AccountLockoutManager = lazy(() =>
 );
 const AccessibilityAudit = lazy(() =>
   import("@/components/admin/AccessibilityAudit").then(m => ({ default: m.AccessibilityAudit }))
+);
+const PositioningStrategy = lazy(() =>
+  import("@/components/admin/PositioningStrategy").then(m => ({ default: m.PositioningStrategy }))
 );
 const NewsManagement = lazy(() =>
   import("@/components/admin/NewsManagement").then(m => ({ default: m.NewsManagement }))
@@ -356,6 +359,13 @@ export default function PlatformAdmin() {
                   <Newspaper className="h-4 w-4 mr-1 sm:mr-2" />
                   News
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="strategy"
+                  className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+                >
+                  <Target className="h-4 w-4 mr-1 sm:mr-2" />
+                  Strategy
+                </TabsTrigger>
               </>
             )}
           </TabsList>
@@ -477,6 +487,14 @@ export default function PlatformAdmin() {
                 <TabErrorBoundary>
                   <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading news management…</div>}>
                     <NewsManagement />
+                  </Suspense>
+                </TabErrorBoundary>
+              </TabsContent>
+
+              <TabsContent value="strategy" className="mt-6">
+                <TabErrorBoundary>
+                  <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading strategy…</div>}>
+                    <PositioningStrategy />
                   </Suspense>
                 </TabErrorBoundary>
               </TabsContent>
