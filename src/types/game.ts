@@ -58,6 +58,14 @@ export interface GameCopy {
   copy_label: string | null;
   condition: string | null;
   notes: string | null;
+  edition: string | null;
+  language: string | null;
+  location_room: string | null;
+  location_shelf: string | null;
+  location_misc: string | null;
+  purchase_date: string | null;
+  purchase_price: number | null;
+  acquisition_source: string | null;
   created_at: string;
   updated_at: string;
 }
