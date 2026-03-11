@@ -476,16 +476,15 @@ function AudienceCard({
   highlight?: boolean;
 }) {
   return (
-    <div className={`rounded-2xl p-7 border flex flex-col gap-5 ${highlight ? "bg-secondary/10 border-secondary/30 ring-1 ring-secondary/20" : "bg-muted/50 border-border/30"}`}>
+    <div className={`card-handcrafted p-7 flex flex-col gap-5 ${highlight ? "bg-secondary/5 border-secondary/25" : ""}`}>
       <div className={`${highlight ? "text-secondary" : "text-muted-foreground"}`}>{icon}</div>
       <div>
         <h3 className="font-display text-xl font-bold text-foreground mb-1">{title}</h3>
-        <p className="text-muted-foreground text-sm">{subtitle}</p>
+        <p className="text-muted-foreground text-sm italic">{subtitle}</p>
       </div>
-      <ul className="space-y-2 flex-1">
+      <ul className="space-y-2.5 flex-1">
         {bullets.map((b) => (
-          <li key={b} className="flex items-start gap-2 text-sm text-muted-foreground">
-            <CheckCircle2 className={`h-4 w-4 shrink-0 mt-0.5 ${highlight ? "text-secondary" : "text-muted-foreground/50"}`} />
+          <li key={b} className="flex items-start gap-2 text-sm text-muted-foreground ink-dot">
             {b}
           </li>
         ))}
