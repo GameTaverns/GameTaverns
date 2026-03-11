@@ -250,13 +250,14 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
   const overdueLoans = activeLoans.filter((l) => l.due_date && isPast(new Date(l.due_date)) && l.status === 'active');
   const historyLoans = myLentLoans.filter((l) => ['returned', 'declined', 'cancelled'].includes(l.status));
 
-  // Build per-game inventory summary for owners
+  // Build per-game inventory summary for owners (includes personal loans)
   const gameInventory = (() => {
-    const map = new Map<string, { title: string; copiesOwned: number; activeCount: number }>();
+    const map = new Map<string, { title: string; copiesOwned: number; activeCount: number; personalCount: number }>();
     for (const loan of myLentLoans) {
       if (!loan.game) continue;
       const existing = map.get(loan.game_id);
       const isActive = ['requested', 'approved', 'active'].includes(loan.status);
+      const pCount = personalLoanCounts?.get(loan.game_id) || 0;
       if (existing) {
         if (isActive) existing.activeCount++;
       } else {
@@ -264,10 +265,11 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
           title: loan.game.title,
           copiesOwned: loan.game.copies_owned ?? 1,
           activeCount: isActive ? 1 : 0,
+          personalCount: pCount,
         });
       }
     }
-    return Array.from(map.values()).filter((g) => g.activeCount > 0);
+    return Array.from(map.values()).filter((g) => g.activeCount > 0 || g.personalCount > 0);
   })();
 
   const LoanCard = ({ loan, isLender }: { loan: GameLoan; isLender: boolean }) => {
