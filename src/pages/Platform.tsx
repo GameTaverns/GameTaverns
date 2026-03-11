@@ -127,8 +127,8 @@ export default function Platform() {
 
       {/* ── Hero: Live Library Preview ── */}
       <section className="relative">
-        <div className="container mx-auto px-4 pt-10 pb-6 text-center">
-          <div className="inline-flex items-center gap-2 bg-secondary/10 text-secondary border border-secondary/20 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
+        <div className="container mx-auto px-4 pt-12 pb-6 text-center">
+          <div className="inline-flex items-center gap-2 text-secondary text-sm font-body italic mb-4">
             <Flame className="h-3.5 w-3.5" />
             {t('platform.seeRealLibrary')}
           </div>
