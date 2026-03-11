@@ -226,6 +226,61 @@
       0 4px 8px -2px hsl(var(--foreground) / 0.08),
       inset 0 1px 0 hsl(var(--cream) / 0.5);
   }
+
+  /* Ornamental section divider — replaces generic border-y */
+  .section-divider {
+    position: relative;
+    border: none;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--border)) 15%,
+      hsl(var(--gold) / 0.4) 50%,
+      hsl(var(--border)) 85%,
+      transparent 100%
+    );
+  }
+
+  .section-divider::after {
+    content: "◆";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: hsl(var(--background));
+    padding: 0 0.75rem;
+    color: hsl(var(--gold) / 0.5);
+    font-size: 0.625rem;
+    letter-spacing: 0.25em;
+  }
+
+  /* Handcrafted card variant — slightly imperfect, warm */
+  .card-handcrafted {
+    border-radius: 0.5rem 0.75rem 0.625rem 0.875rem;
+    box-shadow:
+      2px 3px 8px -2px hsl(var(--foreground) / 0.06),
+      -1px 2px 4px -1px hsl(var(--foreground) / 0.03);
+    border: 1px solid hsl(var(--border) / 0.6);
+    background: hsl(var(--card));
+  }
+
+  /* Ink-stain style decorative dot */
+  .ink-dot::before {
+    content: "●";
+    color: hsl(var(--gold) / 0.35);
+    margin-right: 0.5rem;
+    font-size: 0.5em;
+    vertical-align: middle;
+  }
+
+  /* Aged paper inset — for feature sections */
+  .paper-inset {
+    background:
+      linear-gradient(168deg, hsl(var(--muted) / 0.5) 0%, hsl(var(--background)) 100%);
+    border-top: 1px solid hsl(var(--border) / 0.3);
+    border-bottom: 1px solid hsl(var(--border) / 0.3);
+  }
 }
 
 @layer components {

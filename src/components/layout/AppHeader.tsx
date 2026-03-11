@@ -44,7 +44,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
 
 
   return (
-    <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm sticky top-0 z-30">
+    <header className="border-b border-wood-medium/50 bg-wood-dark/95 sticky top-0 z-30">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

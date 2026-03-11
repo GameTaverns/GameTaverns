@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Library, Users, Dice6, ArrowLeftRight, Calendar, MessageSquare,
   Trophy, Star, Upload, Zap, Shield, BarChart3, Building2,
-  ChevronRight, CheckCircle2, Flame, Vote, Shuffle, BookOpen, RefreshCw,
+  ChevronRight, Flame, Vote, Shuffle, BookOpen, RefreshCw,
   MapPin,
 } from "lucide-react";
 import { SEO, websiteJsonLd } from "@/components/seo/SEO";
@@ -67,7 +67,7 @@ export default function Platform() {
       />
 
       {/* ── Header ── */}
-      <header className="border-b border-border/30 bg-background/80 backdrop-blur-sm sticky top-0 z-20">
+      <header className="border-b border-border/40 bg-background sticky top-0 z-20">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
           <Link to="/" className="flex items-center gap-2 min-w-0 flex-shrink-1">
             <img src={logoImage} alt="GameTaverns" className="h-8 w-auto flex-shrink-0" />
@@ -127,8 +127,8 @@ export default function Platform() {
 
       {/* ── Hero: Live Library Preview ── */}
       <section className="relative">
-        <div className="container mx-auto px-4 pt-10 pb-6 text-center">
-          <div className="inline-flex items-center gap-2 bg-secondary/10 text-secondary border border-secondary/20 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
+        <div className="container mx-auto px-4 pt-12 pb-6 text-center">
+          <div className="inline-flex items-center gap-2 text-secondary text-sm font-body italic mb-4">
             <Flame className="h-3.5 w-3.5" />
             {t('platform.seeRealLibrary')}
           </div>
@@ -162,7 +162,7 @@ export default function Platform() {
             </Link>
           </div>
           {/* Stats bar */}
-          <div className="inline-flex flex-wrap justify-center gap-8 sm:gap-16 bg-muted/50 border border-border/30 rounded-2xl px-10 py-6">
+          <div className="inline-flex flex-wrap justify-center gap-8 sm:gap-16 card-handcrafted px-10 py-6">
              <Stat label={t('platform.librariesCreated')} value={statsLoading ? "..." : formatStatNumber(stats?.librariesCount || 0)} />
              <Stat label={t('platform.gamesCataloged')} value={statsLoading ? "..." : formatStatNumber(stats?.gamesCount || 0)} />
              <Stat label={t('platform.playsLogged')} value={statsLoading ? "..." : formatStatNumber(stats?.playsCount || 0)} />
@@ -171,7 +171,8 @@ export default function Platform() {
       </section>
 
       {/* ── Who is it for ── */}
-      <section className="bg-muted/30 border-y border-border/20">
+      <hr className="section-divider" />
+      <section className="paper-inset">
         <div className="container mx-auto px-4 py-20">
            <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
              {t('platform.builtForEveryGamer')}
@@ -310,7 +311,8 @@ export default function Platform() {
       {/* Featured Library moved to hero — section removed */}
 
       {/* ── How it works ── */}
-      <section className="bg-muted/30 border-y border-border/20">
+      <hr className="section-divider" />
+      <section className="paper-inset">
         <div className="container mx-auto px-4 py-20">
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
             Three Steps. That's It.
@@ -338,8 +340,7 @@ export default function Platform() {
             </p>
             <div className="space-y-3 mb-8">
               {["Search by name or location", "Map view to find libraries nearby", "Browse combined club catalogs", "Request to borrow games directly", "Follow libraries you like"].map(b => (
-                <div key={b} className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <CheckCircle2 className="h-4 w-4 text-secondary shrink-0" />
+                <div key={b} className="flex items-center gap-3 text-sm text-muted-foreground ink-dot">
                   {b}
                 </div>
               ))}
@@ -365,7 +366,7 @@ export default function Platform() {
               { icon: <Building2 className="h-6 w-6 text-secondary" />, label: "Clubs & networks", sub: "Multi-library groups" },
               { icon: <ArrowLeftRight className="h-6 w-6 text-secondary" />, label: "Trade opportunities", sub: "Matched automatically" },
             ].map(({ icon, label, sub }) => (
-              <div key={label} className="bg-muted/50 border border-border/30 rounded-xl p-5 flex flex-col gap-3">
+              <div key={label} className="card-handcrafted p-5 flex flex-col gap-3">
                 {icon}
                 <div>
                   <div className="font-semibold text-foreground text-sm">{label}</div>
@@ -378,7 +379,8 @@ export default function Platform() {
       </section>
 
       {/* ── Growth tools ── */}
-      <section className="bg-muted/30 border-y border-border/20">
+      <hr className="section-divider" />
+      <section className="paper-inset">
         <div className="container mx-auto px-4 py-20">
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
             Show It Off a Little
@@ -388,8 +390,8 @@ export default function Platform() {
           </p>
           <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <Link to="/share-card" className="group">
-              <div className="rounded-2xl border border-border/30 bg-muted/50 p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
-                <Upload className="h-8 w-8 text-secondary" />
+              <div className="card-handcrafted p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
+                <Upload className="h-8 w-8 text-accent" />
                 <div>
                 <h3 className="font-display font-bold text-foreground mb-1">Stats Cards</h3>
                   <p className="text-sm text-muted-foreground">Turn your collection stats into a shareable image. Great for flexing on social media.</p>
@@ -397,7 +399,7 @@ export default function Platform() {
               </div>
             </Link>
             <Link to="/grow" className="group">
-              <div className="rounded-2xl border border-secondary/30 bg-secondary/10 ring-1 ring-secondary/20 p-7 text-center hover:bg-secondary/15 transition-colors h-full flex flex-col items-center gap-4">
+              <div className="card-handcrafted p-7 text-center bg-secondary/5 border-secondary/25 hover:bg-secondary/10 transition-colors h-full flex flex-col items-center gap-4">
                 <Star className="h-8 w-8 text-secondary" />
                 <div>
                 <h3 className="font-display font-bold text-foreground mb-1">Referral Program</h3>
@@ -406,8 +408,8 @@ export default function Platform() {
               </div>
             </Link>
             <Link to="/embed" className="group">
-              <div className="rounded-2xl border border-border/30 bg-muted/50 p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
-                <Zap className="h-8 w-8 text-secondary" />
+              <div className="card-handcrafted p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
+                <Zap className="h-8 w-8 text-accent" />
                 <div>
                 <h3 className="font-display font-bold text-foreground mb-1">Embed Widget</h3>
                   <p className="text-sm text-muted-foreground">Drop your library into your blog, Discord server, or forum with a snippet of code.</p>
@@ -419,7 +421,8 @@ export default function Platform() {
       </section>
 
       {/* ── Final CTA ── */}
-      <section className="bg-muted/30 border-t border-border/20">
+      <hr className="section-divider" />
+      <section className="paper-inset">
         <div className="container mx-auto px-4 py-24 text-center">
           <h2 className="font-display text-3xl sm:text-5xl font-bold text-foreground mb-4">
             Your Shelf Deserves Better Than a Spreadsheet
@@ -472,16 +475,15 @@ function AudienceCard({
   highlight?: boolean;
 }) {
   return (
-    <div className={`rounded-2xl p-7 border flex flex-col gap-5 ${highlight ? "bg-secondary/10 border-secondary/30 ring-1 ring-secondary/20" : "bg-muted/50 border-border/30"}`}>
+    <div className={`card-handcrafted p-7 flex flex-col gap-5 ${highlight ? "bg-secondary/5 border-secondary/25" : ""}`}>
       <div className={`${highlight ? "text-secondary" : "text-muted-foreground"}`}>{icon}</div>
       <div>
         <h3 className="font-display text-xl font-bold text-foreground mb-1">{title}</h3>
-        <p className="text-muted-foreground text-sm">{subtitle}</p>
+        <p className="text-muted-foreground text-sm italic">{subtitle}</p>
       </div>
-      <ul className="space-y-2 flex-1">
+      <ul className="space-y-2.5 flex-1">
         {bullets.map((b) => (
-          <li key={b} className="flex items-start gap-2 text-sm text-muted-foreground">
-            <CheckCircle2 className={`h-4 w-4 shrink-0 mt-0.5 ${highlight ? "text-secondary" : "text-muted-foreground/50"}`} />
+          <li key={b} className="flex items-start gap-2 text-sm text-muted-foreground ink-dot">
             {b}
           </li>
         ))}
@@ -500,8 +502,8 @@ function AudienceCard({
 
 function FeatureHighlight({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="flex gap-4 p-5 rounded-xl border border-border/20 bg-muted/30 hover:border-secondary/30 hover:bg-muted/50 transition-colors">
-      <div className="text-secondary shrink-0 mt-0.5">{icon}</div>
+    <div className="flex gap-4 p-5 card-handcrafted hover:border-secondary/30 transition-colors">
+      <div className="text-accent shrink-0 mt-0.5">{icon}</div>
       <div>
         <h3 className="font-semibold text-foreground text-sm mb-1">{title}</h3>
         <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
@@ -513,11 +515,12 @@ function FeatureHighlight({ icon, title, description }: { icon: React.ReactNode;
 function ShowcaseRow({ image, alt, title, description, reverse }: { image: string; alt: string; title: string; description: string; reverse: boolean }) {
   return (
     <div className={`flex flex-col ${reverse ? "md:flex-row-reverse" : "md:flex-row"} gap-8 items-center`}>
-      <div className="md:w-1/2">
+      <div className={`md:w-1/2 ${reverse ? "md:pl-4" : "md:pr-4"}`}>
         <img
           src={image}
           alt={alt}
-          className={`rounded-2xl border border-border/30 shadow-lg w-full ${reverse ? "md:rotate-[0.5deg]" : "md:-rotate-[0.5deg]"}`}
+          className={`card-handcrafted shadow-lg w-full ${reverse ? "md:rotate-[0.3deg]" : "md:-rotate-[0.4deg]"}`}
+          style={{ padding: '3px' }}
           loading="lazy"
         />
       </div>
@@ -533,7 +536,7 @@ const Step = forwardRef<HTMLDivElement, { n: number; title: string; description:
   ({ n, title, description }, ref) => {
     return (
       <div ref={ref} className="text-center flex flex-col items-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-secondary text-secondary-foreground font-bold text-lg flex items-center justify-center font-display">
+        <div className="w-11 h-11 rounded-lg bg-accent/10 text-accent border border-accent/20 font-bold text-lg flex items-center justify-center font-display" style={{ borderRadius: '0.5rem 0.75rem 0.625rem 0.5rem' }}>
           {n}
         </div>
         <h3 className="font-display font-bold text-foreground text-lg">{title}</h3>

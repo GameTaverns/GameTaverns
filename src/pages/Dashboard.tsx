@@ -37,18 +37,18 @@ function HubCard({ to, icon: Icon, title, description, bullets, iconColor, badge
 }) {
   return (
     <Link to={to} className="block">
-      <div className="rounded-2xl border bg-card hover:shadow-lg hover:border-primary/30 transition-all p-5 cursor-pointer group h-full">
+      <div className="card-handcrafted hover:shadow-lg hover:border-primary/30 transition-all p-5 cursor-pointer group h-full">
         <div className="flex items-start justify-between mb-3">
-          <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
+          <div className="h-10 w-10 flex items-center justify-center" style={{ borderRadius: '0.5rem 0.75rem 0.625rem 0.5rem', background: `${iconColor}15` }}>
             <Icon className="h-5 w-5" style={{ color: iconColor }} />
           </div>
           <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
         </div>
         <h3 className="font-semibold text-foreground text-base">{title}</h3>
         <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
-        <div className="mt-3 space-y-0.5">
+        <div className="mt-3 space-y-1">
           {bullets.map(s => (
-            <p key={s} className="text-xs text-muted-foreground">• {s}</p>
+            <p key={s} className="text-xs text-muted-foreground ink-dot">{s}</p>
           ))}
         </div>
         {badges && badges.length > 0 && (
