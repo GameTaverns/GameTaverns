@@ -181,9 +181,7 @@ export default function CatalogGameDetail() {
        : `${game.min_players}–${game.max_players} ${t('catalog.playerPlural')}`
      : null;
 
-   const weightLabel = game.weight != null
-     ? game.weight <= 1.5 ? t('catalog.light') : game.weight <= 2.5 ? t('catalog.mediumLight') : game.weight <= 3.5 ? t('catalog.medium') : game.weight <= 4.25 ? t('catalog.mediumHeavy') : t('catalog.heavy')
-     : null;
+   const complexity = getComplexity(game.weight);
 
   const allCategories = [
     ...(game.mechanics.map(m => ({ label: m, type: "mechanic" }))),
