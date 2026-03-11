@@ -422,7 +422,8 @@ export default function Platform() {
       </section>
 
       {/* ── Final CTA ── */}
-      <section className="bg-muted/30 border-t border-border/20">
+      <hr className="section-divider" />
+      <section className="paper-inset">
         <div className="container mx-auto px-4 py-24 text-center">
           <h2 className="font-display text-3xl sm:text-5xl font-bold text-foreground mb-4">
             Your Shelf Deserves Better Than a Spreadsheet
