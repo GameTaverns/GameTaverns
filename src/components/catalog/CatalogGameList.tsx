@@ -66,7 +66,7 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
             {game.play_time_minutes != null ? `${game.play_time_minutes}m` : "—"}
           </span>
           <span className="hidden sm:block text-center text-xs text-muted-foreground">
-            {game.weight != null ? game.weight.toFixed(1) : "—"}
+            {(() => { const c = getComplexity(game.weight); return c ? c.label : "—"; })()}
           </span>
           <span className="hidden sm:block text-center text-xs text-muted-foreground">
             {game.community_rating != null ? `★ ${game.community_rating.toFixed(1)}` : "—"}

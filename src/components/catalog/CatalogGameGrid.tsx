@@ -85,11 +85,15 @@ export function CatalogGameGrid({ games, isAuthenticated, addingId, isPending, o
 
                 {/* Tags - hidden on mobile for compactness, matching library */}
                 <div className="hidden sm:flex flex-wrap gap-1.5 mt-auto">
-                  {game.weight != null && (
-                    <Badge variant="outline" className="text-xs">
-                      <Weight className="h-3 w-3 mr-0.5" />{game.weight.toFixed(1)}
-                    </Badge>
-                  )}
+                  {(() => {
+                    const complexity = getComplexity(game.weight);
+                    return complexity ? (
+                      <Badge className={`text-xs ${complexity.badgeClass}`}>
+                        <span className={`h-2 w-2 rounded-full ${complexity.dotClass} mr-1 inline-block`} />
+                        {complexity.label}
+                      </Badge>
+                    ) : null;
+                  })()}
                   {game.community_rating != null && (
                     <Badge className="text-xs bg-primary/20 text-primary border-primary/30">★ {game.community_rating.toFixed(1)} ({game.community_rating_count})</Badge>
                   )}
