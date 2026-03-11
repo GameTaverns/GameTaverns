@@ -573,6 +573,12 @@ const GameDetail = () => {
                 <TabsTrigger value="description">{t('game.description')}</TabsTrigger>
                 <TabsTrigger value="info">{t('game.info')}</TabsTrigger>
                 <TabsTrigger value="location">{t('game.location')}</TabsTrigger>
+                {(canViewAdminData && (game as any).copies_owned > 1) && (
+                  <TabsTrigger value="copies" className="gap-1.5">
+                    Copies
+                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{(game as any).copies_owned}</Badge>
+                  </TabsTrigger>
+                )}
                 {playLogs && <TabsTrigger value="plays">{t('game.playHistory')}</TabsTrigger>}
                 {!isDemoMode && library && <TabsTrigger value="documents">{t('game.documents')}</TabsTrigger>}
                 {catalogId && (
