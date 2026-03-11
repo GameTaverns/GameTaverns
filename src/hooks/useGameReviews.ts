@@ -160,9 +160,11 @@ export function useSubmitReview() {
     mutationFn: async (data: ReviewFormData) => {
       if (!user) throw new Error("Must be logged in");
 
+      const reviewer_type = data.ownership_status === "played_only" ? "player" : "owner";
       const payload = {
         ...data,
         user_id: user.id,
+        reviewer_type,
       };
 
       // Try upsert (one review per user per game)
