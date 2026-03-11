@@ -112,7 +112,7 @@ export default function Docs() {
         <div className="mb-6">
           <BackLink fallback="/dashboard" className="mb-3" />
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Help & Documentation</h1>
-          <p className="text-muted-foreground mt-1">Everything you need to know about GameTaverns</p>
+          <p className="text-muted-foreground mt-1">Guides, how-tos, and answers to common questions</p>
         </div>
 
         {/* Search */}

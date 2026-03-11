@@ -562,10 +562,10 @@ export default function Features() {
       <section className="container mx-auto px-4 py-16 text-center">
         <div className="bg-muted/50 dark:bg-wood-medium/30 rounded-2xl p-12 border border-border/30">
           <h2 className="font-display text-3xl font-bold text-foreground mb-4">
-            Ready to Get Started?
+            Your Shelf Deserves Better
           </h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Create your free library today and discover why GameTaverns is the most complete board game library platform available.
+            Create a free library and see what your collection looks like when it's actually organised.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {isAuthenticated ? (
