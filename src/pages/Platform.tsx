@@ -380,7 +380,8 @@ export default function Platform() {
       </section>
 
       {/* ── Growth tools ── */}
-      <section className="bg-muted/30 border-y border-border/20">
+      <hr className="section-divider" />
+      <section className="paper-inset">
         <div className="container mx-auto px-4 py-20">
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
             Show It Off a Little
