@@ -281,7 +281,7 @@ export default function Platform() {
             image={showcaseProfile}
             alt="User profile page showing activity, photos, stats, achievements, and community badges"
             title="Collector Profiles"
-            description="Every member gets a rich profile with activity history, photo gallery, play stats, achievements, and community connections. Follow your favorite collectors and see what they're playing."
+            description="Activity history, photo gallery, play stats, achievements, and who you follow. See what any collector is playing and how their collection has grown."
             reverse={false}
           />
         </div>
