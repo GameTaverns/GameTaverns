@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { useLending, type GameLoan, type LoanStatus } from "@/hooks/useLending";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
