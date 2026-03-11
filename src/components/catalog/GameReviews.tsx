@@ -605,8 +605,20 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
               <p className="text-xs text-muted-foreground mt-1">{content.length}/100 minimum</p>
             </div>
 
-            {/* Play count + recommend */}
-            <div className="flex items-center gap-6">
+            {/* Ownership status + Play count + recommend */}
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm shrink-0">I have</Label>
+                <select
+                  value={ownershipStatus}
+                  onChange={e => setOwnershipStatus(e.target.value as any)}
+                  className="text-sm border rounded-md px-2 py-1.5 bg-background text-foreground"
+                >
+                  <option value="owned">Owned this game</option>
+                  <option value="previously_owned">Previously owned</option>
+                  <option value="played_only">Only played (don't own)</option>
+                </select>
+              </div>
               <div className="flex items-center gap-3">
                 <Label className="text-sm">Times played</Label>
                 <Input
