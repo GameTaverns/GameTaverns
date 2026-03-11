@@ -188,25 +188,7 @@ export default function CatalogGameDetail() {
     ...(game.publishers.map(p => ({ label: p, type: "publisher" }))),
   ];
 
-  const DescriptionContent = ({ content }: { content: string | null }) => {
-    if (!content) return <p className="text-muted-foreground italic">{t('catalog.noDescription')}</p>;
-    return (
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h2: ({ children }) => (<><hr className="border-border my-6" /><h2 className="font-display text-xl font-semibold text-foreground mt-0 mb-3">{children}</h2></>),
-          h3: ({ children }) => (<h3 className="font-display text-lg font-semibold text-foreground mt-4 mb-2">{children}</h3>),
-          p: ({ children }) => (<p className="text-muted-foreground leading-relaxed mb-4">{children}</p>),
-          strong: ({ children }) => (<strong className="font-semibold text-foreground">{children}</strong>),
-          ul: ({ children }) => (<ul className="list-disc list-inside space-y-2 text-muted-foreground mb-4 ml-2">{children}</ul>),
-          ol: ({ children }) => (<ol className="list-decimal list-inside space-y-2 text-muted-foreground mb-4 ml-2">{children}</ol>),
-          li: ({ children }) => (<li className="leading-relaxed">{children}</li>),
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-    );
-  };
+  // DescriptionContent is now imported from shared component
 
   return (
     <Layout>
