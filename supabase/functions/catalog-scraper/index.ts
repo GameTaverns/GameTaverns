@@ -268,6 +268,162 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   // =========================================================================
+  // FIX-IMAGES — Batch fix catalog entries with missing or low-quality images
+  // Fetches proper box art from BGG XML API <image> tag
+  // =========================================================================
+  if (action === "fix-images") {
+    const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
+    const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+    const bggHeaders: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      Accept: "application/xml",
+      Referer: "https://boardgamegeek.com/",
+      Origin: "https://boardgamegeek.com",
+    };
+    if (bggApiToken) bggHeaders["Authorization"] = `Bearer ${bggApiToken}`;
+    if (bggCookie) bggHeaders["Cookie"] = bggCookie;
+
+    const batchLimit = body.limit || 100;
+
+    // Find catalog entries that need image fixes
+    const { data: badEntries, error: queryErr } = await admin
+      .from("game_catalog")
+      .select("id, bgg_id, title, image_url")
+      .not("bgg_id", "is", null)
+      .or("image_url.is.null,image_url.ilike.%__opengraph%,image_url.ilike.%fit-in/1200x630%")
+      .limit(batchLimit);
+
+    if (queryErr) {
+      return new Response(JSON.stringify({ error: queryErr.message }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!badEntries || badEntries.length === 0) {
+      // Check remaining count
+      const { count: remaining } = await admin
+        .from("game_catalog")
+        .select("id", { count: "exact", head: true })
+        .not("bgg_id", "is", null)
+        .or("image_url.is.null,image_url.ilike.%__opengraph%,image_url.ilike.%fit-in/1200x630%");
+
+      return new Response(JSON.stringify({ success: true, message: "No entries need fixing", fixed: 0, remaining: remaining || 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`[catalog-scraper] FIX-IMAGES: processing ${badEntries.length} entries`);
+
+    let fixed = 0;
+    let failed = 0;
+    const results: { title: string; bgg_id: string; status: string; old_url?: string; new_url?: string }[] = [];
+
+    // Process in chunks of 20 (BGG API batch limit)
+    const CHUNK = 20;
+    for (let i = 0; i < badEntries.length; i += CHUNK) {
+      const chunk = badEntries.slice(i, i + CHUNK);
+      const bggIds = chunk.map(e => e.bgg_id).filter(Boolean);
+      if (bggIds.length === 0) continue;
+
+      const idStr = bggIds.join(",");
+      const url = `https://boardgamegeek.com/xmlapi2/thing?id=${idStr}&type=boardgame,boardgameexpansion`;
+
+      let xml: string | null = null;
+      let attempts = 0;
+      while (attempts < 3 && !xml) {
+        attempts++;
+        try {
+          const res = await fetch(url, { headers: bggHeaders });
+          if (res.status === 202) { await sleep(5000); continue; }
+          if (res.status === 429) { await sleep(attempts * 3000); continue; }
+          if (res.ok) xml = await res.text();
+          else { await res.text().catch(() => {}); break; }
+        } catch { if (attempts < 3) await sleep(2000); }
+      }
+
+      if (!xml) {
+        for (const entry of chunk) {
+          failed++;
+          results.push({ title: entry.title, bgg_id: entry.bgg_id, status: "fetch_failed" });
+        }
+        continue;
+      }
+
+      // Build a map of bgg_id -> image_url from the XML response
+      const imageMap = new Map<string, string>();
+      const itemRegex = /<item[^>]*id="(\d+)"[^>]*>([\s\S]*?)<\/item>/g;
+      let itemMatch;
+      while ((itemMatch = itemRegex.exec(xml)) !== null) {
+        const itemBggId = itemMatch[1];
+        const block = itemMatch[2];
+        const imgMatch = block.match(/<image>([^<]+)<\/image>/);
+        if (imgMatch?.[1]) {
+          const imgUrl = imgMatch[1].trim();
+          // Reject opengraph/cropped variants
+          if (!/__opengraph|fit-in\/1200x630|__small|__thumb|__micro/i.test(imgUrl)) {
+            imageMap.set(itemBggId, imgUrl);
+          }
+        }
+      }
+
+      // Update each entry
+      for (const entry of chunk) {
+        const newImageUrl = imageMap.get(entry.bgg_id);
+        if (newImageUrl) {
+          const { error: updateErr } = await admin
+            .from("game_catalog")
+            .update({ image_url: newImageUrl })
+            .eq("id", entry.id);
+
+          if (updateErr) {
+            failed++;
+            results.push({ title: entry.title, bgg_id: entry.bgg_id, status: "update_failed" });
+          } else {
+            fixed++;
+            results.push({ title: entry.title, bgg_id: entry.bgg_id, status: "fixed", old_url: entry.image_url, new_url: newImageUrl });
+
+            // Cascade: also fix any library games linked to this catalog entry or bgg_id
+            await admin
+              .from("games")
+              .update({ image_url: newImageUrl })
+              .eq("bgg_id", entry.bgg_id)
+              .or("image_url.is.null,image_url.ilike.%__opengraph%,image_url.ilike.%fit-in/1200x630%");
+          }
+        } else {
+          failed++;
+          results.push({ title: entry.title, bgg_id: entry.bgg_id, status: "no_image_in_xml" });
+        }
+      }
+
+      // Be nice to BGG API
+      if (i + CHUNK < badEntries.length) await sleep(1500);
+    }
+
+    // Count remaining
+    const { count: remaining } = await admin
+      .from("game_catalog")
+      .select("id", { count: "exact", head: true })
+      .not("bgg_id", "is", null)
+      .or("image_url.is.null,image_url.ilike.%__opengraph%,image_url.ilike.%fit-in/1200x630%");
+
+    const response = {
+      success: true,
+      mode: "fix-images",
+      processed: badEntries.length,
+      fixed,
+      failed,
+      remaining: remaining || 0,
+      results,
+    };
+
+    console.log(`[catalog-scraper] FIX-IMAGES complete: fixed=${fixed}, failed=${failed}, remaining=${remaining}`);
+
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // =========================================================================
   // FETCH_IDS — Scrape specific BGG IDs (for backfilling missed games)
   // =========================================================================
   if (action === "fetch_ids") {

@@ -808,6 +808,35 @@ export function SystemHealth() {
     onError: (e: Error) => toast.error(`Run failed: ${e.message}`),
   });
 
+  // Fix Catalog Images
+  const fixImagesMutation = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-scraper`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "fix-images", limit: 100 }),
+      });
+      if (!r.ok) throw new Error(`Fix images failed: ${r.status}`);
+      return r.json();
+    },
+    onSuccess: (data) => {
+      if (data.fixed === 0 && data.remaining === 0) {
+        toast.success("All catalog images are good! Nothing to fix.");
+      } else {
+        toast.success(`Fixed ${data.fixed} images, ${data.failed} failed, ${data.remaining} remaining`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["catalog-scraper-status"] });
+    },
+    onError: (e: Error) => toast.error(`Fix images failed: ${e.message}`),
+  });
+
   // Description Formatter
   interface FormatterStatus {
     total_catalog: number;
@@ -1231,6 +1260,20 @@ export function SystemHealth() {
                   disabled={scraperResetMutation.isPending}
                 >
                   <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset Position
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => fixImagesMutation.mutate()}
+                  disabled={fixImagesMutation.isPending}
+                >
+                  {fixImagesMutation.isPending ? (
+                    <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Fixing...</>
+                  ) : (
+                    <><Image className="h-3.5 w-3.5 mr-1" /> Fix Catalog Images</>
+                  )}
                 </Button>
               </div>
 
