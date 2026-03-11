@@ -490,6 +490,14 @@ export default function PlatformAdmin() {
                   </Suspense>
                 </TabErrorBoundary>
               </TabsContent>
+
+              <TabsContent value="strategy" className="mt-6">
+                <TabErrorBoundary>
+                  <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading strategy…</div>}>
+                    <PositioningStrategy />
+                  </Suspense>
+                </TabErrorBoundary>
+              </TabsContent>
             </>
           )}
         </Tabs>
