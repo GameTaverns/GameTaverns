@@ -183,12 +183,12 @@ export default function Platform() {
             <AudienceCard
               icon={<BookOpen className="h-7 w-7" />}
               title="Collectors"
-              subtitle="Your collection, beautifully organised"
+              subtitle="You know exactly how many games you own. (No judgement.)"
               bullets={[
-                "Import from BGG in one click",
-                "Track location, condition & value",
-                "Log every play session",
-                "Earn achievements as you play",
+                "Import your BGG collection in one click",
+                "Know where every game is and what shape it's in",
+                "Log plays — finally prove you don't only buy games",
+                "Unlock achievements for actually playing your shelf",
               ]}
               cta="Start tracking"
               href="/signup"
@@ -196,12 +196,12 @@ export default function Platform() {
             <AudienceCard
               icon={<Users className="h-7 w-7" />}
               title="Game Groups"
-              subtitle="Organise your friend group's library"
+              subtitle="Stop texting 'what should we play tonight'"
               bullets={[
-                "Lend games with request tracking",
-                "Game night polls with shareable links",
-                "Random game picker for decision fatigue",
-                "Trade games with other groups",
+                "Lend games without losing them into the void",
+                "Polls that settle the 'what do we play' debate",
+                "Random picker when nobody can decide",
+                "See what other groups near you have on their shelves",
               ]}
               cta="Create a group library"
               href="/signup"
@@ -210,12 +210,12 @@ export default function Platform() {
             <AudienceCard
               icon={<Building2 className="h-7 w-7" />}
               title="Community Libraries"
-              subtitle="Run a public lending library"
+              subtitle="For cafés, churches, schools — anyone lending games"
               bullets={[
-                "Full borrower management & ratings",
+                "Track who borrowed what (and when it's overdue)",
                 "QR codes for physical shelves",
-                "Events, forums & announcements",
-                "Multi-library Clubs for networks",
+                "Events, forums & announcements built in",
+                "Link multiple libraries into a Club network",
               ]}
               cta="Set up your library"
               href="/signup"
@@ -227,10 +227,10 @@ export default function Platform() {
       {/* ── Feature Showcase with Screenshots ── */}
       <section className="container mx-auto px-4 py-20">
         <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
-          Everything in One Platform
+          Okay, But What Does It Actually Do?
         </h2>
         <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
-          No patchwork of apps. No spreadsheets. GameTaverns replaces the lot.
+          Honestly — a lot. Here's the short version.
         </p>
 
         {/* Showcase rows — alternating image/text */}
@@ -238,72 +238,72 @@ export default function Platform() {
           <ShowcaseRow
             image={showcaseCollection}
             alt="GameTaverns library view showing a board game collection with box art, filters, and sorting"
-            title="Beautiful Collection Management"
-            description="Every game displayed with box art, player counts, and play time. Import from BGG in one click and keep everything organised with location tracking, condition grades, and expansion linking."
+            title="Your Whole Shelf, Digitised"
+            description="Every game with its box art, player count, and play time — filterable, sortable, and actually nice to look at. Import from BGG and it fills in everything automatically."
             reverse={false}
           />
           <ShowcaseRow
             image={showcaseThemed}
             alt="A custom-themed board game library with unique branding and colors"
-            title="Your Library, Your Brand"
-            description="Each library gets its own theme, logo, and public URL. Make it match your brand or just make it look good."
+            title="Make It Look Like Yours"
+            description="Pick your own colours, upload a logo, choose a slug. Your library gets its own public URL that looks nothing like a generic template."
             reverse
           />
           <ShowcaseRow
             image={showcasePlayStats}
             alt="Play statistics dashboard showing H-index, top mechanics, and most played games"
-            title="Play Logging & Deep Stats"
-            description="Record every session with players, scores, and winners. See your H-index, win rates, monthly summaries, top mechanics, and most-played games — all in beautiful dashboards."
+            title="Stats You'll Actually Care About"
+            description="H-index, win rates, monthly play summaries, most-played mechanics — the kind of nerdy breakdowns that make you go 'huh, I really do play a lot of engine builders.'"
             reverse={false}
           />
           <ShowcaseRow
             image={showcaseGameDetail}
             alt="Detailed game page showing Flip 7 with description, mechanics, and play history"
-            title="Rich Game Pages"
-            description="Every game gets a detailed page with rich overviews, mechanic tags, play history, documents, and community ratings. Link to BoardGameGeek with one click."
+            title="Every Game Gets a Page"
+            description="Mechanic tags, play history, documents, community ratings, and a direct link to BGG. It's like a wiki page for every game on your shelf."
             reverse
           />
           <ShowcaseRow
             image={showcasePoll}
             alt="Game night poll letting users vote on what to play next"
-            title="Game Night Polls"
-            description="Create a poll from your collection, share a link — anyone can vote without signing up. Live results, RSVP tracking, and event details."
+            title="'What Should We Play?' — Solved"
+            description="Make a poll from your collection, send the link. Your friends vote — no account needed. Results update live. Arguments settled."
             reverse={false}
           />
           <ShowcaseRow
             image={showcaseActivityFeed}
             alt="Social activity feed showing photo posts, game additions, and community interactions"
-            title="Social Activity Feed"
-            description="Follow other collectors and see what they're up to. Photo posts with @mentions, play sessions, new additions, and achievements show up in your feed."
+            title="See What Everyone's Playing"
+            description="Photo posts, @mentions, new additions, play sessions — a feed that's actually about board games instead of, well, everything else."
             reverse
           />
           <ShowcaseRow
             image={showcaseProfile}
             alt="User profile page showing activity, photos, stats, achievements, and community badges"
-            title="Collector Profiles"
-            description="Activity history, photo gallery, play stats, achievements, and who you follow. See what any collector is playing and how their collection has grown."
+            title="Your Collector Profile"
+            description="Photos, play stats, achievements, follows — your board gaming life in one place. See what others are into and how their shelves have grown."
             reverse={false}
           />
         </div>
 
         {/* Feature grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <FeatureHighlight icon={<Library className="h-5 w-5" />} title="Collection Management" description="Every game, every detail. BGG auto-fill, location tracking, condition grades, expansions." />
-          <FeatureHighlight icon={<RefreshCw className="h-5 w-5" />} title="BGG Auto-Sync" description="Keep your library in sync with your BoardGameGeek account on a daily or weekly schedule." />
-          <FeatureHighlight icon={<Dice6 className="h-5 w-5" />} title="Play Logging & Stats" description="Record sessions, players, scores and winners. Charts, H-index, win rates and monthly summaries." />
-          <FeatureHighlight icon={<Library className="h-5 w-5" />} title="Lending Library" description="Borrow requests, due dates, condition check-in/out, waitlists, and borrower reputation ratings." />
-          <FeatureHighlight icon={<Vote className="h-5 w-5" />} title="Game Night Polls" description="Share a link — anyone votes, no account needed. See live results as they come in." />
-          <FeatureHighlight icon={<Shuffle className="h-5 w-5" />} title="Random Game Picker" description="Filtered by player count and play time. Spin the wheel, end the debate." />
-          <FeatureHighlight icon={<ArrowLeftRight className="h-5 w-5" />} title="Trade Matching" description="Automatically match games you'd trade with games libraries near you are looking for." />
-          <FeatureHighlight icon={<MessageSquare className="h-5 w-5" />} title="Community Forums" description="Threaded discussions scoped to your library, your clubs, or the whole platform." />
-          <FeatureHighlight icon={<Calendar className="h-5 w-5" />} title="Events & Game Nights" description="Plan events with RSVPs and Discord integration." />
-          <FeatureHighlight icon={<Trophy className="h-5 w-5" />} title="Achievements" description="Milestone badges for play counts, variety, streaks, and community contributions." />
-          <FeatureHighlight icon={<BarChart3 className="h-5 w-5" />} title="Deep Analytics" description="Track collection value, play trends, ELO ratings, and group challenge leaderboards." />
-          <FeatureHighlight icon={<Star className="h-5 w-5" />} title="Ratings & Wishlist" description="Visitors can rate games and wishlist titles — no account required." />
-          <FeatureHighlight icon={<Zap className="h-5 w-5" />} title="AI Recommendations" description="Games like this — powered by AI, only suggesting titles actually in your library." />
-          <FeatureHighlight icon={<Building2 className="h-5 w-5" />} title="Clubs" description="Connect libraries into a shared network with combined catalogs, shared events, and cross-library forums." />
-          <FeatureHighlight icon={<Users className="h-5 w-5" />} title="Social Feed & Photos" description="Follow collectors, share game day photos with @mentions, and see activity from your community." />
-          <FeatureHighlight icon={<Shield className="h-5 w-5" />} title="Privacy First" description="Toggle every feature on or off. Public or private. You're always in control." />
+          <FeatureHighlight icon={<Library className="h-5 w-5" />} title="Collection Management" description="BGG auto-fill, location tracking, condition grades, expansion linking. The whole deal." />
+          <FeatureHighlight icon={<RefreshCw className="h-5 w-5" />} title="BGG Auto-Sync" description="Set it and forget it. Your BGG collection stays in sync daily or weekly." />
+          <FeatureHighlight icon={<Dice6 className="h-5 w-5" />} title="Play Logging" description="Players, scores, winners, duration. Then charts that make you look like you have your life together." />
+          <FeatureHighlight icon={<Library className="h-5 w-5" />} title="Lending Library" description="Borrow requests, due dates, condition tracking. Know who has your copy of Pandemic." />
+          <FeatureHighlight icon={<Vote className="h-5 w-5" />} title="Game Night Polls" description="Send a link, friends vote, nobody needs an account. Done." />
+          <FeatureHighlight icon={<Shuffle className="h-5 w-5" />} title="Random Picker" description="Filter by player count and time, spin the wheel. Blame the algorithm." />
+          <FeatureHighlight icon={<ArrowLeftRight className="h-5 w-5" />} title="Trade Matching" description="Finds games you'd swap with what other libraries are offering. Less hunting." />
+          <FeatureHighlight icon={<MessageSquare className="h-5 w-5" />} title="Forums" description="Threaded discussions — scoped to your library, your club, or everyone." />
+          <FeatureHighlight icon={<Calendar className="h-5 w-5" />} title="Events" description="Plan game nights with RSVPs. Integrates with Discord if that's your thing." />
+          <FeatureHighlight icon={<Trophy className="h-5 w-5" />} title="Achievements" description="Badges for milestones, streaks, and variety. Yes, it's gamified. We're not sorry." />
+          <FeatureHighlight icon={<BarChart3 className="h-5 w-5" />} title="Analytics" description="Collection value, play trends, ELO ratings, leaderboards. Numbers. Lots of them." />
+          <FeatureHighlight icon={<Star className="h-5 w-5" />} title="Ratings & Wishlist" description="Anyone can rate or wishlist games — no sign-up needed." />
+          <FeatureHighlight icon={<Zap className="h-5 w-5" />} title="Smart Suggestions" description="'Games like this' — only recommending titles that are actually on your shelf." />
+          <FeatureHighlight icon={<Building2 className="h-5 w-5" />} title="Clubs" description="Link libraries together into a network. Shared catalog, shared events, shared forums." />
+          <FeatureHighlight icon={<Users className="h-5 w-5" />} title="Social Feed" description="Photo posts, @mentions, play sessions. A feed that's all board games, all the time." />
+          <FeatureHighlight icon={<Shield className="h-5 w-5" />} title="Your Rules" description="Every feature toggles on or off. Public or private. You decide." />
         </div>
       </section>
 
@@ -313,15 +313,15 @@ export default function Platform() {
       <section className="bg-muted/30 border-y border-border/20">
         <div className="container mx-auto px-4 py-20">
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
-            Up and Running in Minutes
+            Three Steps. That's It.
           </h2>
           <p className="text-muted-foreground text-center mb-14 max-w-md mx-auto">
-            From signup to a fully cataloged library — faster than you'd expect.
+            Most people have their whole collection imported before their coffee gets cold.
           </p>
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <Step n={1} title="Create your library" description="Sign up, pick a name and slug — your public library URL is ready instantly." />
-            <Step n={2} title="Import your collection" description="Enter your BGG username and import your entire collection with box art, descriptions and details in one go." />
-            <Step n={3} title="Share & invite" description="Send your library link to friends, set up lending rules, and start building your community." />
+            <Step n={1} title="Pick a name" description="Sign up, choose a slug — you've got a public URL before you finish your first sip." />
+            <Step n={2} title="Import from BGG" description="Type your BGG username, hit import. Box art, descriptions, player counts — all of it, done." />
+            <Step n={3} title="Send the link" description="Share your library with friends. Set up lending. Start a poll. You're live." />
           </div>
         </div>
       </section>
@@ -331,13 +331,13 @@ export default function Platform() {
         <div className="grid md:grid-cols-2 gap-12 items-center max-w-5xl mx-auto">
           <div>
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Discover Public Libraries Near You
+              There Are Other Shelves Out There
             </h2>
             <p className="text-muted-foreground mb-6 leading-relaxed">
-              Browse the Library Directory to find active game libraries, borrow games from your community, and connect with other enthusiasts.
+              Browse public libraries, find someone lending that game you've been eyeing, or just see what other collectors are into.
             </p>
             <div className="space-y-3 mb-8">
-              {["Search by name or location", "Interactive map to find libraries near you", "Browse combined club catalogs", "Request to borrow games directly", "Follow libraries to see their activity"].map(b => (
+              {["Search by name or location", "Map view to find libraries nearby", "Browse combined club catalogs", "Request to borrow games directly", "Follow libraries you like"].map(b => (
                 <div key={b} className="flex items-center gap-3 text-sm text-muted-foreground">
                   <CheckCircle2 className="h-4 w-4 text-secondary shrink-0" />
                   {b}
@@ -381,18 +381,18 @@ export default function Platform() {
       <section className="bg-muted/30 border-y border-border/20">
         <div className="container mx-auto px-4 py-20">
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
-            Share & Grow Your Community
+            Show It Off a Little
           </h2>
           <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
-            Tools to spread the word and bring your gaming group on board.
+            You put the collection together — might as well let people see it.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <Link to="/share-card" className="group">
               <div className="rounded-2xl border border-border/30 bg-muted/50 p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
                 <Upload className="h-8 w-8 text-secondary" />
                 <div>
-                  <h3 className="font-display font-bold text-foreground mb-1">Stats Cards</h3>
-                  <p className="text-sm text-muted-foreground">Generate a shareable image of your collection stats for social media.</p>
+                <h3 className="font-display font-bold text-foreground mb-1">Stats Cards</h3>
+                  <p className="text-sm text-muted-foreground">Turn your collection stats into a shareable image. Great for flexing on social media.</p>
                 </div>
               </div>
             </Link>
@@ -400,8 +400,8 @@ export default function Platform() {
               <div className="rounded-2xl border border-secondary/30 bg-secondary/10 ring-1 ring-secondary/20 p-7 text-center hover:bg-secondary/15 transition-colors h-full flex flex-col items-center gap-4">
                 <Star className="h-8 w-8 text-secondary" />
                 <div>
-                  <h3 className="font-display font-bold text-foreground mb-1">Referral Program</h3>
-                  <p className="text-sm text-muted-foreground">Invite friends and earn exclusive badges as they sign up.</p>
+                <h3 className="font-display font-bold text-foreground mb-1">Referral Program</h3>
+                  <p className="text-sm text-muted-foreground">Invite friends. When they sign up, you both get a badge. Simple as that.</p>
                 </div>
               </div>
             </Link>
@@ -409,8 +409,8 @@ export default function Platform() {
               <div className="rounded-2xl border border-border/30 bg-muted/50 p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
                 <Zap className="h-8 w-8 text-secondary" />
                 <div>
-                  <h3 className="font-display font-bold text-foreground mb-1">Embed Widget</h3>
-                  <p className="text-sm text-muted-foreground">Add your library to your blog, Discord, or forum with a simple embed code.</p>
+                <h3 className="font-display font-bold text-foreground mb-1">Embed Widget</h3>
+                  <p className="text-sm text-muted-foreground">Drop your library into your blog, Discord server, or forum with a snippet of code.</p>
                 </div>
               </div>
             </Link>
@@ -422,10 +422,10 @@ export default function Platform() {
       <section className="bg-muted/30 border-t border-border/20">
         <div className="container mx-auto px-4 py-24 text-center">
           <h2 className="font-display text-3xl sm:text-5xl font-bold text-foreground mb-4">
-            Ready to Build Your Library?
+            Your Shelf Deserves Better Than a Spreadsheet
           </h2>
           <p className="text-muted-foreground mb-10 max-w-lg mx-auto text-lg">
-            Import from BGG in under 2 minutes. Your library, your rules.
+            Free. No credit card. Import your BGG collection and see for yourself.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
@@ -517,7 +517,7 @@ function ShowcaseRow({ image, alt, title, description, reverse }: { image: strin
         <img
           src={image}
           alt={alt}
-          className="rounded-2xl border border-border/30 shadow-lg w-full"
+          className={`rounded-2xl border border-border/30 shadow-lg w-full ${reverse ? "md:rotate-[0.5deg]" : "md:-rotate-[0.5deg]"}`}
           loading="lazy"
         />
       </div>
