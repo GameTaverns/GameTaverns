@@ -366,7 +366,7 @@ export default function Platform() {
               { icon: <Building2 className="h-6 w-6 text-secondary" />, label: "Clubs & networks", sub: "Multi-library groups" },
               { icon: <ArrowLeftRight className="h-6 w-6 text-secondary" />, label: "Trade opportunities", sub: "Matched automatically" },
             ].map(({ icon, label, sub }) => (
-              <div key={label} className="bg-muted/50 border border-border/30 rounded-xl p-5 flex flex-col gap-3">
+              <div key={label} className="card-handcrafted p-5 flex flex-col gap-3">
                 {icon}
                 <div>
                   <div className="font-semibold text-foreground text-sm">{label}</div>
