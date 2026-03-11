@@ -238,50 +238,50 @@ export default function Platform() {
           <ShowcaseRow
             image={showcaseCollection}
             alt="GameTaverns library view showing a board game collection with box art, filters, and sorting"
-            title="Beautiful Collection Management"
-            description="Every game displayed with box art, player counts, and play time. Import from BGG in one click and keep everything organised with location tracking, condition grades, and expansion linking."
+            title="Your Whole Shelf, Digitised"
+            description="Every game with its box art, player count, and play time — filterable, sortable, and actually nice to look at. Import from BGG and it fills in everything automatically."
             reverse={false}
           />
           <ShowcaseRow
             image={showcaseThemed}
             alt="A custom-themed board game library with unique branding and colors"
-            title="Your Library, Your Brand"
-            description="Each library gets its own theme, logo, and public URL. Make it match your brand or just make it look good."
+            title="Make It Look Like Yours"
+            description="Pick your own colours, upload a logo, choose a slug. Your library gets its own public URL that looks nothing like a generic template."
             reverse
           />
           <ShowcaseRow
             image={showcasePlayStats}
             alt="Play statistics dashboard showing H-index, top mechanics, and most played games"
-            title="Play Logging & Deep Stats"
-            description="Record every session with players, scores, and winners. See your H-index, win rates, monthly summaries, top mechanics, and most-played games — all in beautiful dashboards."
+            title="Stats You'll Actually Care About"
+            description="H-index, win rates, monthly play summaries, most-played mechanics — the kind of nerdy breakdowns that make you go 'huh, I really do play a lot of engine builders.'"
             reverse={false}
           />
           <ShowcaseRow
             image={showcaseGameDetail}
             alt="Detailed game page showing Flip 7 with description, mechanics, and play history"
-            title="Rich Game Pages"
-            description="Every game gets a detailed page with rich overviews, mechanic tags, play history, documents, and community ratings. Link to BoardGameGeek with one click."
+            title="Every Game Gets a Page"
+            description="Mechanic tags, play history, documents, community ratings, and a direct link to BGG. It's like a wiki page for every game on your shelf."
             reverse
           />
           <ShowcaseRow
             image={showcasePoll}
             alt="Game night poll letting users vote on what to play next"
-            title="Game Night Polls"
-            description="Create a poll from your collection, share a link — anyone can vote without signing up. Live results, RSVP tracking, and event details."
+            title="'What Should We Play?' — Solved"
+            description="Make a poll from your collection, send the link. Your friends vote — no account needed. Results update live. Arguments settled."
             reverse={false}
           />
           <ShowcaseRow
             image={showcaseActivityFeed}
             alt="Social activity feed showing photo posts, game additions, and community interactions"
-            title="Social Activity Feed"
-            description="Follow other collectors and see what they're up to. Photo posts with @mentions, play sessions, new additions, and achievements show up in your feed."
+            title="See What Everyone's Playing"
+            description="Photo posts, @mentions, new additions, play sessions — a feed that's actually about board games instead of, well, everything else."
             reverse
           />
           <ShowcaseRow
             image={showcaseProfile}
             alt="User profile page showing activity, photos, stats, achievements, and community badges"
-            title="Collector Profiles"
-            description="Activity history, photo gallery, play stats, achievements, and who you follow. See what any collector is playing and how their collection has grown."
+            title="Your Collector Profile"
+            description="Photos, play stats, achievements, follows — your board gaming life in one place. See what others are into and how their shelves have grown."
             reverse={false}
           />
         </div>
