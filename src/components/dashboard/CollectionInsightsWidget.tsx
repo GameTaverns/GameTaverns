@@ -87,8 +87,8 @@ export function CollectionInsightsWidget({ libraryId, hideNavLinks }: Props) {
           </div>
           <div className="text-center p-2 rounded-lg bg-card/50 border border-border/30">
             <Brain className="h-3.5 w-3.5 mx-auto mb-0.5 text-primary" />
-            <p className="text-lg font-bold text-foreground">{avgWeight > 0 ? avgWeight.toFixed(1) : "—"}</p>
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{weightLabel}</p>
+            <p className="text-lg font-bold text-foreground">{weightLabel || "—"}</p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Complexity</p>
           </div>
           <div className="text-center p-2 rounded-lg bg-card/50 border border-border/30">
             <BookX className="h-3.5 w-3.5 mx-auto mb-0.5 text-destructive" />

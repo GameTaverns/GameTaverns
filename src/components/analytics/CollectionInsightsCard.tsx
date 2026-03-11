@@ -226,7 +226,7 @@ export function CollectionInsightsCard({ libraryId, libraryName }: Props) {
             <StatPill icon="🎲" value={totalGames} label="Games" theme={theme} />
             <StatPill icon="📦" value={totalExpansions} label="Expansions" theme={theme} />
             <StatPill icon="👥" value={sweetSpotPlayers} label="Sweet Spot" theme={theme} />
-            <StatPill icon="⚖️" value={avgWeight > 0 ? avgWeight.toFixed(1) : "—"} label={weightLabel} theme={theme} />
+            <StatPill icon="⚖️" value={weightLabel || "—"} label="Complexity" theme={theme} />
           </div>
 
           {/* Mechanic DNA bars */}
