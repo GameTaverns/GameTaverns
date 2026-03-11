@@ -885,6 +885,18 @@ const GameDetail = () => {
                 )}
               </TabsContent>
 
+              {/* Copies tab */}
+              {canViewAdminData && (game as any).copies_owned > 1 && (
+                <TabsContent value="copies" className="mt-0">
+                  <GameCopyManager
+                    gameId={game.id}
+                    gameTitle={game.title}
+                    copiesOwned={(game as any).copies_owned ?? 1}
+                    canManage={!!isLibraryOwner}
+                  />
+                </TabsContent>
+              )}
+
               {playLogs && (
                 <TabsContent value="plays" className="mt-0">
                   <div className="flex items-center justify-between mb-4">
