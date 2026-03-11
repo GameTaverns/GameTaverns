@@ -37,6 +37,7 @@ import { GameRecommendations } from "@/components/games/GameRecommendations";
 import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
 import { GameDocuments } from "@/components/games/GameDocuments";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { GameReviews } from "@/components/catalog/GameReviews";
 import { useGTScore } from "@/hooks/useGTScore";
 import { useAddTradeListing, useMyTradeListings, useRemoveTradeListing, type SaleCondition } from "@/hooks/useTrades";
