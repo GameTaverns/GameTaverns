@@ -5667,6 +5667,48 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_ratings_public: {
+        Row: {
+          catalog_id: string | null
+          created_at: string | null
+          id: string | null
+          rating: number | null
+          source: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          catalog_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          rating?: number | null
+          source?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          catalog_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          rating?: number | null
+          source?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_ratings_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_ratings_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_ratings_summary: {
         Row: {
           average_rating: number | null
@@ -5903,88 +5945,6 @@ export type Database = {
           updated_at: string | null
           upgraded_components: boolean | null
           youtube_videos: string[] | null
-        }
-        Insert: {
-          additional_images?: string[] | null
-          bgg_id?: string | null
-          bgg_url?: string | null
-          catalog_id?: string | null
-          copies_owned?: number | null
-          created_at?: string | null
-          crowdfunded?: boolean | null
-          description?: string | null
-          difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
-          game_type?: Database["public"]["Enums"]["game_type"] | null
-          genre?: string | null
-          id?: string | null
-          image_url?: string | null
-          in_base_game_box?: boolean | null
-          inserts?: boolean | null
-          is_coming_soon?: boolean | null
-          is_expansion?: boolean | null
-          is_favorite?: boolean | null
-          is_for_sale?: boolean | null
-          is_unplayed?: boolean | null
-          library_id?: string | null
-          max_players?: number | null
-          min_players?: number | null
-          ownership_status?:
-            | Database["public"]["Enums"]["ownership_status"]
-            | null
-          parent_game_id?: string | null
-          play_time?: Database["public"]["Enums"]["play_time"] | null
-          publisher_id?: string | null
-          sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
-          sale_price?: number | null
-          sleeved?: boolean | null
-          slug?: string | null
-          suggested_age?: string | null
-          title?: string | null
-          upc?: string | null
-          updated_at?: string | null
-          upgraded_components?: boolean | null
-          youtube_videos?: string[] | null
-        }
-        Update: {
-          additional_images?: string[] | null
-          bgg_id?: string | null
-          bgg_url?: string | null
-          catalog_id?: string | null
-          copies_owned?: number | null
-          created_at?: string | null
-          crowdfunded?: boolean | null
-          description?: string | null
-          difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
-          game_type?: Database["public"]["Enums"]["game_type"] | null
-          genre?: string | null
-          id?: string | null
-          image_url?: string | null
-          in_base_game_box?: boolean | null
-          inserts?: boolean | null
-          is_coming_soon?: boolean | null
-          is_expansion?: boolean | null
-          is_favorite?: boolean | null
-          is_for_sale?: boolean | null
-          is_unplayed?: boolean | null
-          library_id?: string | null
-          max_players?: number | null
-          min_players?: number | null
-          ownership_status?:
-            | Database["public"]["Enums"]["ownership_status"]
-            | null
-          parent_game_id?: string | null
-          play_time?: Database["public"]["Enums"]["play_time"] | null
-          publisher_id?: string | null
-          sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
-          sale_price?: number | null
-          sleeved?: boolean | null
-          slug?: string | null
-          suggested_age?: string | null
-          title?: string | null
-          upc?: string | null
-          updated_at?: string | null
-          upgraded_components?: boolean | null
-          youtube_videos?: string[] | null
         }
         Relationships: [
           {
