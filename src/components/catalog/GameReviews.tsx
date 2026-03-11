@@ -305,7 +305,7 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
   useEffect(() => {
     const draft = {
       ratingOverall, ratingGameplay, ratingComponents, ratingReplayability, ratingValue,
-      title, content, recommended, playCount, bestFor, skipIf, bestPlayerCount, comparedTo,
+      title, content, recommended, ownershipStatus, playCount, bestFor, skipIf, bestPlayerCount, comparedTo,
       selectedTagIds, playerCountRatings,
     };
     // Only persist if there's meaningful input
@@ -314,7 +314,7 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
       sessionStorage.setItem(draftKey, JSON.stringify(draft));
     }
   }, [ratingOverall, ratingGameplay, ratingComponents, ratingReplayability, ratingValue,
-      title, content, recommended, playCount, bestFor, skipIf, bestPlayerCount, comparedTo,
+      title, content, recommended, ownershipStatus, playCount, bestFor, skipIf, bestPlayerCount, comparedTo,
       selectedTagIds, playerCountRatings, draftKey]);
 
   // Clear draft helper
