@@ -381,6 +381,13 @@ const handler = async (req: Request): Promise<Response> => {
           } else {
             fixed++;
             results.push({ title: entry.title, bgg_id: entry.bgg_id, status: "fixed", old_url: entry.image_url, new_url: newImageUrl });
+
+            // Cascade: also fix any library games linked to this catalog entry or bgg_id
+            await admin
+              .from("games")
+              .update({ image_url: newImageUrl })
+              .eq("bgg_id", entry.bgg_id)
+              .or("image_url.is.null,image_url.ilike.%__opengraph%,image_url.ilike.%fit-in/1200x630%");
           }
         } else {
           failed++;
