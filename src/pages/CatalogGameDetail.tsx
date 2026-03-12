@@ -26,6 +26,7 @@ import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
 import { useAddWant } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
 import { GameReviews } from "@/components/catalog/GameReviews";
+import { LogPlayDialog } from "@/components/games/LogPlayDialog";
 
 interface CatalogGameFull {
   id: string;
