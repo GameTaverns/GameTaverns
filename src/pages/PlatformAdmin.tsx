@@ -372,6 +372,13 @@ export default function PlatformAdmin() {
                   <Target className="h-4 w-4 mr-1 sm:mr-2" />
                   Strategy
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="features"
+                  className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+                >
+                  <ToggleRight className="h-4 w-4 mr-1 sm:mr-2" />
+                  Features
+                </TabsTrigger>
               </>
             )}
           </TabsList>
