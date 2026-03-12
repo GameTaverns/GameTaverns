@@ -48,6 +48,7 @@ const Features = lazy(lazyRetry(() => import("./pages/Features")));
 const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
 const DashboardMockupsPage = lazy(() => import("./components/dashboard/DashboardMockups").then(m => ({ default: m.DashboardMockups })));
 const ConventionMockup = lazy(lazyRetry(() => import("./pages/ConventionMockup")));
+const ConventionIndex = lazy(lazyRetry(() => import("./pages/convention/ConventionIndex")));
 const ConventionHub = lazy(lazyRetry(() => import("./pages/convention/ConventionHub")));
 const CollectionPage = lazy(lazyRetry(() => import("./pages/dashboard/CollectionPage")));
 const LendingPage = lazy(lazyRetry(() => import("./pages/dashboard/LendingPage")));
@@ -310,6 +311,7 @@ function PlatformRoutes() {
       <Route path="/dashboard/settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
       <Route path="/dashboard/mockups" element={<Suspense fallback={<PageLoader />}><DashboardMockupsPage /></Suspense>} />
       <Route path="/convention-mockup" element={<Suspense fallback={<PageLoader />}><ConventionMockup /></Suspense>} />
+      <Route path="/convention" element={<Suspense fallback={<PageLoader />}><ConventionIndex /></Suspense>} />
       <Route path="/convention/:eventId" element={<Suspense fallback={<PageLoader />}><ConventionHub /></Suspense>} />
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/create-library" element={<CreateLibrary />} />

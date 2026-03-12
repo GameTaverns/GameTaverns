@@ -59,7 +59,7 @@ export function ConventionHubCard({ user }: ConventionHubCardProps) {
 
   const linkTo = conventionEvent?.eventId
     ? `/convention/${conventionEvent.eventId}`
-    : "/dashboard";
+    : "/convention";
 
   return (
     <Link
