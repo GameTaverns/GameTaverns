@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Gamepad2, BookOpen, Sparkles, Users, Mail, Settings, Newspaper,
   Plus, Search, ArrowRight, Library, Globe,
-  Calendar, User, HelpCircle, Dice5, ClipboardList, ChevronDown,
+  Calendar, User, HelpCircle, Dice5, ClipboardList, ChevronDown, Shuffle,
 } from "lucide-react";
 import { TenantLink } from "@/components/TenantLink";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
@@ -29,6 +29,8 @@ import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
 import { GuidedTour } from "@/components/dashboard/GuidedTour";
 import { Footer } from "@/components/layout/Footer";
+import { RandomGamePicker } from "@/components/games/RandomGamePicker";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 
 function HubCard({ to, icon: Icon, title, description, bullets, iconColor, badges }: {
@@ -75,8 +77,8 @@ export default function Dashboard() {
   const pendingLoanRequests = myLentLoans.filter(l => l.status === "requested").length;
   const activeBorrowedLoans = myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status));
   const library = defaultLibrary;
+  const [randomPickerOpen, setRandomPickerOpen] = useState(false);
 
-  // Game count
   const { data: gameCount } = useQuery({
     queryKey: ["hub-game-count", library?.id],
     queryFn: async () => {
@@ -197,11 +199,9 @@ export default function Dashboard() {
               <ClipboardList className="h-3.5 w-3.5" /> {t('hub.logPlay')}
             </Button>
           </StandaloneLogPlayDialog>
-          <Link to="/dashboard/collection" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <Dice5 className="h-3.5 w-3.5" /> {t('hub.random')}
-            </Button>
-          </Link>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0" onClick={() => setRandomPickerOpen(true)} disabled={!library}>
+            <Dice5 className="h-3.5 w-3.5" /> {t('hub.random')}
+          </Button>
           {profile?.username && (
             <Link to={`/u/${profile.username}`} className="hidden md:contents">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
@@ -324,6 +324,19 @@ export default function Dashboard() {
       <Footer />
       <MobileBottomTabs />
       <GuidedTour librarySlug={library?.slug} />
+
+      {/* Random Picker Dialog */}
+      <Dialog open={randomPickerOpen} onOpenChange={setRandomPickerOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shuffle className="h-5 w-5 text-primary" />
+              {t('dashboard.randomPicker')}
+            </DialogTitle>
+          </DialogHeader>
+          {library && <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
