@@ -170,25 +170,44 @@ export default function Signup() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-4">
-      <div className="absolute top-4 right-4">
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
+      {/* Tavern background with overlay */}
+      <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" aria-hidden="true" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/60 to-background/40 dark:from-wood-dark/95 dark:via-wood-dark/70 dark:to-wood-dark/50" />
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse at 50% 40%, transparent 30%, hsl(25 30% 8% / 0.4) 100%)' }}
+      />
+
+      <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md bg-card/80 dark:bg-sidebar/80 border-border/50 backdrop-blur-sm">
-        <CardHeader className="text-center">
-          <Link to="/" className="flex items-center justify-center gap-3 mb-4">
-            <img src={logoImage} alt="GameTaverns" className="h-16 w-auto" />
-            <span className="font-display text-2xl font-bold text-foreground">GameTaverns</span>
+
+      {/* Decorative top ornament */}
+      <div className="relative z-10 mb-6 text-center">
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <div className="h-px w-12 bg-gradient-to-r from-transparent to-gold/40" />
+          <Sparkles className="h-4 w-4 text-gold/50" />
+          <div className="h-px w-12 bg-gradient-to-l from-transparent to-gold/40" />
+        </div>
+      </div>
+
+      <Card className="w-full max-w-md relative z-10 card-handcrafted bg-card/95 dark:bg-sidebar/95 border-gold/20 backdrop-blur-md shadow-[0_8px_32px_-8px_hsl(25_30%_8%/0.5)]">
+        <CardHeader className="text-center pb-4">
+          <Link to="/" className="flex items-center justify-center gap-3 mb-3 group">
+            <img src={logoImage} alt="GameTaverns" className="h-18 w-auto drop-shadow-[0_2px_8px_hsl(28_50%_48%/0.3)] transition-transform group-hover:scale-105" />
+            <span className="font-display text-3xl font-bold text-foreground drop-shadow-[0_1px_2px_hsl(0_0%_0%/0.1)]">GameTaverns</span>
           </Link>
+          <div className="section-divider mb-4" />
           <CardTitle className="font-display text-2xl text-foreground">{t('signup.createAccount')}</CardTitle>
-          <CardDescription className="text-muted-foreground">
+          <CardDescription className="text-muted-foreground font-accent italic">
             {t('signup.subtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-foreground/80">
+              <Label htmlFor="username" className="text-foreground/80 font-accent">
                 {t('signup.usernameLabel')} <span className="text-muted-foreground">{t('signup.usernameOptional')}</span>
               </Label>
               <Input
@@ -197,13 +216,13 @@ export default function Signup() {
                 onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
                 placeholder={t('signup.usernamePlaceholder')}
                 maxLength={30}
-                className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
               />
               <p className="text-xs text-muted-foreground">{t('signup.usernameHint')}</p>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="displayName" className="text-foreground/80">
+              <Label htmlFor="displayName" className="text-foreground/80 font-accent">
                 {t('signup.displayNameLabel')} <span className="text-muted-foreground">{t('signup.displayNameOptional')}</span>
               </Label>
               <Input
@@ -211,46 +230,46 @@ export default function Signup() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder={t('signup.displayNamePlaceholder')}
-                className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground/80">{t('signup.emailLabel')}</Label>
+              <Label htmlFor="email" className="text-foreground/80 font-accent">{t('signup.emailLabel')}</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('signup.emailPlaceholder')}
-                className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground/80">{t('signup.passwordLabel')}</Label>
+              <Label htmlFor="password" className="text-foreground/80 font-accent">{t('signup.passwordLabel')}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t('signup.passwordPlaceholder')}
-                className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
                 required
               />
               <PasswordStrengthIndicator password={password} />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-foreground/80">{t('signup.confirmPasswordLabel')}</Label>
+              <Label htmlFor="confirmPassword" className="text-foreground/80 font-accent">{t('signup.confirmPasswordLabel')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder={t('signup.passwordPlaceholder')}
-                className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
                 required
               />
             </div>
@@ -275,7 +294,7 @@ export default function Signup() {
 
             <Button
               type="submit"
-              className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
+              className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display shadow-[0_2px_8px_-2px_hsl(28_50%_48%/0.4)] transition-all hover:shadow-[0_4px_12px_-2px_hsl(28_50%_48%/0.5)] hover:-translate-y-0.5"
               disabled={isLoading || (!isNative && !turnstileToken)}
             >
               {isLoading ? (
@@ -290,7 +309,8 @@ export default function Signup() {
           </form>
           
           <div className="mt-6 text-center">
-            <p className="text-muted-foreground">
+            <div className="section-divider mb-4" />
+            <p className="text-muted-foreground font-accent">
               {t('signup.alreadyHaveAccount')}{" "}
               <Link to="/login" className="text-secondary hover:text-secondary/80 underline">
                 {t('signup.signIn')}
@@ -299,6 +319,13 @@ export default function Signup() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Bottom decorative ornament */}
+      <div className="relative z-10 mt-6 flex items-center gap-3 text-muted-foreground/40">
+        <div className="h-px w-8 bg-gradient-to-r from-transparent to-gold/30" />
+        <span className="text-xs font-accent italic">Est. 2025</span>
+        <div className="h-px w-8 bg-gradient-to-l from-transparent to-gold/30" />
+      </div>
     </div>
   );
 }
