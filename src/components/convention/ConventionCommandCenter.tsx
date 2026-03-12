@@ -32,9 +32,10 @@ interface Props {
   reservations: any[];
   libraryGames: any[];
   conventionSettings: any;
+  onSwitchTab?: (tab: string) => void;
 }
 
-export function ConventionCommandCenter({ event, activeLoans, reservations, libraryGames, conventionSettings }: Props) {
+export function ConventionCommandCenter({ event, activeLoans, reservations, libraryGames, conventionSettings, onSwitchTab }: Props) {
   const queryClient = useQueryClient();
   const totalCopies = libraryGames.reduce((sum: number, g: any) => sum + (g.copies_owned || 1), 0);
   const checkedOutCount = activeLoans.length;
