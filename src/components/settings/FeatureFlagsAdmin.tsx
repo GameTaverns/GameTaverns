@@ -53,6 +53,7 @@ const FEATURE_FLAG_DB_KEYS: Record<keyof FeatureFlags, string> = {
   events: "feature_events",
   achievements: "feature_achievements",
   lending: "feature_lending",
+  forums: "feature_forums",
 };
 
 // Check if env var is explicitly set
