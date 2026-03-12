@@ -145,6 +145,3 @@ export function ConventionAnalytics({ event, activeLoans, libraryGames }: Props)
     </div>
   );
 }
-
-  );
-}

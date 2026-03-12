@@ -48,6 +48,7 @@ const Press = lazy(lazyRetry(() => import("./pages/Press")));
 const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
 const DashboardMockupsPage = lazy(() => import("./components/dashboard/DashboardMockups").then(m => ({ default: m.DashboardMockups })));
 const ConventionMockup = lazy(lazyRetry(() => import("./pages/ConventionMockup")));
+const ConventionHub = lazy(lazyRetry(() => import("./pages/convention/ConventionHub")));
 const CollectionPage = lazy(lazyRetry(() => import("./pages/dashboard/CollectionPage")));
 const LendingPage = lazy(lazyRetry(() => import("./pages/dashboard/LendingPage")));
 const InsightsPage = lazy(lazyRetry(() => import("./pages/dashboard/InsightsPage")));
