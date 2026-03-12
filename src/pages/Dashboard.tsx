@@ -124,7 +124,10 @@ export default function Dashboard() {
   const libraryWord = myLibraries.length === 1 ? t('hub.library') : t('hub.libraries');
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background flex flex-col">
+    <div className="min-h-screen overflow-x-hidden bg-background flex flex-col relative">
+      <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" />
+      <div className="absolute inset-0 bg-background/60" />
+      <div className="relative z-10 flex flex-col min-h-screen">
       <AnnouncementBanner />
       <div className="container mx-auto px-4 pt-3">
         <TwoFactorBanner />
