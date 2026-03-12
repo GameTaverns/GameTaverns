@@ -215,8 +215,7 @@ const Login = () => {
 
     try {
       const { error } = await signUp(signupEmail, password, {
-        username: signupUsername || undefined,
-        displayName: signupDisplayName || signupEmail.split("@")[0],
+        displayName: signupEmail.split("@")[0],
         referralCode,
       });
 
