@@ -185,33 +185,6 @@ export default function Signup() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-foreground/80 font-accent">
-                {t('signup.usernameLabel')} <span className="text-muted-foreground">{t('signup.usernameOptional')}</span>
-              </Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
-                placeholder={t('signup.usernamePlaceholder')}
-                maxLength={30}
-                className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
-              />
-              <p className="text-xs text-muted-foreground">{t('signup.usernameHint')}</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="displayName" className="text-foreground/80 font-accent">
-                {t('signup.displayNameLabel')} <span className="text-muted-foreground">{t('signup.displayNameOptional')}</span>
-              </Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder={t('signup.displayNamePlaceholder')}
-                className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
-              />
-            </div>
             
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground/80 font-accent">{t('signup.emailLabel')}</Label>
