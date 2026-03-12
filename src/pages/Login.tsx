@@ -5,6 +5,7 @@ import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logoImage from "@/assets/logo.png";
+import tavernBg from "@/assets/tavern-bg.jpg";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -244,7 +245,8 @@ const Login = () => {
   if (loading) {
     return (
       <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
+        <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" />
+        <div className="absolute inset-0 bg-background/60" />
         <div className="animate-pulse text-foreground relative z-10">{t('login.loading')}</div>
       </div>
     );
@@ -257,7 +259,8 @@ const Login = () => {
   if (requires2FA && pendingAccessToken) {
     return (
       <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
+        <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" />
+        <div className="absolute inset-0 bg-background/60" />
         <div className="relative z-10">
           <TotpVerify 
             accessToken={pendingAccessToken}
@@ -271,8 +274,9 @@ const Login = () => {
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
-      {/* CSS-only atmospheric background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
+      {/* Licensed tavern background photo */}
+      <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" />
+      <div className="absolute inset-0 bg-background/50" />
       <div 
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -463,7 +467,7 @@ const Login = () => {
       {/* Bottom decorative ornament */}
       <div className="relative z-10 mt-6 flex items-center gap-3 text-muted-foreground/40">
         <div className="h-px w-8 bg-gradient-to-r from-transparent to-gold/30" />
-        <span className="text-xs font-accent italic">Est. 2025</span>
+        <span className="text-xs font-accent italic">Est. 2026</span>
         <div className="h-px w-8 bg-gradient-to-l from-transparent to-gold/30" />
       </div>
     </div>

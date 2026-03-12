@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoImage from "@/assets/logo.png";
+import tavernBg from "@/assets/tavern-bg.jpg";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -150,9 +151,9 @@ export default function Signup() {
   
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
-      {/* Tavern background with overlay */}
-      {/* CSS-only atmospheric background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
+      {/* Licensed tavern background photo */}
+      <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" />
+      <div className="absolute inset-0 bg-background/50" />
       <div 
         className="absolute inset-0 pointer-events-none"
         style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(28 40% 20% / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, hsl(28 50% 15% / 0.2) 0%, transparent 50%)' }}
@@ -275,7 +276,7 @@ export default function Signup() {
       {/* Bottom decorative ornament */}
       <div className="relative z-10 mt-6 flex items-center gap-3 text-muted-foreground/40">
         <div className="h-px w-8 bg-gradient-to-r from-transparent to-gold/30" />
-        <span className="text-xs font-accent italic">Est. 2025</span>
+        <span className="text-xs font-accent italic">Est. 2026</span>
         <div className="h-px w-8 bg-gradient-to-l from-transparent to-gold/30" />
       </div>
     </div>
