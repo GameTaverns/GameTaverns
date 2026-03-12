@@ -244,8 +244,7 @@ const Login = () => {
   if (loading) {
     return (
       <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" aria-hidden="true" />
-        <div className="absolute inset-0 bg-background/70 dark:bg-wood-dark/80 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
         <div className="animate-pulse text-foreground relative z-10">{t('login.loading')}</div>
       </div>
     );
