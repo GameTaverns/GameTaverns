@@ -6730,6 +6730,10 @@ export type Database = {
         Args: { retention_days?: number }
         Returns: number
       }
+      compare_libraries: {
+        Args: { user_a: string; user_b: string }
+        Returns: Json
+      }
       create_notification: {
         Args: {
           _body?: string

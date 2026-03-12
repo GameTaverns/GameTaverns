@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { Users, Globe, UserPlus } from "lucide-react";
+import { Users, Globe, UserPlus, GitCompare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFollowingFeed } from "@/hooks/useActivityFeed";
 import { ActivityFeedItem } from "@/components/social/ActivityFeedItem";
 import { ActivityFeedBatchItem } from "@/components/social/ActivityFeedBatchItem";
 import { SocialDiscovery } from "@/components/social/SocialDiscovery";
+import { CompareSelector } from "@/components/social/CompareSelector";
 import { groupActivityEvents } from "@/utils/groupActivityEvents";
 import { useActivityFilters, ActivityFilterBar } from "@/components/social/ActivityFilterBar";
 
@@ -31,6 +32,13 @@ export function SocialTab({ currentUserId }: { currentUserId: string | undefined
           >
             <UserPlus className="h-3.5 w-3.5" />
             Discover
+          </TabsTrigger>
+          <TabsTrigger
+            value="compare"
+            className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+          >
+            <GitCompare className="h-3.5 w-3.5" />
+            Compare
           </TabsTrigger>
         </TabsList>
 
@@ -74,6 +82,10 @@ export function SocialTab({ currentUserId }: { currentUserId: string | undefined
 
         <TabsContent value="discover">
           <SocialDiscovery />
+        </TabsContent>
+
+        <TabsContent value="compare">
+          <CompareSelector />
         </TabsContent>
       </Tabs>
     </div>

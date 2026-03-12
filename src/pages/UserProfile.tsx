@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, BarChart3, Camera, Globe, Building2 } from "lucide-react";
+import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, BarChart3, Camera, Globe, Building2, GitCompare } from "lucide-react";
 import { BackLink } from "@/components/navigation/BackLink";
 import { SEO } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import { UserStatsPanel } from "@/components/analytics/UserStatsPanel";
 import { useUserPhotos } from "@/hooks/usePhotoGallery";
 import { PhotoGalleryGrid } from "@/components/photos/PhotoGalleryGrid";
 import { PhotoUploadButton } from "@/components/photos/PhotoUploadButton";
+import { LibraryComparison } from "@/components/social/LibraryComparison";
 
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -332,6 +333,11 @@ export default function UserProfile() {
             <TabsTrigger value="communities" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Users className="h-3.5 w-3.5" />{t('profile.communities')}
             </TabsTrigger>
+            {currentUserId && currentUserId !== profile.user_id && (
+              <TabsTrigger value="compare" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
+                <GitCompare className="h-3.5 w-3.5" />Compare
+              </TabsTrigger>
+            )}
             {isSharedCommunity && (
               <TabsTrigger value="feedback" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
                 <HandCoins className="h-3.5 w-3.5" />{t('profile.feedback')}
@@ -561,6 +567,22 @@ export default function UserProfile() {
                   </Card>
                 )}
               </div>
+            </TabsContent>
+          )}
+
+          {/* Compare tab */}
+          {currentUserId && currentUserId !== profile.user_id && (
+            <TabsContent value="compare">
+              <LibraryComparison
+                currentUserId={currentUserId}
+                targetUserId={profile.user_id}
+                currentUserName="You"
+                targetUserName={profile.display_name || profile.username}
+                currentUserAvatar={null}
+                targetUserAvatar={profile.avatar_url}
+                hasTheme={hasTheme}
+                profileBgColor={profileBgColor}
+              />
             </TabsContent>
           )}
         </Tabs>
