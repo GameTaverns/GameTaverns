@@ -43,6 +43,8 @@ interface LogPlayDialogProps {
   gameId: string;
   gameTitle: string;
   children: React.ReactNode;
+  defaultOpen?: boolean;
+  onClose?: () => void;
 }
 
 interface LogPlayDraft {
