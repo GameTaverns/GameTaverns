@@ -333,6 +333,11 @@ export default function UserProfile() {
             <TabsTrigger value="communities" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Users className="h-3.5 w-3.5" />{t('profile.communities')}
             </TabsTrigger>
+            {currentUserId && currentUserId !== profile.user_id && (
+              <TabsTrigger value="compare" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
+                <GitCompare className="h-3.5 w-3.5" />Compare
+              </TabsTrigger>
+            )}
             {isSharedCommunity && (
               <TabsTrigger value="feedback" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
                 <HandCoins className="h-3.5 w-3.5" />{t('profile.feedback')}
