@@ -308,6 +308,7 @@ function PlatformRoutes() {
       <Route path="/dashboard/messages" element={<Suspense fallback={<PageLoader />}><MessagesPage /></Suspense>} />
       <Route path="/dashboard/settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
       <Route path="/dashboard/mockups" element={<Suspense fallback={<PageLoader />}><DashboardMockupsPage /></Suspense>} />
+      <Route path="/convention-mockup" element={<Suspense fallback={<PageLoader />}><ConventionMockup /></Suspense>} />
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />
