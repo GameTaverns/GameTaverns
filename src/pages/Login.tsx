@@ -5,6 +5,7 @@ import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logoImage from "@/assets/logo.png";
+import tavernBg from "@/assets/tavern-bg.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -17,6 +18,7 @@ import { supabase } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
 import { RecaptchaWidget } from "@/components/games/RecaptchaWidget";
 import { Capacitor } from "@capacitor/core";
+import { Sparkles } from "lucide-react";
 
 const isNative = Capacitor.isNativePlatform();
 
