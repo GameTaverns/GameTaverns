@@ -78,12 +78,15 @@ interface Props {
   canManage: boolean;
 }
 
-export function GameCopyManager({ gameId, gameTitle, copiesOwned, canManage }: Props) {
+export function GameCopyManager({ gameId, gameTitle, gameSlug, copiesOwned, canManage }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { tenantSlug } = useTenant();
   const [showCreate, setShowCreate] = useState(false);
   const [editCopy, setEditCopy] = useState<GameCopyRow | null>(null);
   const [expandedCopy, setExpandedCopy] = useState<string | null>(null);
+  const [qrCopy, setQrCopy] = useState<GameCopyRow | null>(null);
+  const librarySlug = tenantSlug || "";
 
   const { data: copies = [], isLoading } = useQuery({
     queryKey: ["game-copies", gameId],
