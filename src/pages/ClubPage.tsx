@@ -146,10 +146,12 @@ export default function ClubPage() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="forums" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-              <MessageSquare className="h-4 w-4" />
-              {t('clubPage.forums')}
-            </TabsTrigger>
+            {forumsEnabled && (
+              <TabsTrigger value="forums" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                <MessageSquare className="h-4 w-4" />
+                {t('clubPage.forums')}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="analytics" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <BarChart3 className="h-4 w-4" />
               {t('clubPage.analytics')}
