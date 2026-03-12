@@ -1135,6 +1135,176 @@ export type Database = {
         }
         Relationships: []
       }
+      convention_attendees: {
+        Row: {
+          badge_id: string | null
+          contact_info: string | null
+          convention_event_id: string
+          created_at: string
+          display_name: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          badge_id?: string | null
+          contact_info?: string | null
+          convention_event_id: string
+          created_at?: string
+          display_name: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          badge_id?: string | null
+          contact_info?: string | null
+          convention_event_id?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convention_attendees_convention_event_id_fkey"
+            columns: ["convention_event_id"]
+            isOneToOne: false
+            referencedRelation: "convention_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      convention_events: {
+        Row: {
+          club_id: string | null
+          created_at: string
+          event_id: string
+          id: string
+          kiosk_mode_enabled: boolean
+          lending_enabled: boolean
+          max_concurrent_loans: number
+          quick_signup_enabled: boolean
+          require_badge_scan: boolean
+          reservation_enabled: boolean
+          reservation_hold_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          club_id?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          kiosk_mode_enabled?: boolean
+          lending_enabled?: boolean
+          max_concurrent_loans?: number
+          quick_signup_enabled?: boolean
+          require_badge_scan?: boolean
+          reservation_enabled?: boolean
+          reservation_hold_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          kiosk_mode_enabled?: boolean
+          lending_enabled?: boolean
+          max_concurrent_loans?: number
+          quick_signup_enabled?: boolean
+          require_badge_scan?: boolean
+          reservation_enabled?: boolean
+          reservation_hold_minutes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convention_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convention_events_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "library_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      convention_reservations: {
+        Row: {
+          convention_event_id: string
+          copy_id: string | null
+          created_at: string
+          expires_at: string
+          fulfilled_at: string | null
+          game_id: string
+          id: string
+          reserved_by: string
+          status: string
+        }
+        Insert: {
+          convention_event_id: string
+          copy_id?: string | null
+          created_at?: string
+          expires_at: string
+          fulfilled_at?: string | null
+          game_id: string
+          id?: string
+          reserved_by: string
+          status?: string
+        }
+        Update: {
+          convention_event_id?: string
+          copy_id?: string | null
+          created_at?: string
+          expires_at?: string
+          fulfilled_at?: string | null
+          game_id?: string
+          id?: string
+          reserved_by?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convention_reservations_convention_event_id_fkey"
+            columns: ["convention_event_id"]
+            isOneToOne: false
+            referencedRelation: "convention_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convention_reservations_copy_id_fkey"
+            columns: ["copy_id"]
+            isOneToOne: false
+            referencedRelation: "game_copies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convention_reservations_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "convention_reservations_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convention_reservations_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       curated_list_items: {
         Row: {
           created_at: string
