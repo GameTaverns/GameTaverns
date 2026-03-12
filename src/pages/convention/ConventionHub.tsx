@@ -22,7 +22,7 @@ export default function ConventionHub() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("command");
-
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // Fetch the library event
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ["convention-event", eventId],
