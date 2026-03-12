@@ -119,8 +119,7 @@ export default function Signup() {
           body: JSON.stringify({
             email,
             password,
-            username: username || undefined,
-            displayName: displayName || email.split("@")[0],
+            displayName: email.split("@")[0],
             redirectUrl: window.location.origin,
             recaptcha_token: turnstileToken,
           }),
