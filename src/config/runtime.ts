@@ -56,6 +56,7 @@ interface RuntimeConfig {
     EVENTS?: boolean;
     ACHIEVEMENTS?: boolean;
     LENDING?: boolean;
+    FORUMS?: boolean;
   };
 }
 
