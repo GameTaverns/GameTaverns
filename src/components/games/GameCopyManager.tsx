@@ -514,3 +514,127 @@ function CopyFormDialog({
     </Dialog>
   );
 }
+
+function CopyQRDialog({
+  open,
+  onOpenChange,
+  copy,
+  gameTitle,
+  gameSlug,
+  librarySlug,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  copy: GameCopyRow;
+  gameTitle: string;
+  gameSlug?: string | null;
+  librarySlug: string;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gameUrl = getLibraryUrl(librarySlug, `/game/${gameSlug || copy.game_id}?copy=${copy.id}`);
+  const copyLabel = copy.copy_label || `Copy #${copy.copy_number}`;
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    QRCodeLib.toCanvas(canvasRef.current, gameUrl, {
+      width: 240,
+      margin: 2,
+      color: { dark: "#1a1008", light: "#ffffff" },
+    }).catch(() => {});
+  }, [gameUrl]);
+
+  const handleDownload = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const offscreen = document.createElement("canvas");
+    offscreen.width = 400;
+    offscreen.height = 520;
+    const ctx = offscreen.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 400, 520);
+
+    QRCodeLib.toCanvas(offscreen, gameUrl, {
+      width: 320,
+      margin: 2,
+      color: { dark: "#1a1008", light: "#ffffff" },
+    }).then(() => {
+      ctx.fillStyle = "#1a1008";
+      ctx.font = "bold 18px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(gameTitle, 200, 360, 360);
+      ctx.font = "14px sans-serif";
+      ctx.fillStyle = "#6b7280";
+      ctx.fillText(copyLabel, 200, 385);
+      if (copy.condition) {
+        ctx.fillText(`Condition: ${copy.condition}`, 200, 405);
+      }
+      if (copy.edition) {
+        ctx.font = "12px sans-serif";
+        ctx.fillText(copy.edition, 200, 425);
+      }
+      ctx.font = "11px sans-serif";
+      ctx.fillStyle = "#9ca3af";
+      const loc = [copy.location_room, copy.location_shelf, copy.location_misc].filter(Boolean).join(" › ");
+      if (loc) ctx.fillText(loc, 200, 450);
+
+      const link = document.createElement("a");
+      link.download = `${gameTitle.replace(/\s+/g, "-").toLowerCase()}-copy-${copy.copy_number}-qr.png`;
+      link.href = offscreen.toDataURL("image/png");
+      link.click();
+    }).catch(() => {});
+  }, [gameUrl, gameTitle, copyLabel, copy]);
+
+  const handlePrint = useCallback(() => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL("image/png");
+    printWindow.document.write(`
+      <html><head><title>QR - ${gameTitle} ${copyLabel}</title>
+      <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:sans-serif;}
+      img{width:240px;height:240px;}h2{margin:16px 0 4px;font-size:18px;}p{margin:2px 0;color:#666;font-size:13px;}</style></head>
+      <body>
+        <img src="${dataUrl}" />
+        <h2>${gameTitle}</h2>
+        <p>${copyLabel}${copy.edition ? ` — ${copy.edition}` : ""}</p>
+        ${copy.condition ? `<p>Condition: ${copy.condition}</p>` : ""}
+      </body></html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = () => { printWindow.print(); };
+  }, [gameTitle, copyLabel, copy]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <QrCode className="h-5 w-5 text-primary" />
+            QR Code — {copyLabel}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-4 py-4">
+          <div className="border-2 border-border rounded-xl p-4 bg-white">
+            <canvas ref={canvasRef} width={240} height={240} className="rounded" />
+          </div>
+          <div className="text-center space-y-0.5">
+            <p className="font-semibold text-sm">{gameTitle}</p>
+            <p className="text-xs text-muted-foreground">{copyLabel}</p>
+            {copy.condition && <p className="text-xs text-muted-foreground">Condition: {copy.condition}</p>}
+            {copy.edition && <p className="text-xs text-muted-foreground">{copy.edition}</p>}
+          </div>
+        </div>
+        <DialogFooter className="flex gap-2 sm:gap-2">
+          <Button variant="outline" className="flex-1 gap-1.5" onClick={handlePrint}>
+            <Printer className="h-3.5 w-3.5" /> Print
+          </Button>
+          <Button className="flex-1 gap-1.5" onClick={handleDownload}>
+            <Download className="h-3.5 w-3.5" /> Download PNG
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
