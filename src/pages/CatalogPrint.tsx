@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Printer, Search, QrCode, Loader2, Library, Download } from "lucide-react";
+import { Printer, Search, QrCode, Loader2, Library, Download, Package } from "lucide-react";
 import QRCodeLib from "qrcode";
 
 interface GameForPrint {
@@ -23,6 +23,19 @@ interface GameForPrint {
   max_players: number | null;
   play_time: string | null;
   library_id: string;
+  copies_owned: number | null;
+}
+
+interface GameCopyForPrint {
+  id: string;
+  game_id: string;
+  copy_number: number;
+  copy_label: string | null;
+  condition: string | null;
+  edition: string | null;
+  location_room: string | null;
+  location_shelf: string | null;
+  location_misc: string | null;
 }
 
 interface QRCardProps {
@@ -59,6 +72,38 @@ function QRCard({ game, showImage, showMeta, librarySlug }: QRCardProps) {
           </p>
         )}
         <p className="text-[9px] text-gray-400 mt-0.5 truncate">{gameUrl.replace("https://", "")}</p>
+      </div>
+    </div>
+  );
+}
+
+interface CopyQRCardProps {
+  game: GameForPrint;
+  copy: GameCopyForPrint;
+  librarySlug: string;
+}
+
+function CopyQRCard({ game, copy, librarySlug }: CopyQRCardProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gameUrl = getLibraryUrl(librarySlug, `/game/${game.slug || game.id}?copy=${copy.id}`);
+  const copyLabel = copy.copy_label || `Copy #${copy.copy_number}`;
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    QRCodeLib.toCanvas(canvasRef.current, gameUrl, { width: 100, margin: 1, color: { dark: "#1a1008", light: "#ffffff" } }).catch(() => {});
+  }, [gameUrl]);
+
+  const location = [copy.location_room, copy.location_shelf, copy.location_misc].filter(Boolean).join(" › ");
+
+  return (
+    <div className="qr-card border border-gray-300 rounded-lg p-3 flex flex-col items-center gap-1.5 bg-white break-inside-avoid">
+      <canvas ref={canvasRef} width={100} height={100} className="rounded" aria-label={`QR code for ${game.title} ${copyLabel}`} />
+      <div className="text-center w-full">
+        <p className="text-xs font-bold leading-tight line-clamp-2">{game.title}</p>
+        <p className="text-[10px] font-medium text-gray-600">{copyLabel}</p>
+        {copy.edition && <p className="text-[9px] text-gray-500">{copy.edition}</p>}
+        {copy.condition && <p className="text-[9px] text-gray-500">{copy.condition}</p>}
+        {location && <p className="text-[9px] text-gray-400 truncate">{location}</p>}
       </div>
     </div>
   );
@@ -149,13 +194,30 @@ export default function CatalogPrint() {
       if (!library?.id) return [];
       const { data, error } = await supabase
         .from("games_public")
-        .select("id, title, slug, image_url, min_players, max_players, play_time, library_id")
+        .select("id, title, slug, image_url, min_players, max_players, play_time, library_id, copies_owned")
         .eq("library_id", library.id)
         .order("title");
       if (error) throw error;
       return data as GameForPrint[];
     },
     enabled: !!library?.id,
+  });
+
+  // Fetch all copies for games that have multiple copies
+  const multiCopyGameIds = games.filter(g => (g.copies_owned ?? 1) > 1).map(g => g.id);
+  const { data: allCopies = [], isLoading: copiesLoading } = useQuery({
+    queryKey: ["copies-for-print", library?.id, multiCopyGameIds.join(",")],
+    queryFn: async () => {
+      if (multiCopyGameIds.length === 0) return [];
+      const { data, error } = await (supabase as any)
+        .from("game_copies")
+        .select("id, game_id, copy_number, copy_label, condition, edition, location_room, location_shelf, location_misc")
+        .in("game_id", multiCopyGameIds)
+        .order("copy_number");
+      if (error) throw error;
+      return data as GameCopyForPrint[];
+    },
+    enabled: multiCopyGameIds.length > 0,
   });
 
   const filteredGames = search.trim()
@@ -207,6 +269,10 @@ export default function CatalogPrint() {
               <TabsTrigger value="catalog" className="gap-2">
                 <QrCode className="h-4 w-4" />
                 {t('catalogPrint.fullCatalog')}
+              </TabsTrigger>
+              <TabsTrigger value="copies" className="gap-2" disabled={allCopies.length === 0}>
+                <Package className="h-4 w-4" />
+                Per-Copy QR ({allCopies.length})
               </TabsTrigger>
             </TabsList>
 
@@ -266,6 +332,51 @@ export default function CatalogPrint() {
                   </div>
                   <div className="hidden print:block mt-6 text-center text-xs text-gray-400">
                     {t('catalogPrint.generatedBy')}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="copies">
+              <div className="bg-muted/40 border border-border rounded-lg p-4 mb-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-sm">Individual Copy QR Stickers</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Print QR codes for each tracked copy. When scanned, identifies the exact copy for checkout/return.
+                    </p>
+                  </div>
+                  <Button onClick={handlePrint} disabled={isPrinting || copiesLoading || allCopies.length === 0} className="gap-2">
+                    {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                    Print All
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <strong>{allCopies.length}</strong> tracked {allCopies.length === 1 ? "copy" : "copies"} across <strong>{multiCopyGameIds.length}</strong> {multiCopyGameIds.length === 1 ? "game" : "games"}
+                </p>
+              </div>
+
+              {allCopies.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p>No individually tracked copies found.</p>
+                  <p className="text-xs mt-1">Track copies from a game's detail page (Copies tab) to generate per-copy QR codes.</p>
+                </div>
+              ) : (
+                <div id="print-area">
+                  <div className="hidden print:block mb-4 text-center">
+                    <h1 className="text-xl font-bold">{library?.name || "Game Library"} — Copy QR Stickers</h1>
+                    <p className="text-xs text-gray-500">Scan to identify individual game copies</p>
+                  </div>
+                  <div className="qr-grid grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                    {allCopies.map((copy) => {
+                      const game = games.find(g => g.id === copy.game_id);
+                      if (!game) return null;
+                      return <CopyQRCard key={copy.id} game={game} copy={copy} librarySlug={librarySlug} />;
+                    })}
+                  </div>
+                  <div className="hidden print:block mt-6 text-center text-xs text-gray-400">
+                    Generated by Game Taverns
                   </div>
                 </div>
               )}

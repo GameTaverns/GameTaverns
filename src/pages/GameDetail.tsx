@@ -891,6 +891,7 @@ const GameDetail = () => {
                   <GameCopyManager
                     gameId={game.id}
                     gameTitle={game.title}
+                    gameSlug={game.slug}
                     copiesOwned={(game as any).copies_owned ?? 1}
                     canManage={!!isLibraryOwner}
                   />
