@@ -157,6 +157,11 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs,
         <ReviewModeration />
       </Suspense>
     ),
+    features: (
+      <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading feature flags…</div>}>
+        <AdminFeatureFlags currentFlags={featureFlags} />
+      </Suspense>
+    ),
   };
 
   const badgeCounts: Record<string, number> = {};
