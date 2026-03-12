@@ -5,6 +5,9 @@ import {
   BookOpen, CalendarClock, Package, AlertTriangle, Clock, Gamepad2,
   Timer, Wifi, Hourglass, ScanLine, Search,
 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/backend/client";
+import { toast } from "sonner";
 
 function StatCard({ icon: Icon, label, value, trend, color }: {
   icon: any; label: string; value: string | number; trend: string; color: string;
@@ -32,6 +35,7 @@ interface Props {
 }
 
 export function ConventionCommandCenter({ event, activeLoans, reservations, libraryGames, conventionSettings }: Props) {
+  const queryClient = useQueryClient();
   const totalCopies = libraryGames.reduce((sum: number, g: any) => sum + (g.copies_owned || 1), 0);
   const checkedOutCount = activeLoans.length;
   const availableCount = totalCopies - checkedOutCount;
@@ -43,7 +47,39 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
   const expiringSoon = activeReservations.filter((r: any) => {
     const exp = new Date(r.expires_at);
     const now = new Date();
-    return (exp.getTime() - now.getTime()) < 10 * 60 * 1000; // < 10 min
+    return (exp.getTime() - now.getTime()) < 10 * 60 * 1000;
+  });
+
+  // Return mutation
+  const returnMutation = useMutation({
+    mutationFn: async (loanId: string) => {
+      const { error } = await supabase
+        .from("club_loans")
+        .update({ status: "returned", returned_at: new Date().toISOString() })
+        .eq("id", loanId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Game returned successfully");
+      queryClient.invalidateQueries({ queryKey: ["convention-active-loans"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Release expired reservation
+  const releaseReservation = useMutation({
+    mutationFn: async (resId: string) => {
+      const { error } = await supabase
+        .from("convention_reservations")
+        .update({ status: "cancelled" })
+        .eq("id", resId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Reservation released");
+      queryClient.invalidateQueries({ queryKey: ["convention-reservations"] });
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   return (
@@ -104,7 +140,15 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
                       <Badge variant={isOverdue ? "destructive" : "secondary"} className="text-xs">
                         <Timer className="h-3 w-3 mr-1" />{elapsedStr}
                       </Badge>
-                      <Button size="sm" variant="outline" className="text-xs h-7">Return</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7"
+                        disabled={returnMutation.isPending}
+                        onClick={() => returnMutation.mutate(loan.id)}
+                      >
+                        Return
+                      </Button>
                     </div>
                   </div>
                 );
@@ -142,9 +186,21 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
                         <Badge variant={isExpired ? "destructive" : "outline"} className="text-xs">
                           <Hourglass className="h-3 w-3 mr-1" />{isExpired ? "Expired" : `${minsLeft}m`}
                         </Badge>
-                        <Button size="sm" variant={isExpired ? "destructive" : "secondary"} className="text-xs h-6">
-                          {isExpired ? "Release" : "Check Out"}
-                        </Button>
+                        {isExpired ? (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="text-xs h-6"
+                            disabled={releaseReservation.isPending}
+                            onClick={() => releaseReservation.mutate(r.id)}
+                          >
+                            Release
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="secondary" className="text-xs h-6">
+                            Check Out
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
