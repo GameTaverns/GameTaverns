@@ -210,23 +210,6 @@ const Login = () => {
       return;
     }
 
-    if (signupUsername && (signupUsername.length < 3 || signupUsername.length > 30)) {
-      toast({
-        title: t('errors.invalidUsername'),
-        description: t('errors.invalidUsernameLength'),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (signupUsername && !/^[a-zA-Z0-9_]+$/.test(signupUsername)) {
-      toast({
-        title: t('errors.invalidUsername'),
-        description: t('errors.invalidUsernameChars'),
-        variant: "destructive",
-      });
-      return;
-    }
     
     setIsLoading(true);
 
