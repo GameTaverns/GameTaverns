@@ -9,8 +9,9 @@ import { Separator } from "@/components/ui/separator";
 import {
   LayoutDashboard, BookOpen, Users, ScanLine, Star, Clock,
   AlertTriangle, CheckCircle, Package, MapPin, ArrowRight,
-  Search, UserPlus, BarChart3, Gamepad2, Trophy, TrendingUp,
-  Timer, Eye, Sparkles, ChevronRight, Wifi, WifiOff
+  Search, BarChart3, Gamepad2, Trophy, TrendingUp,
+  Timer, Eye, Sparkles, Wifi, Shuffle, CalendarClock,
+  Hourglass, MapPinned, Dice5, ChevronRight
 } from "lucide-react";
 
 // ─── Mock Data ───
@@ -23,9 +24,10 @@ const MOCK_ACTIVE_LOANS = [
   { id: 5, game: "Ticket to Ride", borrower: "Lisa K.", table: "Table 20", timeOut: "3h 05m", condition: "Fair", copy: "#1" },
 ];
 
-const MOCK_QUEUE = [
-  { id: 1, game: "Gloomhaven", requestedBy: "Tom B.", waitTime: "12m" },
-  { id: 2, game: "Scythe", requestedBy: "Anna P.", waitTime: "5m" },
+const MOCK_RESERVATIONS = [
+  { id: 1, game: "Scythe", reservedBy: "Tom B.", expiresIn: "18m", status: "active" },
+  { id: 2, game: "Gloomhaven", reservedBy: "Anna P.", expiresIn: "7m", status: "active" },
+  { id: 3, game: "Root", reservedBy: "Chris D.", expiresIn: "Expired", status: "expired" },
 ];
 
 const MOCK_POPULAR = [
@@ -37,15 +39,20 @@ const MOCK_POPULAR = [
 ];
 
 const MOCK_INVENTORY = [
-  { game: "Wingspan", totalCopies: 3, available: 1, checkedOut: 2, location: "Shelf A-3" },
-  { game: "Catan", totalCopies: 4, available: 1, checkedOut: 3, location: "Shelf B-1" },
-  { game: "Terraforming Mars", totalCopies: 2, available: 1, checkedOut: 1, location: "Shelf A-5" },
-  { game: "Azul", totalCopies: 3, available: 2, checkedOut: 1, location: "Shelf C-2" },
-  { game: "Gloomhaven", totalCopies: 1, available: 0, checkedOut: 1, location: "Shelf D-1" },
-  { game: "Scythe", totalCopies: 2, available: 0, checkedOut: 2, location: "Shelf A-7" },
-  { game: "Ticket to Ride", totalCopies: 3, available: 2, checkedOut: 1, location: "Shelf B-4" },
-  { game: "Pandemic", totalCopies: 2, available: 2, checkedOut: 0, location: "Shelf C-1" },
+  { game: "Wingspan", totalCopies: 3, available: 1, checkedOut: 2, reserved: 0, location: "Shelf A-3", players: "1-5", time: "45m", image: null },
+  { game: "Catan", totalCopies: 4, available: 1, checkedOut: 3, reserved: 0, location: "Shelf B-1", players: "3-4", time: "60m", image: null },
+  { game: "Terraforming Mars", totalCopies: 2, available: 1, checkedOut: 1, reserved: 0, location: "Shelf A-5", players: "1-5", time: "120m", image: null },
+  { game: "Azul", totalCopies: 3, available: 2, checkedOut: 1, reserved: 0, location: "Shelf C-2", players: "2-4", time: "30m", image: null },
+  { game: "Gloomhaven", totalCopies: 1, available: 0, checkedOut: 0, reserved: 1, location: "Shelf D-1", players: "1-4", time: "120m", image: null },
+  { game: "Scythe", totalCopies: 2, available: 0, checkedOut: 1, reserved: 1, location: "Shelf A-7", players: "1-5", time: "115m", image: null },
+  { game: "Ticket to Ride", totalCopies: 3, available: 2, checkedOut: 1, reserved: 0, location: "Shelf B-4", players: "2-5", time: "45m", image: null },
+  { game: "Pandemic", totalCopies: 2, available: 2, checkedOut: 0, reserved: 0, location: "Shelf C-1", players: "2-4", time: "45m", image: null },
+  { game: "Root", totalCopies: 2, available: 1, checkedOut: 1, reserved: 0, location: "Shelf D-3", players: "2-4", time: "90m", image: null },
+  { game: "Everdell", totalCopies: 2, available: 2, checkedOut: 0, reserved: 0, location: "Shelf B-6", players: "1-4", time: "60m", image: null },
 ];
+
+const MOCK_CONCIERGE_FILTERS = ["Any Player Count", "2 Players", "3-4 Players", "5+ Players"];
+const MOCK_TIME_FILTERS = ["Any Length", "Quick (< 30m)", "Medium (30-60m)", "Long (60m+)"];
 
 // ─── Staff Command Center ───
 
@@ -55,7 +62,7 @@ function StaffDashboard() {
       {/* Top Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={BookOpen} label="Active Loans" value="47" trend="+8 this hour" color="text-primary" />
-        <StatCard icon={Users} label="Registered Today" value="132" trend="+23 walk-ups" color="text-secondary" />
+        <StatCard icon={CalendarClock} label="Active Reservations" value="12" trend="3 expiring soon" color="text-secondary" />
         <StatCard icon={Package} label="Games Available" value="89 / 156" trend="57% checked out" color="text-accent" />
         <StatCard icon={AlertTriangle} label="Overdue" value="3" trend="2 flagged" color="text-destructive" />
       </div>
@@ -99,22 +106,31 @@ function StaffDashboard() {
 
         {/* Right sidebar */}
         <div className="space-y-4">
-          {/* Queue */}
+          {/* Reservations */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Users className="h-4 w-4 text-secondary" />
-                Waitlist Queue
+                <CalendarClock className="h-4 w-4 text-secondary" />
+                Pending Reservations
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {MOCK_QUEUE.map((q) => (
-                <div key={q.id} className="flex items-center justify-between p-2 rounded bg-secondary/10">
+              {MOCK_RESERVATIONS.map((r) => (
+                <div key={r.id} className={`flex items-center justify-between p-2 rounded ${r.status === "expired" ? "bg-destructive/10" : "bg-secondary/10"}`}>
                   <div>
-                    <p className="text-sm font-medium">{q.game}</p>
-                    <p className="text-xs text-muted-foreground">{q.requestedBy} · {q.waitTime} ago</p>
+                    <p className="text-sm font-medium">{r.game}</p>
+                    <p className="text-xs text-muted-foreground">{r.reservedBy}</p>
                   </div>
-                  <Button size="sm" variant="secondary" className="text-xs h-6">Notify</Button>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={r.status === "expired" ? "destructive" : "outline"} className="text-xs">
+                      <Hourglass className="h-3 w-3 mr-1" />{r.expiresIn}
+                    </Badge>
+                    {r.status === "expired" ? (
+                      <Button size="sm" variant="destructive" className="text-xs h-6">Release</Button>
+                    ) : (
+                      <Button size="sm" variant="secondary" className="text-xs h-6">Check Out</Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -131,16 +147,16 @@ function StaffDashboard() {
                 Scan Badge
               </Button>
               <Button variant="outline" className="h-16 flex-col gap-1 text-xs">
-                <UserPlus className="h-5 w-5" />
-                Walk-up
-              </Button>
-              <Button variant="outline" className="h-16 flex-col gap-1 text-xs">
                 <Search className="h-5 w-5" />
                 Find Game
               </Button>
               <Button variant="outline" className="h-16 flex-col gap-1 text-xs">
                 <AlertTriangle className="h-5 w-5" />
                 Flag Issue
+              </Button>
+              <Button variant="outline" className="h-16 flex-col gap-1 text-xs">
+                <Package className="h-5 w-5" />
+                Inventory
               </Button>
             </CardContent>
           </Card>
@@ -206,7 +222,7 @@ function LendingDesk() {
                 <span className="font-medium">—</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Table Assignment</span>
+                <span className="text-muted-foreground">Has Reservation?</span>
                 <span className="font-medium">—</span>
               </div>
               <Separator />
@@ -222,7 +238,7 @@ function LendingDesk() {
               <CheckCircle className="h-5 w-5" />
               Return
             </CardTitle>
-            <CardDescription>Process a game return with condition check + quick review</CardDescription>
+            <CardDescription>Process a game return with condition check</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="p-4 rounded-lg border-2 border-dashed border-border flex flex-col items-center gap-2 text-muted-foreground">
@@ -263,21 +279,24 @@ function LendingDesk() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {MOCK_INVENTORY.map((item) => (
-              <div key={item.game} className="p-3 rounded-lg border bg-card">
-                <div className="flex justify-between items-start mb-2">
-                  <p className="font-medium text-sm">{item.game}</p>
-                  <Badge variant={item.available === 0 ? "destructive" : "secondary"} className="text-xs">
-                    {item.available === 0 ? "All Out" : `${item.available} avail`}
-                  </Badge>
+            {MOCK_INVENTORY.slice(0, 8).map((item) => {
+              const unavailable = item.checkedOut + item.reserved;
+              return (
+                <div key={item.game} className="p-3 rounded-lg border bg-card">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="font-medium text-sm">{item.game}</p>
+                    <Badge variant={item.available === 0 ? "destructive" : "secondary"} className="text-xs">
+                      {item.available === 0 ? (item.reserved > 0 ? "Reserved" : "All Out") : `${item.available} avail`}
+                    </Badge>
+                  </div>
+                  <Progress value={(unavailable / item.totalCopies) * 100} className="h-1.5 mb-1" />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{item.checkedOut} out{item.reserved > 0 ? ` · ${item.reserved} held` : ""}</span>
+                    <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>
+                  </div>
                 </div>
-                <Progress value={(item.checkedOut / item.totalCopies) * 100} className="h-1.5 mb-1" />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{item.checkedOut}/{item.totalCopies} out</span>
-                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -285,158 +304,194 @@ function LendingDesk() {
   );
 }
 
-// ─── Kiosk Mode (Attendee-Facing) ───
+// ─── Game Concierge (Attendee-Facing) ───
 
-function KioskMode() {
+function GameConcierge() {
+  const [playerFilter, setPlayerFilter] = useState("Any Player Count");
+  const [timeFilter, setTimeFilter] = useState("Any Length");
+  const [spinning, setSpinning] = useState(false);
+  const [pickedGame, setPickedGame] = useState<typeof MOCK_INVENTORY[0] | null>(null);
+  const [reserveConfirm, setReserveConfirm] = useState(false);
+
+  const availableGames = MOCK_INVENTORY.filter(g => g.available > 0);
+
+  const handleSpin = () => {
+    setSpinning(true);
+    setPickedGame(null);
+    setReserveConfirm(false);
+    // Simulate spinner
+    setTimeout(() => {
+      const pick = availableGames[Math.floor(Math.random() * availableGames.length)];
+      setPickedGame(pick);
+      setSpinning(false);
+    }, 1500);
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2 py-4">
-        <h2 className="text-3xl font-display text-primary">🎲 Game Library</h2>
-        <p className="text-muted-foreground">Browse available games · Tap to request</p>
+        <h2 className="text-3xl font-display text-primary">🎲 Game Concierge</h2>
+        <p className="text-muted-foreground">Find your next game · Reserve it before you arrive</p>
       </div>
 
-      {/* Search */}
-      <div className="max-w-xl mx-auto">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <Input placeholder="Search games by name, player count, or type..." className="pl-12 h-14 text-lg rounded-full" />
+      {/* Filters */}
+      <div className="max-w-2xl mx-auto space-y-4">
+        <div className="flex flex-wrap justify-center gap-2">
+          {MOCK_CONCIERGE_FILTERS.map(f => (
+            <Button
+              key={f}
+              variant={playerFilter === f ? "default" : "outline"}
+              size="sm"
+              className="rounded-full"
+              onClick={() => setPlayerFilter(f)}
+            >
+              {f}
+            </Button>
+          ))}
         </div>
-      </div>
-
-      {/* Quick Filters */}
-      <div className="flex flex-wrap justify-center gap-2">
-        {["🔥 Trending", "⏱ Quick (< 30min)", "👥 Party Games", "🧩 Strategy", "👨‍👩‍👧‍👦 Family", "🆕 New Arrivals"].map(f => (
-          <Button key={f} variant="outline" className="rounded-full">{f}</Button>
-        ))}
-      </div>
-
-      {/* Available Games Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {MOCK_INVENTORY.filter(g => g.available > 0).map((game) => (
-          <Card key={game.game} className="card-hover cursor-pointer overflow-hidden">
-            <div className="aspect-square bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-              <Gamepad2 className="h-16 w-16 text-primary/40" />
-            </div>
-            <CardContent className="p-3">
-              <p className="font-display font-medium">{game.game}</p>
-              <div className="flex items-center justify-between mt-1">
-                <Badge variant="secondary" className="text-xs">{game.available} available</Badge>
-                <span className="text-xs text-muted-foreground">{game.location}</span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Checked out games - "Notify Me" */}
-      <div>
-        <h3 className="font-display text-lg mb-3 text-muted-foreground">Currently Checked Out — Join Waitlist</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 opacity-70">
-          {MOCK_INVENTORY.filter(g => g.available === 0).map((game) => (
-            <Card key={game.game} className="cursor-pointer overflow-hidden border-dashed">
-              <div className="aspect-square bg-muted/50 flex items-center justify-center relative">
-                <Gamepad2 className="h-16 w-16 text-muted-foreground/20" />
-                <Badge className="absolute top-2 right-2 bg-destructive/80 text-destructive-foreground text-xs">All out</Badge>
-              </div>
-              <CardContent className="p-3">
-                <p className="font-display font-medium">{game.game}</p>
-                <Button variant="outline" size="sm" className="w-full mt-2 text-xs">
-                  🔔 Notify Me
-                </Button>
-              </CardContent>
-            </Card>
+        <div className="flex flex-wrap justify-center gap-2">
+          {MOCK_TIME_FILTERS.map(f => (
+            <Button
+              key={f}
+              variant={timeFilter === f ? "default" : "outline"}
+              size="sm"
+              className="rounded-full"
+              onClick={() => setTimeFilter(f)}
+            >
+              {f}
+            </Button>
           ))}
         </div>
       </div>
-    </div>
-  );
-}
 
-// ─── Attendee Onboarding Flow ───
-
-function AttendeeOnboarding() {
-  const [step, setStep] = useState(1);
-
-  return (
-    <div className="max-w-lg mx-auto space-y-6">
-      <div className="text-center space-y-2 py-4">
-        <h2 className="text-2xl font-display text-primary">Welcome to the Game Library</h2>
-        <p className="text-muted-foreground">Get set up in under 30 seconds</p>
-      </div>
-
-      {/* Progress */}
-      <div className="flex items-center gap-2">
-        {[1,2,3].map(s => (
-          <div key={s} className="flex-1 flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-              s <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-            }`}>
-              {s < step ? <CheckCircle className="h-4 w-4" /> : s}
-            </div>
-            {s < 3 && <div className={`flex-1 h-0.5 ${s < step ? "bg-primary" : "bg-border"}`} />}
+      {/* Random Picker */}
+      <Card className="max-w-lg mx-auto border-primary/30">
+        <CardContent className="pt-6 text-center space-y-4">
+          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Dice5 className={`h-10 w-10 text-primary ${spinning ? "animate-spin" : ""}`} />
           </div>
-        ))}
-      </div>
 
-      {/* Step Content */}
-      <Card>
-        <CardContent className="pt-6">
-          {step === 1 && (
-            <div className="space-y-4">
-              <div className="text-center space-y-1">
-                <ScanLine className="h-12 w-12 text-primary mx-auto" />
-                <h3 className="font-display text-lg">Scan Your Badge</h3>
-                <p className="text-sm text-muted-foreground">Hold your convention badge up to the scanner</p>
-              </div>
-              <div className="p-8 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 text-center">
-                <p className="text-muted-foreground text-sm">📷 Camera / Scanner Area</p>
-              </div>
-              <Separator />
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-2">No badge? No problem.</p>
-                <Button variant="outline" onClick={() => setStep(2)}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Quick Sign Up Instead
-                </Button>
-              </div>
-            </div>
-          )}
-          {step === 2 && (
-            <div className="space-y-4">
-              <h3 className="font-display text-lg text-center">Quick Sign Up</h3>
-              <p className="text-sm text-muted-foreground text-center">Just a name — everything else is optional</p>
-              <Input placeholder="Your name" className="h-12" />
-              <Input placeholder="Email (optional — claim plays later)" className="h-12" />
-              <Input placeholder="Phone (optional — for waitlist texts)" className="h-12" />
-              <Button className="w-full h-12" onClick={() => setStep(3)}>
-                Continue <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          )}
-          {step === 3 && (
-            <div className="space-y-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                <CheckCircle className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="font-display text-lg">You're All Set!</h3>
+          {!pickedGame && !spinning && (
+            <>
+              <h3 className="font-display text-lg">Can't decide? Let us pick!</h3>
               <p className="text-sm text-muted-foreground">
-                Head to any lending desk to check out a game. Show your badge or tell them your name.
+                We'll randomly select from {availableGames.length} available games matching your filters.
               </p>
-              <Card className="bg-muted/50">
-                <CardContent className="pt-4 text-left space-y-2">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Your Session</p>
-                  <p className="text-sm"><strong>Guest #247</strong> — Sarah M.</p>
-                  <p className="text-xs text-muted-foreground">After the convention, sign up with your email to keep your play history, reviews, and stats permanently.</p>
-                </CardContent>
-              </Card>
-              <Button className="w-full" onClick={() => setStep(1)}>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Browse Games
-              </Button>
+            </>
+          )}
+
+          {spinning && (
+            <div className="space-y-2">
+              <h3 className="font-display text-lg animate-pulse">Picking a game...</h3>
+              <p className="text-sm text-muted-foreground">🎰 Spinning the wheel...</p>
             </div>
+          )}
+
+          {pickedGame && !spinning && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mx-auto mb-3">
+                  <Gamepad2 className="h-8 w-8 text-primary/60" />
+                </div>
+                <h3 className="font-display text-xl text-primary">{pickedGame.game}</h3>
+                <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground mt-2">
+                  <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{pickedGame.players}</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{pickedGame.time}</span>
+                  <span className="flex items-center gap-1"><MapPinned className="h-3.5 w-3.5" />{pickedGame.location}</span>
+                </div>
+                <Badge variant="secondary" className="mt-2">{pickedGame.available} of {pickedGame.totalCopies} available</Badge>
+              </div>
+
+              {!reserveConfirm ? (
+                <div className="flex gap-3 justify-center">
+                  <Button onClick={() => setReserveConfirm(true)} className="gap-2">
+                    <CalendarClock className="h-4 w-4" />
+                    Reserve This Game
+                  </Button>
+                  <Button variant="outline" onClick={handleSpin} className="gap-2">
+                    <Shuffle className="h-4 w-4" />
+                    Pick Another
+                  </Button>
+                </div>
+              ) : (
+                <Card className="bg-primary/5 border-primary/20 text-left">
+                  <CardContent className="pt-4 space-y-3">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-primary" />
+                      Reserved! Held for 30 minutes.
+                    </p>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>📍 Pick up at: <strong>{pickedGame.location}</strong></p>
+                      <p>⏱ Hold expires at: <strong>3:45 PM</strong></p>
+                      <p>🎫 Show this screen to a volunteer at the lending desk</p>
+                    </div>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => { setPickedGame(null); setReserveConfirm(false); }}>
+                      Browse More Games
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {!pickedGame && !spinning && (
+            <Button onClick={handleSpin} size="lg" className="gap-2">
+              <Shuffle className="h-5 w-5" />
+              Pick a Random Game
+            </Button>
           )}
         </CardContent>
       </Card>
+
+      {/* Browse Available */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-lg flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-primary" />
+            Browse Available Games
+          </h3>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search games..." className="pl-9 h-9" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {MOCK_INVENTORY.map((game) => {
+            const isAvailable = game.available > 0;
+            return (
+              <Card key={game.game} className={`overflow-hidden ${isAvailable ? "card-hover cursor-pointer" : "opacity-60 border-dashed"}`}>
+                <div className="aspect-square bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center relative">
+                  <Gamepad2 className={`h-12 w-12 ${isAvailable ? "text-primary/40" : "text-muted-foreground/20"}`} />
+                  {!isAvailable && (
+                    <Badge className="absolute top-2 right-2 bg-destructive/80 text-destructive-foreground text-xs">
+                      {game.reserved > 0 ? "Reserved" : "All out"}
+                    </Badge>
+                  )}
+                </div>
+                <CardContent className="p-2.5">
+                  <p className="font-display font-medium text-sm truncate">{game.game}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <span>{game.players}</span>
+                    <span>·</span>
+                    <span>{game.time}</span>
+                  </div>
+                  {isAvailable ? (
+                    <Button size="sm" variant="outline" className="w-full mt-2 text-xs h-7 gap-1">
+                      <CalendarClock className="h-3 w-3" />
+                      Reserve
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="ghost" className="w-full mt-2 text-xs h-7 gap-1">
+                      🔔 Notify Me
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -447,9 +502,9 @@ function AnalyticsPreview() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={Users} label="Total Attendees" value="847" trend="Convention total" color="text-primary" />
-        <StatCard icon={BookOpen} label="Total Checkouts" value="1,243" trend="Avg 1.5 per person" color="text-secondary" />
-        <StatCard icon={Star} label="Reviews Collected" value="312" trend="Living reviews" color="text-accent" />
+        <StatCard icon={Users} label="Unique Players" value="312" trend="Convention total" color="text-primary" />
+        <StatCard icon={BookOpen} label="Total Checkouts" value="1,243" trend="Avg 4.0 per player" color="text-secondary" />
+        <StatCard icon={CalendarClock} label="Reservations Made" value="187" trend="78% converted" color="text-accent" />
         <StatCard icon={Trophy} label="Unique Games Played" value="89" trend="of 156 available" color="text-primary" />
       </div>
 
@@ -600,18 +655,15 @@ export default function ConventionMockup() {
         </div>
 
         <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid grid-cols-5 w-full max-w-2xl">
+          <TabsList className="grid grid-cols-4 w-full max-w-2xl">
             <TabsTrigger value="dashboard" className="text-xs">
               <LayoutDashboard className="h-3.5 w-3.5 mr-1" />Command
             </TabsTrigger>
             <TabsTrigger value="lending" className="text-xs">
               <BookOpen className="h-3.5 w-3.5 mr-1" />Lending Desk
             </TabsTrigger>
-            <TabsTrigger value="kiosk" className="text-xs">
-              <Gamepad2 className="h-3.5 w-3.5 mr-1" />Kiosk
-            </TabsTrigger>
-            <TabsTrigger value="onboarding" className="text-xs">
-              <UserPlus className="h-3.5 w-3.5 mr-1" />Onboarding
+            <TabsTrigger value="concierge" className="text-xs">
+              <Dice5 className="h-3.5 w-3.5 mr-1" />Concierge
             </TabsTrigger>
             <TabsTrigger value="analytics" className="text-xs">
               <BarChart3 className="h-3.5 w-3.5 mr-1" />Analytics
@@ -620,8 +672,7 @@ export default function ConventionMockup() {
 
           <TabsContent value="dashboard"><StaffDashboard /></TabsContent>
           <TabsContent value="lending"><LendingDesk /></TabsContent>
-          <TabsContent value="kiosk"><KioskMode /></TabsContent>
-          <TabsContent value="onboarding"><AttendeeOnboarding /></TabsContent>
+          <TabsContent value="concierge"><GameConcierge /></TabsContent>
           <TabsContent value="analytics"><AnalyticsPreview /></TabsContent>
         </Tabs>
       </div>
