@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { isAdminSubdomain } from "@/lib/subdomainDetection";
-import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut, Clock, Globe, AlertTriangle, Mail, Accessibility, Newspaper, Star, Target } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut, Clock, Globe, AlertTriangle, Mail, Accessibility, Newspaper, Star, Target, ToggleRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +19,8 @@ import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 import { usePendingClubs } from "@/hooks/useClubs";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+
 
 const SpecialBadgesManagement = lazy(() =>
   import("@/components/admin/SpecialBadgesManagement").then(m => ({ default: m.SpecialBadgesManagement }))
@@ -46,6 +48,9 @@ const AccountLockoutManager = lazy(() =>
 );
 const AccessibilityAudit = lazy(() =>
   import("@/components/admin/AccessibilityAudit").then(m => ({ default: m.AccessibilityAudit }))
+);
+const AdminFeatureFlags = lazy(() =>
+  import("@/components/settings/FeatureFlagsAdmin").then(m => ({ default: m.FeatureFlagsAdmin }))
 );
 const PositioningStrategy = lazy(() =>
   import("@/components/admin/PositioningStrategy").then(m => ({ default: m.PositioningStrategy }))
@@ -92,6 +97,7 @@ const ADMIN_ONLY_TABS = ["settings", "roadmap", "badges", "crons", "server", "se
 const ADMIN_REAUTH_KEY = "gt_admin_reauth_ok";
 
 export default function PlatformAdmin() {
+  const featureFlags = useFeatureFlags();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -366,6 +372,13 @@ export default function PlatformAdmin() {
                   <Target className="h-4 w-4 mr-1 sm:mr-2" />
                   Strategy
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="features"
+                  className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+                >
+                  <ToggleRight className="h-4 w-4 mr-1 sm:mr-2" />
+                  Features
+                </TabsTrigger>
               </>
             )}
           </TabsList>
@@ -495,6 +508,14 @@ export default function PlatformAdmin() {
                 <TabErrorBoundary>
                   <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading strategy…</div>}>
                     <PositioningStrategy />
+                  </Suspense>
+                </TabErrorBoundary>
+              </TabsContent>
+
+              <TabsContent value="features" className="mt-6">
+                <TabErrorBoundary>
+                  <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading feature flags…</div>}>
+                    <AdminFeatureFlags currentFlags={featureFlags} />
                   </Suspense>
                 </TabErrorBoundary>
               </TabsContent>
