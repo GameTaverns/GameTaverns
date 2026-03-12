@@ -34,6 +34,7 @@ export default function CommunityEventsPage() {
   const { user, isAuthenticated, loading } = useAuth();
   const { library, myLibraries, activeLibraryId, setActiveLibraryId } = useActiveLibrary();
   const { data: myClubs = [] } = useMyClubs();
+  const { forums: forumsEnabled } = useFeatureFlags();
   const { data: myMemberships = [] } = useMyMemberships();
   const navigate = useNavigate();
 
