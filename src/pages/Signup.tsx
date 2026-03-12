@@ -134,7 +134,6 @@ export default function Signup() {
 
       toast({
         title: t('signup.accountCreated'),
-        description: t('signup.checkEmailToConfirm'),
       });
       
       navigate("/login");

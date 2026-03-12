@@ -234,7 +234,6 @@ const Login = () => {
 
       toast({
         title: t('signup.accountCreated'),
-        description: t('signup.youCanSignIn'),
       });
       navigate("/login");
     } finally {
