@@ -1,8 +1,7 @@
-import { useMemo, useContext } from "react";
+import { useMemo } from "react";
 import { useSiteSettings } from "./useSiteSettings";
 import { useDemoMode } from "@/contexts/DemoContext";
-import { TenantContext } from "@/contexts/TenantContext";
-import { getRuntimeFeatureFlag, isProductionDeployment, isLovableCloud } from "@/config/runtime";
+import { useTenantSafe } from "@/contexts/TenantContext";
 import { getRuntimeFeatureFlag, isProductionDeployment, isLovableCloud } from "@/config/runtime";
 
 /**
