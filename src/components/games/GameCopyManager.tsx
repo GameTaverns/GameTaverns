@@ -45,6 +45,8 @@ import {
   Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { useTenant } from "@/contexts/TenantContext";
 
 const CONDITIONS = ["Mint", "Like New", "Very Good", "Good", "Acceptable", "Poor"];
 const ACQUISITION_SOURCES = ["Purchased", "Gift", "Trade", "Prize", "Kickstarter", "Thrift", "Other"];
