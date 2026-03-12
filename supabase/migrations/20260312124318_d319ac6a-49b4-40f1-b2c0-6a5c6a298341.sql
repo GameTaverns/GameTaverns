@@ -1,0 +1,1 @@
+ALTER TABLE public.game_sessions ADD COLUMN IF NOT EXISTS import_source text DEFAULT NULL;
