@@ -263,8 +263,10 @@ const Login = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center">
-        <div className="animate-pulse text-foreground">{t('login.loading')}</div>
+      <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
+        <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" aria-hidden="true" />
+        <div className="absolute inset-0 bg-background/70 dark:bg-wood-dark/80 backdrop-blur-sm" />
+        <div className="animate-pulse text-foreground relative z-10">{t('login.loading')}</div>
       </div>
     );
   }
@@ -275,45 +277,85 @@ const Login = () => {
 
   if (requires2FA && pendingAccessToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center p-4">
-        <TotpVerify 
-          accessToken={pendingAccessToken}
-          onSuccess={handle2FASuccess}
-          onCancel={handle2FACancel}
-        />
+      <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
+        <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" aria-hidden="true" />
+        <div className="absolute inset-0 bg-background/70 dark:bg-wood-dark/80 backdrop-blur-sm" />
+        <div className="relative z-10">
+          <TotpVerify 
+            accessToken={pendingAccessToken}
+            onSuccess={handle2FASuccess}
+            onCancel={handle2FACancel}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-4">
-      <div className="absolute top-4 right-4 flex items-center gap-2">
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
+      {/* Tavern background with overlay */}
+      <img 
+        src={tavernBg} 
+        alt="" 
+        className="absolute inset-0 w-full h-full object-cover" 
+        aria-hidden="true" 
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/60 to-background/40 dark:from-wood-dark/95 dark:via-wood-dark/70 dark:to-wood-dark/50" />
+      
+      {/* Warm candlelight vignette effect */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 40%, transparent 30%, hsl(25 30% 8% / 0.4) 100%)',
+        }}
+      />
+
+      {/* Controls */}
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
         <LanguageSwitcher />
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md bg-card dark:bg-sidebar border-border/50">
-        <CardHeader className="text-center">
-          <Link to="/" className="flex items-center justify-center gap-3 mb-4">
-            <img src={logoImage} alt="GameTaverns" className="h-16 w-auto" />
-            <span className="font-display text-2xl font-bold text-foreground">GameTaverns</span>
+
+      {/* Decorative top ornament */}
+      <div className="relative z-10 mb-6 text-center">
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <div className="h-px w-12 bg-gradient-to-r from-transparent to-gold/40" />
+          <Sparkles className="h-4 w-4 text-gold/50" />
+          <div className="h-px w-12 bg-gradient-to-l from-transparent to-gold/40" />
+        </div>
+      </div>
+
+      {/* Main card */}
+      <Card className="w-full max-w-md relative z-10 card-handcrafted bg-card/95 dark:bg-sidebar/95 border-gold/20 backdrop-blur-md shadow-[0_8px_32px_-8px_hsl(25_30%_8%/0.5)]">
+        <CardHeader className="text-center pb-4">
+          <Link to="/" className="flex items-center justify-center gap-3 mb-3 group">
+            <img 
+              src={logoImage} 
+              alt="GameTaverns" 
+              className="h-18 w-auto drop-shadow-[0_2px_8px_hsl(28_50%_48%/0.3)] transition-transform group-hover:scale-105" 
+            />
+            <span className="font-display text-3xl font-bold text-foreground drop-shadow-[0_1px_2px_hsl(0_0%_0%/0.1)]">
+              GameTaverns
+            </span>
           </Link>
+          <div className="section-divider mb-4" />
           <CardTitle className="font-display text-2xl text-foreground">{t('login.welcomeBack')}</CardTitle>
-          <CardDescription className="text-muted-foreground">
+          <CardDescription className="text-muted-foreground font-accent italic">
             {t('login.subtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-muted dark:bg-wood-medium/50">
+            <TabsList className="grid w-full grid-cols-2 bg-muted/80 dark:bg-wood-medium/50 border border-border/30">
               <TabsTrigger 
                 value="signin" 
-                className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+                className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground font-display"
               >
                 {t('login.signIn')}
               </TabsTrigger>
               <TabsTrigger 
                 value="signup"
-                className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+                className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground font-display"
               >
                 {t('login.signUp')}
               </TabsTrigger>
@@ -321,14 +363,14 @@ const Login = () => {
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email" className="text-foreground/80">{t('login.email')}</Label>
+                  <Label htmlFor="signin-email" className="text-foreground/80 font-accent">{t('login.email')}</Label>
                   <Input
                     id="signin-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
                     required
                   />
                 </div>
@@ -344,13 +386,13 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password" className="text-foreground/80">{t('login.password')}</Label>
+                  <Label htmlFor="signin-password" className="text-foreground/80 font-accent">{t('login.password')}</Label>
                   <PasswordInput
                     id="signin-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
                     required
                   />
                 </div>
@@ -362,7 +404,7 @@ const Login = () => {
                 )}
                 <Button 
                   type="submit" 
-                  className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
+                  className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display shadow-[0_2px_8px_-2px_hsl(28_50%_48%/0.4)] transition-all hover:shadow-[0_4px_12px_-2px_hsl(28_50%_48%/0.5)] hover:-translate-y-0.5" 
                   disabled={isLoading}
                 >
                   {isLoading ? t('login.signingIn') : t('login.signIn')}
@@ -370,7 +412,7 @@ const Login = () => {
                 <div className="text-center">
                   <Link 
                     to="/forgot-password" 
-                    className="text-sm text-secondary hover:text-secondary/80 underline"
+                    className="text-sm text-secondary hover:text-secondary/80 underline font-accent"
                   >
                     {t('login.forgotPassword')}
                   </Link>
@@ -380,7 +422,7 @@ const Login = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-username" className="text-foreground/80">
+                  <Label htmlFor="signup-username" className="text-foreground/80 font-accent">
                     {t('login.username')} <span className="text-muted-foreground text-xs">{t('login.usernameOptional')}</span>
                   </Label>
                   <Input
@@ -389,12 +431,12 @@ const Login = () => {
                     onChange={(e) => setSignupUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
                     placeholder={t('login.usernamePlaceholder')}
                     maxLength={30}
-                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
                   />
                   <p className="text-xs text-muted-foreground">{t('login.usernameHint')}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-displayname" className="text-foreground/80">
+                  <Label htmlFor="signup-displayname" className="text-foreground/80 font-accent">
                     {t('login.displayName')} <span className="text-muted-foreground text-xs">{t('login.displayNameOptional')}</span>
                   </Label>
                   <Input
@@ -402,41 +444,41 @@ const Login = () => {
                     value={signupDisplayName}
                     onChange={(e) => setSignupDisplayName(e.target.value)}
                     placeholder={t('login.displayNamePlaceholder')}
-                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email" className="text-foreground/80">{t('login.email')}</Label>
+                  <Label htmlFor="signup-email" className="text-foreground/80 font-accent">{t('login.email')}</Label>
                   <Input
                     id="signup-email"
                     type="email"
                     value={signupEmail}
                     onChange={(e) => setSignupEmail(e.target.value)}
                     placeholder={t('login.emailPlaceholder')}
-                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password" className="text-foreground/80">{t('login.password')}</Label>
+                  <Label htmlFor="signup-password" className="text-foreground/80 font-accent">{t('login.password')}</Label>
                   <PasswordInput
                     id="signup-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
                     minLength={6}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-confirm-password" className="text-foreground/80">{t('login.confirmPassword')}</Label>
+                  <Label htmlFor="signup-confirm-password" className="text-foreground/80 font-accent">{t('login.confirmPassword')}</Label>
                   <PasswordInput
                     id="signup-confirm-password"
                     value={signupConfirmPassword}
                     onChange={(e) => setSignupConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
+                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
                     minLength={6}
                     required
                   />
@@ -460,12 +502,12 @@ const Login = () => {
                 )}
                 <Button 
                   type="submit" 
-                  className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
+                  className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display shadow-[0_2px_8px_-2px_hsl(28_50%_48%/0.4)] transition-all hover:shadow-[0_4px_12px_-2px_hsl(28_50%_48%/0.5)] hover:-translate-y-0.5" 
                   disabled={isLoading}
                 >
                   {isLoading ? t('login.creatingAccount') : t('login.createAccount')}
                 </Button>
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-xs text-muted-foreground text-center font-accent">
                   {t('signup.youCanSignIn')}
                 </p>
               </form>
@@ -473,6 +515,13 @@ const Login = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Bottom decorative ornament */}
+      <div className="relative z-10 mt-6 flex items-center gap-3 text-muted-foreground/40">
+        <div className="h-px w-8 bg-gradient-to-r from-transparent to-gold/30" />
+        <span className="text-xs font-accent italic">Est. 2025</span>
+        <div className="h-px w-8 bg-gradient-to-l from-transparent to-gold/30" />
+      </div>
     </div>
   );
 };
