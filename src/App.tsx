@@ -294,7 +294,7 @@ function PlatformRoutes() {
     <Routes>
       <Route path="/" element={<Platform />} />
       <Route path="/features" element={<Features />} />
-      <Route path="/press" element={<Press />} />
+      
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />

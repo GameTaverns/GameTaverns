@@ -26,9 +26,6 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
               </li>
               <li aria-hidden="true"><span className="text-muted-foreground/40">·</span></li>
               <li>
-                <a href="/press" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t('footer.press')}</a>
-              </li>
-              <li>
                 <ExternalLink href="mailto:admin@gametaverns.com" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t('footer.contact')}</ExternalLink>
               </li>
               <li>
