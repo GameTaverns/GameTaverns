@@ -194,13 +194,30 @@ export default function CatalogPrint() {
       if (!library?.id) return [];
       const { data, error } = await supabase
         .from("games_public")
-        .select("id, title, slug, image_url, min_players, max_players, play_time, library_id")
+        .select("id, title, slug, image_url, min_players, max_players, play_time, library_id, copies_owned")
         .eq("library_id", library.id)
         .order("title");
       if (error) throw error;
       return data as GameForPrint[];
     },
     enabled: !!library?.id,
+  });
+
+  // Fetch all copies for games that have multiple copies
+  const multiCopyGameIds = games.filter(g => (g.copies_owned ?? 1) > 1).map(g => g.id);
+  const { data: allCopies = [], isLoading: copiesLoading } = useQuery({
+    queryKey: ["copies-for-print", library?.id, multiCopyGameIds.join(",")],
+    queryFn: async () => {
+      if (multiCopyGameIds.length === 0) return [];
+      const { data, error } = await (supabase as any)
+        .from("game_copies")
+        .select("id, game_id, copy_number, copy_label, condition, edition, location_room, location_shelf, location_misc")
+        .in("game_id", multiCopyGameIds)
+        .order("copy_number");
+      if (error) throw error;
+      return data as GameCopyForPrint[];
+    },
+    enabled: multiCopyGameIds.length > 0,
   });
 
   const filteredGames = search.trim()
