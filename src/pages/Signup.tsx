@@ -63,24 +63,6 @@ export default function Signup() {
       return;
     }
     
-    // Validate username
-    if (username && (username.length < 3 || username.length > 30)) {
-      toast({
-        title: t('errors.invalidUsername'),
-        description: t('errors.invalidUsernameLength'),
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (username && !/^[a-zA-Z0-9_]+$/.test(username)) {
-      toast({
-        title: t('errors.invalidUsername'),
-        description: t('errors.invalidUsernameChars'),
-        variant: "destructive",
-      });
-      return;
-    }
     
     setIsLoading(true);
     
