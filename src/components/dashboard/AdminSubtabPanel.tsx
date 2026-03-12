@@ -56,7 +56,7 @@ const ReviewModeration = lazy(() =>
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Users, Database, Settings, MessageSquare,
-  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail, Accessibility, Star,
+  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail, Accessibility, Star, ToggleRight,
 };
 
 const SUBTAB_CONTENT: Record<string, React.ReactNode> = {};
