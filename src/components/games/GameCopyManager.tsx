@@ -301,6 +301,18 @@ export function GameCopyManager({ gameId, gameTitle, gameSlug, copiesOwned, canM
           }}
         />
       )}
+
+      {/* QR Code dialog for individual copy */}
+      {qrCopy && (
+        <CopyQRDialog
+          open={!!qrCopy}
+          onOpenChange={(v) => { if (!v) setQrCopy(null); }}
+          copy={qrCopy}
+          gameTitle={gameTitle}
+          gameSlug={gameSlug}
+          librarySlug={librarySlug}
+        />
+      )}
     </div>
   );
 }
