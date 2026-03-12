@@ -44,7 +44,7 @@ const Cookies = lazy(lazyRetry(() => import("./pages/Cookies")));
 // Platform pages (multi-tenant)
 const Platform = lazy(lazyRetry(() => import("./pages/Platform")));
 const Features = lazy(lazyRetry(() => import("./pages/Features")));
-const Press = lazy(lazyRetry(() => import("./pages/Press")));
+
 const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
 const DashboardMockupsPage = lazy(() => import("./components/dashboard/DashboardMockups").then(m => ({ default: m.DashboardMockups })));
 const ConventionMockup = lazy(lazyRetry(() => import("./pages/ConventionMockup")));
