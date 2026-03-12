@@ -308,19 +308,9 @@ export default function Dashboard() {
             ]}
             iconColor="hsl(24, 90%, 55%)"
           />
-          <HubCard
-            to="/convention/f2eeb38a-82a9-4ad8-9d67-8100e79c4259"
-            icon={Calendar}
-            title={t('hub.conventionHub', { defaultValue: 'Convention Hub' })}
-            description="Live event operations & game lending"
-            bullets={[
-              "Staff lending desk & checkout",
-              "Attendee game concierge",
-              "Real-time analytics",
-            ]}
-            iconColor="hsl(150, 70%, 45%)"
-            badges={[{ label: "Live", variant: "default" }]}
-          />
+          {isClubOwner && (
+            <ConventionHubCard user={user} />
+          )}
         </div>
       </main>
 
