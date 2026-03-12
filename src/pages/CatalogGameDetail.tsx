@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart } from "lucide-react";
+import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart, Play } from "lucide-react";
 import { getComplexity } from "@/lib/complexity";
 import { DescriptionContent } from "@/components/games/DescriptionContent";
 import { Layout } from "@/components/layout/Layout";
