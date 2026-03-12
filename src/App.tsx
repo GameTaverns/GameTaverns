@@ -311,6 +311,7 @@ function PlatformRoutes() {
       <Route path="/dashboard/settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
       <Route path="/dashboard/mockups" element={<Suspense fallback={<PageLoader />}><DashboardMockupsPage /></Suspense>} />
       <Route path="/convention-mockup" element={<Suspense fallback={<PageLoader />}><ConventionMockup /></Suspense>} />
+      <Route path="/convention" element={<Suspense fallback={<PageLoader />}><ConventionIndex /></Suspense>} />
       <Route path="/convention/:eventId" element={<Suspense fallback={<PageLoader />}><ConventionHub /></Suspense>} />
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/create-library" element={<CreateLibrary />} />
