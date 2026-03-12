@@ -270,6 +270,10 @@ export default function CatalogPrint() {
                 <QrCode className="h-4 w-4" />
                 {t('catalogPrint.fullCatalog')}
               </TabsTrigger>
+              <TabsTrigger value="copies" className="gap-2" disabled={allCopies.length === 0}>
+                <Package className="h-4 w-4" />
+                Per-Copy QR ({allCopies.length})
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="library">
