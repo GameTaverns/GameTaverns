@@ -83,6 +83,10 @@ export function SocialTab({ currentUserId }: { currentUserId: string | undefined
         <TabsContent value="discover">
           <SocialDiscovery />
         </TabsContent>
+
+        <TabsContent value="compare">
+          <CompareSelector />
+        </TabsContent>
       </Tabs>
     </div>
   );
