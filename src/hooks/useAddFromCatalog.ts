@@ -7,21 +7,23 @@ export function useAddFromCatalog() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ catalogId, libraryId, ownershipStatus }: { catalogId: string; libraryId?: string; ownershipStatus?: "owned" | "previously_owned" | "played_only" }) => {
+    mutationFn: async ({ catalogId, libraryId, ownershipStatus, silent }: { catalogId: string; libraryId?: string; ownershipStatus?: "owned" | "previously_owned" | "played_only"; silent?: boolean }) => {
       const { data, error } = await supabase.functions.invoke("add-from-catalog", {
         body: { catalog_id: catalogId, library_id: libraryId, ownership_status: ownershipStatus },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      return data as { success: boolean; action: string; game: { id: string; title: string }; message: string };
+      return { ...(data as { success: boolean; action: string; game: { id: string; title: string }; message: string }), silent };
     },
     onSuccess: (data) => {
-      toast({
-        title: data.action === "already_exists" ? "Already in Library" : "Game Added!",
-        description: data.message,
-        variant: data.action === "already_exists" ? "default" : undefined,
-      });
+      if (!data.silent) {
+        toast({
+          title: data.action === "already_exists" ? "Already in Library" : "Game Added!",
+          description: data.message,
+          variant: data.action === "already_exists" ? "default" : undefined,
+        });
+      }
       if (data.action === "added") {
         queryClient.invalidateQueries({ queryKey: ["games"] });
         queryClient.invalidateQueries({ queryKey: ["library-games"] });
