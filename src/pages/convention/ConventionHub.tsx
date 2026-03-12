@@ -186,6 +186,7 @@ export default function ConventionHub() {
               reservations={reservations}
               libraryGames={libraryGames}
               conventionSettings={conventionSettings}
+              onSwitchTab={setActiveTab}
             />
           </TabsContent>
           <TabsContent value="lending">
