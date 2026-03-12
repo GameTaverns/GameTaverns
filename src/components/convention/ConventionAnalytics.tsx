@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Users, BookOpen, CalendarClock, Trophy, TrendingUp, Star,
-  BarChart3, Sparkles, Eye,
+  BarChart3, Sparkles, Eye, Package,
 } from "lucide-react";
 
 function StatCard({ icon: Icon, label, value, trend, color }: {
