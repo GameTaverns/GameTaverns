@@ -28,6 +28,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
 import { GuidedTour } from "@/components/dashboard/GuidedTour";
+import { ConventionHubCard } from "@/components/dashboard/ConventionHubCard";
 import { Footer } from "@/components/layout/Footer";
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
