@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Gamepad2, BookOpen, Sparkles, Users, Mail, Settings, Newspaper,
   Plus, Search, ArrowRight, Library, Globe,
-  Calendar, User, HelpCircle, Dice5, ClipboardList, ChevronDown,
+  Calendar, User, HelpCircle, Dice5, ClipboardList, ChevronDown, Shuffle,
 } from "lucide-react";
 import { TenantLink } from "@/components/TenantLink";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
