@@ -392,32 +392,6 @@ const Login = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-username" className="text-foreground/80 font-accent">
-                    {t('login.username')} <span className="text-muted-foreground text-xs">{t('login.usernameOptional')}</span>
-                  </Label>
-                  <Input
-                    id="signup-username"
-                    value={signupUsername}
-                    onChange={(e) => setSignupUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
-                    placeholder={t('login.usernamePlaceholder')}
-                    maxLength={30}
-                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">{t('login.usernameHint')}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-displayname" className="text-foreground/80 font-accent">
-                    {t('login.displayName')} <span className="text-muted-foreground text-xs">{t('login.displayNameOptional')}</span>
-                  </Label>
-                  <Input
-                    id="signup-displayname"
-                    value={signupDisplayName}
-                    onChange={(e) => setSignupDisplayName(e.target.value)}
-                    placeholder={t('login.displayNamePlaceholder')}
-                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="signup-email" className="text-foreground/80 font-accent">{t('login.email')}</Label>
                   <Input
                     id="signup-email"
