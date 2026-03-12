@@ -29,6 +29,8 @@ import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
 import { GuidedTour } from "@/components/dashboard/GuidedTour";
 import { Footer } from "@/components/layout/Footer";
+import { RandomGamePicker } from "@/components/games/RandomGamePicker";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 
 function HubCard({ to, icon: Icon, title, description, bullets, iconColor, badges }: {
