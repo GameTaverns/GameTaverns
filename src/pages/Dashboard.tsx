@@ -31,7 +31,7 @@ import { GuidedTour } from "@/components/dashboard/GuidedTour";
 import { Footer } from "@/components/layout/Footer";
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
+import tavernBg from "@/assets/tavern-bg.jpg";
 
 function HubCard({ to, icon: Icon, title, description, bullets, iconColor, badges }: {
   to: string; icon: any; title: string; description: string; bullets: string[];
