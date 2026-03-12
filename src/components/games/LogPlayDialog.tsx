@@ -43,6 +43,8 @@ interface LogPlayDialogProps {
   gameId: string;
   gameTitle: string;
   children: React.ReactNode;
+  defaultOpen?: boolean;
+  onClose?: () => void;
 }
 
 interface LogPlayDraft {
@@ -79,11 +81,11 @@ function clearPersistedValue(key: string) {
   }
 }
 
-export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProps) {
+export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClose }: LogPlayDialogProps) {
   const openKey = useMemo(() => `log_play_dialog_open_${gameId}`, [gameId]);
   const draftKey = useMemo(() => `log_play_dialog_draft_${gameId}`, [gameId]);
 
-  const [open, setOpenRaw] = useState(() => readPersistedValue(openKey) === "true");
+  const [open, setOpenRaw] = useState(() => defaultOpen || readPersistedValue(openKey) === "true");
   const hydratedOnOpenRef = useRef(false);
   const { createSession } = useGameSessions(gameId);
 
@@ -91,9 +93,12 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
     (nextOpen: boolean) => {
       setOpenRaw(nextOpen);
       persistValue(openKey, String(nextOpen));
-      if (!nextOpen) hydratedOnOpenRef.current = false;
+      if (!nextOpen) {
+        hydratedOnOpenRef.current = false;
+        onClose?.();
+      }
     },
-    [openKey],
+    [openKey, onClose],
   );
 
   const [playedAt, setPlayedAt] = useState(() => toDateTimeLocalValue(new Date()));

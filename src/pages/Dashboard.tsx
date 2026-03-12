@@ -10,6 +10,7 @@ import { TenantLink } from "@/components/TenantLink";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
+import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -191,11 +192,11 @@ export default function Dashboard() {
               <Newspaper className="h-3.5 w-3.5" /> News
             </Button>
           </Link>
-          <Link to="/dashboard/insights" className="contents">
+          <StandaloneLogPlayDialog>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <ClipboardList className="h-3.5 w-3.5" /> {t('hub.logPlay')}
             </Button>
-          </Link>
+          </StandaloneLogPlayDialog>
           <Link to="/dashboard/collection" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <Dice5 className="h-3.5 w-3.5" /> {t('hub.random')}
