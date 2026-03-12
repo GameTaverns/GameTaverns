@@ -276,7 +276,7 @@ export default function Signup() {
       {/* Bottom decorative ornament */}
       <div className="relative z-10 mt-6 flex items-center gap-3 text-muted-foreground/40">
         <div className="h-px w-8 bg-gradient-to-r from-transparent to-gold/30" />
-        <span className="text-xs font-accent italic">Est. 2025</span>
+        <span className="text-xs font-accent italic">Est. 2026</span>
         <div className="h-px w-8 bg-gradient-to-l from-transparent to-gold/30" />
       </div>
     </div>
