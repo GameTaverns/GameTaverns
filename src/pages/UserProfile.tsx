@@ -35,6 +35,7 @@ import { UserStatsPanel } from "@/components/analytics/UserStatsPanel";
 import { useUserPhotos } from "@/hooks/usePhotoGallery";
 import { PhotoGalleryGrid } from "@/components/photos/PhotoGalleryGrid";
 import { PhotoUploadButton } from "@/components/photos/PhotoUploadButton";
+import { LibraryComparison } from "@/components/social/LibraryComparison";
 
 import { format, formatDistanceToNow } from "date-fns";
 
