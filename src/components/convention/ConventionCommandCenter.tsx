@@ -216,17 +216,17 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
               <CardTitle className="text-sm">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2">
-              <Button variant="outline" className="h-16 flex-col gap-1 text-xs">
+              <Button variant="outline" className="h-16 flex-col gap-1 text-xs" onClick={() => onSwitchTab?.("lending")}>
                 <ScanLine className="h-5 w-5" /> Scan Badge
               </Button>
-              <Button variant="outline" className="h-16 flex-col gap-1 text-xs">
+              <Button variant="outline" className="h-16 flex-col gap-1 text-xs" onClick={() => onSwitchTab?.("lending")}>
                 <Search className="h-5 w-5" /> Find Game
               </Button>
               <Button variant="outline" className="h-16 flex-col gap-1 text-xs">
                 <AlertTriangle className="h-5 w-5" /> Flag Issue
               </Button>
-              <Button variant="outline" className="h-16 flex-col gap-1 text-xs">
-                <Package className="h-5 w-5" /> Inventory
+              <Button variant="outline" className="h-16 flex-col gap-1 text-xs" onClick={() => onSwitchTab?.("concierge")}>
+                <Package className="h-5 w-5" /> Browse Games
               </Button>
             </CardContent>
           </Card>
