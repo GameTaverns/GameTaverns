@@ -46,6 +46,7 @@ const getDefaultFlags = (): FeatureFlags => {
     events: true,
     achievements: true,
     lending: true,
+    forums: false,
   };
 };
 
