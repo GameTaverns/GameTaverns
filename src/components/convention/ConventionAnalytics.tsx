@@ -146,5 +146,5 @@ export function ConventionAnalytics({ event, activeLoans, libraryGames }: Props)
   );
 }
 
-// Need this import for the StatCard
-import { Package } from "lucide-react";
+  );
+}
