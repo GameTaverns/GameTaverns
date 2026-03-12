@@ -28,6 +28,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
 import { GuidedTour } from "@/components/dashboard/GuidedTour";
+import { ConventionHubCard } from "@/components/dashboard/ConventionHubCard";
 import { Footer } from "@/components/layout/Footer";
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -73,6 +74,7 @@ export default function Dashboard() {
   const { myLentLoans, myBorrowedLoans } = useLending();
   const { data: myClubs = [] } = useMyClubs();
   const navigate = useNavigate();
+  const isClubOwner = myClubs.some((c: any) => c.owner_id === user?.id);
 
   const pendingLoanRequests = myLentLoans.filter(l => l.status === "requested").length;
   const activeBorrowedLoans = myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status));
@@ -308,19 +310,9 @@ export default function Dashboard() {
             ]}
             iconColor="hsl(24, 90%, 55%)"
           />
-          <HubCard
-            to="/convention/f2eeb38a-82a9-4ad8-9d67-8100e79c4259"
-            icon={Calendar}
-            title={t('hub.conventionHub', { defaultValue: 'Convention Hub' })}
-            description="Live event operations & game lending"
-            bullets={[
-              "Staff lending desk & checkout",
-              "Attendee game concierge",
-              "Real-time analytics",
-            ]}
-            iconColor="hsl(150, 70%, 45%)"
-            badges={[{ label: "Live", variant: "default" }]}
-          />
+          {isClubOwner && (
+            <ConventionHubCard user={user} />
+          )}
         </div>
       </main>
 
