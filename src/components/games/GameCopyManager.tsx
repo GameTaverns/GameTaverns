@@ -242,25 +242,34 @@ export function GameCopyManager({ gameId, gameTitle, gameSlug, copiesOwned, canM
                     )}
 
                     {/* Actions */}
-                    {canManage && (
-                      <div className="flex gap-2 pt-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => { e.stopPropagation(); setEditCopy(copy); }}
-                        >
-                          <Edit2 className="h-3 w-3 mr-1" /> Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={(e) => { e.stopPropagation(); deleteCopy.mutate(copy.id); }}
-                        >
-                          <Trash2 className="h-3 w-3 mr-1" /> Delete
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); setQrCopy(copy); }}
+                      >
+                        <QrCode className="h-3 w-3 mr-1" /> QR Code
+                      </Button>
+                      {canManage && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); setEditCopy(copy); }}
+                          >
+                            <Edit2 className="h-3 w-3 mr-1" /> Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={(e) => { e.stopPropagation(); deleteCopy.mutate(copy.id); }}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" /> Delete
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </CollapsibleContent>
               </CardContent>
