@@ -2771,6 +2771,7 @@ export type Database = {
           duration_minutes: number | null
           game_id: string
           id: string
+          import_source: string | null
           notes: string | null
           played_at: string
           updated_at: string
@@ -2780,6 +2781,7 @@ export type Database = {
           duration_minutes?: number | null
           game_id: string
           id?: string
+          import_source?: string | null
           notes?: string | null
           played_at?: string
           updated_at?: string
@@ -2789,6 +2791,7 @@ export type Database = {
           duration_minutes?: number | null
           game_id?: string
           id?: string
+          import_source?: string | null
           notes?: string | null
           played_at?: string
           updated_at?: string
