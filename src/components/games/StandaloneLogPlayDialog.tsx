@@ -105,6 +105,7 @@ export function StandaloneLogPlayDialog({ children }: StandaloneLogPlayDialogPro
             catalogId: game.catalog_id,
             libraryId: libraries?.[0]?.id,
             ownershipStatus: "played_only",
+            silent: true,
           });
           setSelectedGame({ id: result.game.id, title: result.game.title });
         } catch (err: any) {
