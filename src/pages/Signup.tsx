@@ -96,7 +96,6 @@ export default function Signup() {
         } else {
           toast({
             title: t('signup.accountCreated'),
-            description: t('signup.youCanSignIn'),
           });
           navigate("/login");
         }
