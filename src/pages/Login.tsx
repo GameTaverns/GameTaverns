@@ -26,8 +26,6 @@ const Login = () => {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
-  const [signupUsername, setSignupUsername] = useState("");
-  const [signupDisplayName, setSignupDisplayName] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
