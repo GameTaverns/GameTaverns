@@ -77,7 +77,7 @@ export default function Signup() {
         }>("/auth/register", {
           email,
           password,
-          displayName: displayName || email.split("@")[0],
+          displayName: email.split("@")[0],
         });
 
         if (response.requiresVerification) {
