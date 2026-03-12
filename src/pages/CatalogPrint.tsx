@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Printer, Search, QrCode, Loader2, Library, Download } from "lucide-react";
+import { Printer, Search, QrCode, Loader2, Library, Download, Package } from "lucide-react";
 import QRCodeLib from "qrcode";
 
 interface GameForPrint {
