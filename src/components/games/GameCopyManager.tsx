@@ -39,6 +39,9 @@ import {
   BookOpen,
   DollarSign,
   Tag,
+  QrCode,
+  Download,
+  Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
