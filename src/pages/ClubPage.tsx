@@ -14,6 +14,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { ClubForumCard } from "@/components/community/ClubForumCard";
 import { BackLink } from "@/components/navigation/BackLink";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
@@ -28,6 +29,7 @@ export default function ClubPage() {
   const { t } = useTranslation();
   const { slug, categorySlug } = useParams<{ slug: string; categorySlug?: string }>();
   const { user } = useAuth();
+  const { forums: forumsEnabled } = useFeatureFlags();
   const { data: club, isLoading } = useClub(slug || null);
   const { data: clubLibraries = [] } = useClubLibraries(club?.id || null);
   const visibleLibraries = clubLibraries;
@@ -37,12 +39,12 @@ export default function ClubPage() {
 
   const [activeTab, setActiveTab] = usePersistedTab(
     `club-tab-${slug}`,
-    categorySlug ? "forums" : "catalog"
+    (categorySlug && forumsEnabled) ? "forums" : "catalog"
   );
 
   useEffect(() => {
-    if (categorySlug) setActiveTab("forums");
-  }, [categorySlug, setActiveTab]);
+    if (categorySlug && forumsEnabled) setActiveTab("forums");
+  }, [categorySlug, forumsEnabled, setActiveTab]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [switchingLibraryId, setSwitchingLibraryId] = useState<string | null>(null);
@@ -144,10 +146,12 @@ export default function ClubPage() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="forums" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-              <MessageSquare className="h-4 w-4" />
-              {t('clubPage.forums')}
-            </TabsTrigger>
+            {forumsEnabled && (
+              <TabsTrigger value="forums" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                <MessageSquare className="h-4 w-4" />
+                {t('clubPage.forums')}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="analytics" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <BarChart3 className="h-4 w-4" />
               {t('clubPage.analytics')}
@@ -365,9 +369,11 @@ export default function ClubPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="forums">
-            <ClubForumCard clubId={club.id} clubSlug={club.slug} isOwner={isOwner} activeCategorySlug={categorySlug} />
-          </TabsContent>
+          {forumsEnabled && (
+            <TabsContent value="forums">
+              <ClubForumCard clubId={club.id} clubSlug={club.slug} isOwner={isOwner} activeCategorySlug={categorySlug} />
+            </TabsContent>
+          )}
           {showLendingDesk && user && (
             <TabsContent value="lending">
               <ClubLendingDesk clubId={club.id} staffUserId={user.id} />

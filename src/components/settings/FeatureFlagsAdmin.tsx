@@ -39,6 +39,7 @@ const FEATURE_FLAG_ICONS: Record<keyof FeatureFlags, React.ComponentType<{ class
   events: Calendar,
   achievements: Trophy,
   lending: BookOpen,
+  forums: MessageSquare,
 };
 
 const FEATURE_FLAG_DB_KEYS: Record<keyof FeatureFlags, string> = {
@@ -52,6 +53,7 @@ const FEATURE_FLAG_DB_KEYS: Record<keyof FeatureFlags, string> = {
   events: "feature_events",
   achievements: "feature_achievements",
   lending: "feature_lending",
+  forums: "feature_forums",
 };
 
 // Check if env var is explicitly set
@@ -67,6 +69,7 @@ function isEnvLocked(flagKey: keyof FeatureFlags): boolean {
     events: "VITE_FEATURE_EVENTS",
     achievements: "VITE_FEATURE_ACHIEVEMENTS",
     lending: "VITE_FEATURE_LENDING",
+    forums: "VITE_FEATURE_FORUMS",
   };
   
   const value = import.meta.env[envKeys[flagKey]];

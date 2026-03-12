@@ -25,6 +25,7 @@ export interface FeatureFlags {
   events: boolean;
   achievements: boolean;
   lending: boolean;
+  forums: boolean;
 }
 
 // Default values when nothing is configured
@@ -45,13 +46,14 @@ const getDefaultFlags = (): FeatureFlags => {
     events: true,
     achievements: true,
     lending: true,
+    forums: false,
   };
 };
 
 // Get flag from runtime config (Cloudron) or env var (Vite)
-function getConfigFlag(runtimeKey: 'PLAY_LOGS' | 'WISHLIST' | 'FOR_SALE' | 'MESSAGING' | 'COMING_SOON' | 'DEMO_MODE' | 'RATINGS' | 'EVENTS' | 'ACHIEVEMENTS' | 'LENDING', envKey: string): boolean | undefined {
+function getConfigFlag(runtimeKey: string, envKey: string): boolean | undefined {
   // Check runtime config first (Cloudron)
-  const runtimeValue = getRuntimeFeatureFlag(runtimeKey);
+  const runtimeValue = getRuntimeFeatureFlag(runtimeKey as any);
   if (runtimeValue !== undefined) return runtimeValue;
   
   // Fall back to Vite env
@@ -93,6 +95,9 @@ function getConfigFlags(): Partial<FeatureFlags> {
   
   const lending = getConfigFlag("LENDING", "VITE_FEATURE_LENDING");
   if (lending !== undefined) flags.lending = lending;
+  
+  const forums = getConfigFlag("FORUMS", "VITE_FEATURE_FORUMS");
+  if (forums !== undefined) flags.forums = forums;
   
   return flags;
 }
@@ -200,6 +205,7 @@ export const FEATURE_FLAG_LABELS: Record<keyof FeatureFlags, string> = {
   events: "Events Calendar",
   achievements: "Achievements",
   lending: "Game Lending",
+  forums: "Community Forums",
 };
 
 export const FEATURE_FLAG_DESCRIPTIONS: Record<keyof FeatureFlags, string> = {
@@ -213,4 +219,5 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<keyof FeatureFlags, string> = {
   events: "Show upcoming events and calendar to visitors",
   achievements: "Show achievements and badges for library engagement",
   lending: "Allow registered users to request game loans",
+  forums: "Enable discussion forums for libraries and clubs",
 };
