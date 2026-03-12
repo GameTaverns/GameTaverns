@@ -51,7 +51,7 @@ const getDefaultFlags = (): FeatureFlags => {
 };
 
 // Get flag from runtime config (Cloudron) or env var (Vite)
-function getConfigFlag(runtimeKey: 'PLAY_LOGS' | 'WISHLIST' | 'FOR_SALE' | 'MESSAGING' | 'COMING_SOON' | 'DEMO_MODE' | 'RATINGS' | 'EVENTS' | 'ACHIEVEMENTS' | 'LENDING' | 'FORUMS', envKey: string): boolean | undefined {
+function getConfigFlag(runtimeKey: string, envKey: string): boolean | undefined {
   // Check runtime config first (Cloudron)
   const runtimeValue = getRuntimeFeatureFlag(runtimeKey);
   if (runtimeValue !== undefined) return runtimeValue;
