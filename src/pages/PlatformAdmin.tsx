@@ -47,6 +47,9 @@ const AccountLockoutManager = lazy(() =>
 const AccessibilityAudit = lazy(() =>
   import("@/components/admin/AccessibilityAudit").then(m => ({ default: m.AccessibilityAudit }))
 );
+const AdminFeatureFlags = lazy(() =>
+  import("@/components/settings/FeatureFlagsAdmin").then(m => ({ default: m.FeatureFlagsAdmin }))
+);
 const PositioningStrategy = lazy(() =>
   import("@/components/admin/PositioningStrategy").then(m => ({ default: m.PositioningStrategy }))
 );
