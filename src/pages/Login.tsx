@@ -313,10 +313,6 @@ const Login = () => {
             </span>
           </Link>
           <div className="section-divider mb-4" />
-          <CardTitle className="font-display text-2xl text-foreground">{t('login.welcomeBack')}</CardTitle>
-          <CardDescription className="text-muted-foreground font-accent italic">
-            {t('login.subtitle')}
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">

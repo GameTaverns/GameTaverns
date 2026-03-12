@@ -312,7 +312,8 @@
     "alreadyHaveAccount": "Already have an account?",
     "signIn": "Sign in",
     "accountCreated": "Account created!",
-    "youCanSignIn": "You can now sign in with your credentials.",
+    "youCanSignIn": "Check your email to confirm your account.",
+    "checkEmailToConfirm": "Check your email to confirm your account.",
     "signupFailed": "Signup failed",
     "pleaseCompleteVerification": "Please complete verification",
     "welcomeToGameTaverns": "Welcome to GameTaverns!"
