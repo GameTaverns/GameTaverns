@@ -89,6 +89,31 @@ export default function CatalogGameDetail() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [playedOnlyGameId, setPlayedOnlyGameId] = useState<string | null>(null);
   const [creatingPlayedOnly, setCreatingPlayedOnly] = useState(false);
+
+  // Check if user already has this game in any library (for direct play logging)
+  const { data: existingGameEntry } = useQuery({
+    queryKey: ["catalog-existing-game", slug, myLibrary?.id],
+    enabled: !!slug && isAuthenticated && !!(myLibrary?.id || myLibraries.length > 0),
+    queryFn: async () => {
+      const libIds = myLibraries.length > 0 ? myLibraries.map((l: any) => l.id) : myLibrary ? [myLibrary.id] : [];
+      if (libIds.length === 0) return null;
+      // Find game by catalog slug match
+      const { data: catalogEntry } = await supabase
+        .from("game_catalog")
+        .select("id")
+        .eq("slug", slug!)
+        .maybeSingle();
+      if (!catalogEntry) return null;
+      const { data } = await supabase
+        .from("games")
+        .select("id")
+        .eq("catalog_id", catalogEntry.id)
+        .in("library_id", libIds)
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+  });
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
   const [catalogTab, setCatalogTab] = usePersistedTab("catalog-detail-tab", "description");
