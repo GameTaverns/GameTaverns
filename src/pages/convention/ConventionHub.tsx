@@ -14,6 +14,7 @@ import { ConventionCommandCenter } from "@/components/convention/ConventionComma
 import { ConventionLendingDesk } from "@/components/convention/ConventionLendingDesk";
 import { ConventionConcierge } from "@/components/convention/ConventionConcierge";
 import { ConventionAnalytics } from "@/components/convention/ConventionAnalytics";
+import { ConventionSettings } from "@/components/convention/ConventionSettings";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function ConventionHub() {
