@@ -152,7 +152,7 @@ export default function ConventionHub() {
               <Wifi className="h-3 w-3 mr-1" /> Live
             </Badge>
             {isOwner && (
-              <Button variant="outline" size="sm" className="h-8 gap-1.5">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setSettingsOpen(true)}>
                 <Settings className="h-3.5 w-3.5" /> Settings
               </Button>
             )}
