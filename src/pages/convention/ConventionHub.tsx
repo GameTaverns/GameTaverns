@@ -14,6 +14,7 @@ import { ConventionCommandCenter } from "@/components/convention/ConventionComma
 import { ConventionLendingDesk } from "@/components/convention/ConventionLendingDesk";
 import { ConventionConcierge } from "@/components/convention/ConventionConcierge";
 import { ConventionAnalytics } from "@/components/convention/ConventionAnalytics";
+import { ConventionSettings } from "@/components/convention/ConventionSettings";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function ConventionHub() {
@@ -21,7 +22,7 @@ export default function ConventionHub() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("command");
-
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // Fetch the library event
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ["convention-event", eventId],
@@ -144,6 +145,7 @@ export default function ConventionHub() {
             <p className="text-sm text-muted-foreground ml-9">
               {event.title} — {(event as any).library?.name}
               {event.venue_name && ` · ${event.venue_name}`}
+              {libraryGames.length > 0 && ` · ${libraryGames.length} games`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -151,7 +153,7 @@ export default function ConventionHub() {
               <Wifi className="h-3 w-3 mr-1" /> Live
             </Badge>
             {isOwner && (
-              <Button variant="outline" size="sm" className="h-8 gap-1.5">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setSettingsOpen(true)}>
                 <Settings className="h-3.5 w-3.5" /> Settings
               </Button>
             )}
@@ -185,6 +187,7 @@ export default function ConventionHub() {
               reservations={reservations}
               libraryGames={libraryGames}
               conventionSettings={conventionSettings}
+              onSwitchTab={setActiveTab}
             />
           </TabsContent>
           <TabsContent value="lending">
@@ -213,6 +216,14 @@ export default function ConventionHub() {
         </Tabs>
       </div>
       <Footer />
+      {isOwner && (
+        <ConventionSettings
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          conventionSettings={conventionSettings}
+          event={event}
+        />
+      )}
     </div>
   );
 }
