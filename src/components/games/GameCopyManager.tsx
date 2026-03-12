@@ -73,6 +73,7 @@ interface GameCopyRow {
 interface Props {
   gameId: string;
   gameTitle: string;
+  gameSlug?: string | null;
   copiesOwned: number;
   canManage: boolean;
 }
