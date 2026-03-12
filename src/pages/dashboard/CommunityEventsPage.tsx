@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useActiveLibrary } from "@/hooks/useActiveLibrary";
 import { useMyClubs } from "@/hooks/useClubs";
 import { useMyMemberships } from "@/hooks/useLibraryMembership";
