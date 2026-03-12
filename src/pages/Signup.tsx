@@ -82,10 +82,8 @@ export default function Signup() {
         });
 
         if (response.requiresVerification) {
-          // Self-hosted: email confirmation is disabled, just redirect to login
           toast({
             title: t('signup.accountCreated'),
-            description: t('signup.youCanSignIn'),
           });
           navigate("/login");
         } else if (response.token) {
