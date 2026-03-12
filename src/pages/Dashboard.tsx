@@ -77,8 +77,8 @@ export default function Dashboard() {
   const pendingLoanRequests = myLentLoans.filter(l => l.status === "requested").length;
   const activeBorrowedLoans = myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status));
   const library = defaultLibrary;
+  const [randomPickerOpen, setRandomPickerOpen] = useState(false);
 
-  // Game count
   const { data: gameCount } = useQuery({
     queryKey: ["hub-game-count", library?.id],
     queryFn: async () => {
