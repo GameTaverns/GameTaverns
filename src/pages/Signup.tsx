@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoImage from "@/assets/logo.png";
-import tavernBg from "@/assets/tavern-bg.jpg";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,8 +27,6 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
   const [honeypot, setHoneypot] = useState("");
@@ -65,24 +63,6 @@ export default function Signup() {
       return;
     }
     
-    // Validate username
-    if (username && (username.length < 3 || username.length > 30)) {
-      toast({
-        title: t('errors.invalidUsername'),
-        description: t('errors.invalidUsernameLength'),
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (username && !/^[a-zA-Z0-9_]+$/.test(username)) {
-      toast({
-        title: t('errors.invalidUsername'),
-        description: t('errors.invalidUsernameChars'),
-        variant: "destructive",
-      });
-      return;
-    }
     
     setIsLoading(true);
     
@@ -97,7 +77,7 @@ export default function Signup() {
         }>("/auth/register", {
           email,
           password,
-          displayName: displayName || email.split("@")[0],
+          displayName: email.split("@")[0],
         });
 
         if (response.requiresVerification) {
@@ -139,8 +119,7 @@ export default function Signup() {
           body: JSON.stringify({
             email,
             password,
-            username: username || undefined,
-            displayName: displayName || email.split("@")[0],
+            displayName: email.split("@")[0],
             redirectUrl: window.location.origin,
             recaptcha_token: turnstileToken,
           }),
@@ -172,11 +151,11 @@ export default function Signup() {
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
       {/* Tavern background with overlay */}
-      <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" aria-hidden="true" />
-      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/60 to-background/40 dark:from-wood-dark/95 dark:via-wood-dark/70 dark:to-wood-dark/50" />
+      {/* CSS-only atmospheric background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
       <div 
         className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at 50% 40%, transparent 30%, hsl(25 30% 8% / 0.4) 100%)' }}
+        style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(28 40% 20% / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, hsl(28 50% 15% / 0.2) 0%, transparent 50%)' }}
       />
 
       <div className="absolute top-4 right-4 z-20">
@@ -194,9 +173,9 @@ export default function Signup() {
 
       <Card className="w-full max-w-md relative z-10 card-handcrafted bg-card/95 dark:bg-sidebar/95 border-gold/20 backdrop-blur-md shadow-[0_8px_32px_-8px_hsl(25_30%_8%/0.5)]">
         <CardHeader className="text-center pb-4">
-          <Link to="/" className="flex items-center justify-center gap-3 mb-3 group">
-            <img src={logoImage} alt="GameTaverns" className="h-18 w-auto drop-shadow-[0_2px_8px_hsl(28_50%_48%/0.3)] transition-transform group-hover:scale-105" />
-            <span className="font-display text-3xl font-bold text-foreground drop-shadow-[0_1px_2px_hsl(0_0%_0%/0.1)]">GameTaverns</span>
+          <Link to="/" className="flex flex-col items-center justify-center mb-3 group">
+            <img src={logoImage} alt="GameTaverns" className="h-16 w-auto drop-shadow-[0_2px_8px_hsl(28_50%_48%/0.3)] transition-transform group-hover:scale-105 mx-auto" />
+            <span className="font-display text-2xl font-bold text-foreground drop-shadow-[0_1px_2px_hsl(0_0%_0%/0.1)] mt-2">GameTaverns</span>
           </Link>
           <div className="section-divider mb-4" />
           <CardTitle className="font-display text-2xl text-foreground">{t('signup.createAccount')}</CardTitle>
@@ -206,33 +185,6 @@ export default function Signup() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-foreground/80 font-accent">
-                {t('signup.usernameLabel')} <span className="text-muted-foreground">{t('signup.usernameOptional')}</span>
-              </Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
-                placeholder={t('signup.usernamePlaceholder')}
-                maxLength={30}
-                className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
-              />
-              <p className="text-xs text-muted-foreground">{t('signup.usernameHint')}</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="displayName" className="text-foreground/80 font-accent">
-                {t('signup.displayNameLabel')} <span className="text-muted-foreground">{t('signup.displayNameOptional')}</span>
-              </Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder={t('signup.displayNamePlaceholder')}
-                className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
-              />
-            </div>
             
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground/80 font-accent">{t('signup.emailLabel')}</Label>

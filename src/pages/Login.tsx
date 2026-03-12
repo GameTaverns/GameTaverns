@@ -5,7 +5,7 @@ import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logoImage from "@/assets/logo.png";
-import tavernBg from "@/assets/tavern-bg.jpg";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -26,8 +26,6 @@ const Login = () => {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
-  const [signupUsername, setSignupUsername] = useState("");
-  const [signupDisplayName, setSignupDisplayName] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -212,30 +210,12 @@ const Login = () => {
       return;
     }
 
-    if (signupUsername && (signupUsername.length < 3 || signupUsername.length > 30)) {
-      toast({
-        title: t('errors.invalidUsername'),
-        description: t('errors.invalidUsernameLength'),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (signupUsername && !/^[a-zA-Z0-9_]+$/.test(signupUsername)) {
-      toast({
-        title: t('errors.invalidUsername'),
-        description: t('errors.invalidUsernameChars'),
-        variant: "destructive",
-      });
-      return;
-    }
     
     setIsLoading(true);
 
     try {
       const { error } = await signUp(signupEmail, password, {
-        username: signupUsername || undefined,
-        displayName: signupDisplayName || signupEmail.split("@")[0],
+        displayName: signupEmail.split("@")[0],
         referralCode,
       });
 
@@ -264,8 +244,7 @@ const Login = () => {
   if (loading) {
     return (
       <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-        <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" aria-hidden="true" />
-        <div className="absolute inset-0 bg-background/70 dark:bg-wood-dark/80 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
         <div className="animate-pulse text-foreground relative z-10">{t('login.loading')}</div>
       </div>
     );
@@ -278,8 +257,7 @@ const Login = () => {
   if (requires2FA && pendingAccessToken) {
     return (
       <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-        <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" aria-hidden="true" />
-        <div className="absolute inset-0 bg-background/70 dark:bg-wood-dark/80 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
         <div className="relative z-10">
           <TotpVerify 
             accessToken={pendingAccessToken}
@@ -293,20 +271,12 @@ const Login = () => {
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
-      {/* Tavern background with overlay */}
-      <img 
-        src={tavernBg} 
-        alt="" 
-        className="absolute inset-0 w-full h-full object-cover" 
-        aria-hidden="true" 
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/60 to-background/40 dark:from-wood-dark/95 dark:via-wood-dark/70 dark:to-wood-dark/50" />
-      
-      {/* Warm candlelight vignette effect */}
+      {/* CSS-only atmospheric background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
       <div 
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse at 50% 40%, transparent 30%, hsl(25 30% 8% / 0.4) 100%)',
+          background: 'radial-gradient(ellipse at 50% 40%, hsl(28 40% 20% / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, hsl(28 50% 15% / 0.2) 0%, transparent 50%)',
         }}
       />
 
@@ -328,13 +298,13 @@ const Login = () => {
       {/* Main card */}
       <Card className="w-full max-w-md relative z-10 card-handcrafted bg-card/95 dark:bg-sidebar/95 border-gold/20 backdrop-blur-md shadow-[0_8px_32px_-8px_hsl(25_30%_8%/0.5)]">
         <CardHeader className="text-center pb-4">
-          <Link to="/" className="flex items-center justify-center gap-3 mb-3 group">
+          <Link to="/" className="flex flex-col items-center justify-center mb-3 group">
             <img 
               src={logoImage} 
               alt="GameTaverns" 
-              className="h-18 w-auto drop-shadow-[0_2px_8px_hsl(28_50%_48%/0.3)] transition-transform group-hover:scale-105" 
+              className="h-16 w-auto drop-shadow-[0_2px_8px_hsl(28_50%_48%/0.3)] transition-transform group-hover:scale-105 mx-auto" 
             />
-            <span className="font-display text-3xl font-bold text-foreground drop-shadow-[0_1px_2px_hsl(0_0%_0%/0.1)]">
+            <span className="font-display text-2xl font-bold text-foreground drop-shadow-[0_1px_2px_hsl(0_0%_0%/0.1)] mt-2">
               GameTaverns
             </span>
           </Link>
@@ -421,32 +391,6 @@ const Login = () => {
             </TabsContent>
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-username" className="text-foreground/80 font-accent">
-                    {t('login.username')} <span className="text-muted-foreground text-xs">{t('login.usernameOptional')}</span>
-                  </Label>
-                  <Input
-                    id="signup-username"
-                    value={signupUsername}
-                    onChange={(e) => setSignupUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
-                    placeholder={t('login.usernamePlaceholder')}
-                    maxLength={30}
-                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">{t('login.usernameHint')}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-displayname" className="text-foreground/80 font-accent">
-                    {t('login.displayName')} <span className="text-muted-foreground text-xs">{t('login.displayNameOptional')}</span>
-                  </Label>
-                  <Input
-                    id="signup-displayname"
-                    value={signupDisplayName}
-                    onChange={(e) => setSignupDisplayName(e.target.value)}
-                    placeholder={t('login.displayNamePlaceholder')}
-                    className="bg-input/80 border-border/50 text-foreground placeholder:text-muted-foreground backdrop-blur-sm"
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email" className="text-foreground/80 font-accent">{t('login.email')}</Label>
                   <Input
