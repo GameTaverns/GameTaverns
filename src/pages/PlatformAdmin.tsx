@@ -511,6 +511,14 @@ export default function PlatformAdmin() {
                   </Suspense>
                 </TabErrorBoundary>
               </TabsContent>
+
+              <TabsContent value="features" className="mt-6">
+                <TabErrorBoundary>
+                  <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading feature flags…</div>}>
+                    <AdminFeatureFlags currentFlags={featureFlags} />
+                  </Suspense>
+                </TabErrorBoundary>
+              </TabsContent>
             </>
           )}
         </Tabs>
