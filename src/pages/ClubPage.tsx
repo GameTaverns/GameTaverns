@@ -369,9 +369,11 @@ export default function ClubPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="forums">
-            <ClubForumCard clubId={club.id} clubSlug={club.slug} isOwner={isOwner} activeCategorySlug={categorySlug} />
-          </TabsContent>
+          {forumsEnabled && (
+            <TabsContent value="forums">
+              <ClubForumCard clubId={club.id} clubSlug={club.slug} isOwner={isOwner} activeCategorySlug={categorySlug} />
+            </TabsContent>
+          )}
           {showLendingDesk && user && (
             <TabsContent value="lending">
               <ClubLendingDesk clubId={club.id} staffUserId={user.id} />
