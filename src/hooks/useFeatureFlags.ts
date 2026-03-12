@@ -96,6 +96,9 @@ function getConfigFlags(): Partial<FeatureFlags> {
   const lending = getConfigFlag("LENDING", "VITE_FEATURE_LENDING");
   if (lending !== undefined) flags.lending = lending;
   
+  const forums = getConfigFlag("FORUMS", "VITE_FEATURE_FORUMS");
+  if (forums !== undefined) flags.forums = forums;
+  
   return flags;
 }
 
