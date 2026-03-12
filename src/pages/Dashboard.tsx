@@ -324,6 +324,19 @@ export default function Dashboard() {
       <Footer />
       <MobileBottomTabs />
       <GuidedTour librarySlug={library?.slug} />
+
+      {/* Random Picker Dialog */}
+      <Dialog open={randomPickerOpen} onOpenChange={setRandomPickerOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shuffle className="h-5 w-5 text-primary" />
+              {t('dashboard.randomPicker')}
+            </DialogTitle>
+          </DialogHeader>
+          {library && <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
