@@ -191,11 +191,11 @@ export default function Dashboard() {
               <Newspaper className="h-3.5 w-3.5" /> News
             </Button>
           </Link>
-          <Link to="/dashboard/insights" className="contents">
+          <StandaloneLogPlayDialog>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <ClipboardList className="h-3.5 w-3.5" /> {t('hub.logPlay')}
             </Button>
-          </Link>
+          </StandaloneLogPlayDialog>
           <Link to="/dashboard/collection" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <Dice5 className="h-3.5 w-3.5" /> {t('hub.random')}
