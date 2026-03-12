@@ -23,6 +23,19 @@ interface GameForPrint {
   max_players: number | null;
   play_time: string | null;
   library_id: string;
+  copies_owned: number | null;
+}
+
+interface GameCopyForPrint {
+  id: string;
+  game_id: string;
+  copy_number: number;
+  copy_label: string | null;
+  condition: string | null;
+  edition: string | null;
+  location_room: string | null;
+  location_shelf: string | null;
+  location_misc: string | null;
 }
 
 interface QRCardProps {
