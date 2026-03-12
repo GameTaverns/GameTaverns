@@ -97,12 +97,13 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
         <CardContent className="pt-6">
           <div className="flex gap-3">
             <div className="relative flex-1">
-              <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
-                placeholder="Search for a game to check out..."
+                placeholder="Type a game name or scan barcode..."
                 className="pl-10 h-12 text-lg"
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setSelectedGame(null); }}
+                autoFocus
               />
             </div>
           </div>
