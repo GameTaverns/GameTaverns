@@ -77,6 +77,38 @@ function QRCard({ game, showImage, showMeta, librarySlug }: QRCardProps) {
   );
 }
 
+interface CopyQRCardProps {
+  game: GameForPrint;
+  copy: GameCopyForPrint;
+  librarySlug: string;
+}
+
+function CopyQRCard({ game, copy, librarySlug }: CopyQRCardProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gameUrl = getLibraryUrl(librarySlug, `/game/${game.slug || game.id}?copy=${copy.id}`);
+  const copyLabel = copy.copy_label || `Copy #${copy.copy_number}`;
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    QRCodeLib.toCanvas(canvasRef.current, gameUrl, { width: 100, margin: 1, color: { dark: "#1a1008", light: "#ffffff" } }).catch(() => {});
+  }, [gameUrl]);
+
+  const location = [copy.location_room, copy.location_shelf, copy.location_misc].filter(Boolean).join(" › ");
+
+  return (
+    <div className="qr-card border border-gray-300 rounded-lg p-3 flex flex-col items-center gap-1.5 bg-white break-inside-avoid">
+      <canvas ref={canvasRef} width={100} height={100} className="rounded" aria-label={`QR code for ${game.title} ${copyLabel}`} />
+      <div className="text-center w-full">
+        <p className="text-xs font-bold leading-tight line-clamp-2">{game.title}</p>
+        <p className="text-[10px] font-medium text-gray-600">{copyLabel}</p>
+        {copy.edition && <p className="text-[9px] text-gray-500">{copy.edition}</p>}
+        {copy.condition && <p className="text-[9px] text-gray-500">{copy.condition}</p>}
+        {location && <p className="text-[9px] text-gray-400 truncate">{location}</p>}
+      </div>
+    </div>
+  );
+}
+
 interface LibraryQRCardProps {
   libraryName: string;
   librarySlug: string;
