@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart } from "lucide-react";
+import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart, Play } from "lucide-react";
 import { getComplexity } from "@/lib/complexity";
 import { DescriptionContent } from "@/components/games/DescriptionContent";
 import { Layout } from "@/components/layout/Layout";
@@ -26,6 +26,7 @@ import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
 import { useAddWant } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
 import { GameReviews } from "@/components/catalog/GameReviews";
+import { LogPlayDialog } from "@/components/games/LogPlayDialog";
 
 interface CatalogGameFull {
   id: string;
@@ -86,6 +87,33 @@ export default function CatalogGameDetail() {
   const addWant = useAddWant();
   const { toast } = useToast();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [playedOnlyGameId, setPlayedOnlyGameId] = useState<string | null>(null);
+  const [creatingPlayedOnly, setCreatingPlayedOnly] = useState(false);
+
+  // Check if user already has this game in any library (for direct play logging)
+  const { data: existingGameEntry } = useQuery({
+    queryKey: ["catalog-existing-game", slug, myLibrary?.id],
+    enabled: !!slug && isAuthenticated && !!(myLibrary?.id || myLibraries.length > 0),
+    queryFn: async () => {
+      const libIds = myLibraries.length > 0 ? myLibraries.map((l: any) => l.id) : myLibrary ? [myLibrary.id] : [];
+      if (libIds.length === 0) return null;
+      // Find game by catalog slug match
+      const { data: catalogEntry } = await supabase
+        .from("game_catalog")
+        .select("id")
+        .eq("slug", slug!)
+        .maybeSingle();
+      if (!catalogEntry) return null;
+      const { data } = await supabase
+        .from("games")
+        .select("id")
+        .eq("catalog_id", catalogEntry.id)
+        .in("library_id", libIds)
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+  });
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
   const [catalogTab, setCatalogTab] = usePersistedTab("catalog-detail-tab", "description");
@@ -414,6 +442,46 @@ export default function CatalogGameDetail() {
                 </Button>
               )}
 
+              {/* Log a Play - uses existing library entry or creates played_only */}
+              {isAuthenticated && (myLibrary || myLibraries.length > 0) && (() => {
+                const resolvedGameId = playedOnlyGameId || existingGameEntry?.id;
+                if (resolvedGameId) {
+                  return (
+                    <LogPlayDialog gameId={resolvedGameId} gameTitle={game.title}>
+                      <Button variant="outline" className="gap-2">
+                        <Play className="h-4 w-4" />
+                        Log a Play
+                      </Button>
+                    </LogPlayDialog>
+                  );
+                }
+                return (
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    disabled={creatingPlayedOnly}
+                    onClick={async () => {
+                      setCreatingPlayedOnly(true);
+                      try {
+                        const targetLibId = myLibrary?.id || myLibraries[0]?.id;
+                        const { data, error } = await supabase.functions.invoke("add-from-catalog", {
+                          body: { catalog_id: game.id, library_id: targetLibId, ownership_status: "played_only" },
+                        });
+                        if (error) throw error;
+                        if (data?.error) throw new Error(data.error);
+                        setPlayedOnlyGameId(data.game.id);
+                      } catch (err: any) {
+                        toast({ title: "Error", description: err.message, variant: "destructive" });
+                      } finally {
+                        setCreatingPlayedOnly(false);
+                      }
+                    }}
+                  >
+                    {creatingPlayedOnly ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                    Log a Play
+                  </Button>
+                );
+              })()}
 
               {/* Purchase Links */}
               <PurchaseLinks catalogId={game.id} />

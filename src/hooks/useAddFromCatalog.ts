@@ -7,9 +7,9 @@ export function useAddFromCatalog() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ catalogId, libraryId }: { catalogId: string; libraryId?: string }) => {
+    mutationFn: async ({ catalogId, libraryId, ownershipStatus }: { catalogId: string; libraryId?: string; ownershipStatus?: "owned" | "previously_owned" | "played_only" }) => {
       const { data, error } = await supabase.functions.invoke("add-from-catalog", {
-        body: { catalog_id: catalogId, library_id: libraryId },
+        body: { catalog_id: catalogId, library_id: libraryId, ownership_status: ownershipStatus },
       });
 
       if (error) throw error;

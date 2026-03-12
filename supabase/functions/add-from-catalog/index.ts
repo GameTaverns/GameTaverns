@@ -89,8 +89,9 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    const { catalog_id, library_id } = await req.json();
+    const { catalog_id, library_id, ownership_status } = await req.json();
     const targetLibraryId = library_id || libraryId;
+    const targetOwnershipStatus = ownership_status || "owned";
 
     if (!catalog_id) {
       return new Response(JSON.stringify({ error: "catalog_id is required" }), {
@@ -215,6 +216,7 @@ export default async function handler(req: Request): Promise<Response> {
       catalog_id: catalog.id,
       library_id: targetLibraryId,
       slug: catalog.slug,
+      ownership_status: targetOwnershipStatus,
     };
 
     const { data: game, error: gameError } = await supabaseAdmin
