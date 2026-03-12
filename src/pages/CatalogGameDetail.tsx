@@ -87,6 +87,8 @@ export default function CatalogGameDetail() {
   const addWant = useAddWant();
   const { toast } = useToast();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [playedOnlyGameId, setPlayedOnlyGameId] = useState<string | null>(null);
+  const [creatingPlayedOnly, setCreatingPlayedOnly] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
   const [catalogTab, setCatalogTab] = usePersistedTab("catalog-detail-tab", "description");
