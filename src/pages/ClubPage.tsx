@@ -29,6 +29,7 @@ export default function ClubPage() {
   const { t } = useTranslation();
   const { slug, categorySlug } = useParams<{ slug: string; categorySlug?: string }>();
   const { user } = useAuth();
+  const { forums: forumsEnabled } = useFeatureFlags();
   const { data: club, isLoading } = useClub(slug || null);
   const { data: clubLibraries = [] } = useClubLibraries(club?.id || null);
   const visibleLibraries = clubLibraries;
@@ -38,12 +39,12 @@ export default function ClubPage() {
 
   const [activeTab, setActiveTab] = usePersistedTab(
     `club-tab-${slug}`,
-    categorySlug ? "forums" : "catalog"
+    (categorySlug && forumsEnabled) ? "forums" : "catalog"
   );
 
   useEffect(() => {
-    if (categorySlug) setActiveTab("forums");
-  }, [categorySlug, setActiveTab]);
+    if (categorySlug && forumsEnabled) setActiveTab("forums");
+  }, [categorySlug, forumsEnabled, setActiveTab]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [switchingLibraryId, setSwitchingLibraryId] = useState<string | null>(null);
