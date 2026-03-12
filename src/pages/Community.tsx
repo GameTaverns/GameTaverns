@@ -627,7 +627,19 @@ export default function Community() {
   const { t } = useTranslation();
   const { categorySlug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "forums";
+  const { forums: forumsEnabled } = useFeatureFlags();
+  const activeTab = forumsEnabled ? (searchParams.get("tab") || "forums") : "polls";
+
+  // If viewing a specific category but forums are disabled, redirect to polls
+  if (categorySlug && !forumsEnabled) {
+    return (
+      <Layout hideSidebar>
+        <div className="max-w-4xl mx-auto">
+          <CommunityPollsList />
+        </div>
+      </Layout>
+    );
+  }
 
   // If viewing a specific category, skip tabs
   if (categorySlug) {
@@ -645,17 +657,19 @@ export default function Community() {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Top-level tab switcher */}
         <div className="flex gap-1 border-b border-border">
-          <button
-            onClick={() => setSearchParams({})}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "forums"
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <MessageSquare className="h-4 w-4" />
-            {t('community.forums')}
-          </button>
+          {forumsEnabled && (
+            <button
+              onClick={() => setSearchParams({})}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "forums"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <MessageSquare className="h-4 w-4" />
+              {t('community.forums')}
+            </button>
+          )}
           <button
             onClick={() => setSearchParams({ tab: "polls" })}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
