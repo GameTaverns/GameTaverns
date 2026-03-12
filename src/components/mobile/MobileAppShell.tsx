@@ -157,7 +157,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
     '/dashboard', '/dashboard/editor', '/catalog', '/catalog/analytics', '/catalog/mechanics', '/catalog/mechanic/',
     '/dm', '/docs', '/directory', '/achievements', '/community', '/club', '/u/', '/lists', '/create-library',
     '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/setup-2fa',
-    '/legal', '/privacy', '/terms', '/cookies', '/features', '/press', '/install', '/notifications',
+    '/legal', '/privacy', '/terms', '/cookies', '/features', '/install', '/notifications',
     '/grow', '/share-card', '/picker', '/request-club', '/join-club', '/events', '/event/', '/embed', '/referrals', '/near-me',
   ];
   const effectivePath = getNativeEffectivePath(location.pathname);
