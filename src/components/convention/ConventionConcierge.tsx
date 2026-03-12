@@ -4,9 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Users, Clock, Dice5, Shuffle, CalendarClock, MapPinned, Gamepad2,
-  BookOpen, Search, CheckCircle,
+  Users, Clock, Dice5, Shuffle, CalendarClock, Gamepad2,
+  BookOpen, Search, CheckCircle, Loader2, XCircle,
 } from "lucide-react";
+import { supabase } from "@/integrations/backend/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 interface Props {
   event: any;
@@ -16,12 +20,63 @@ interface Props {
 }
 
 export function ConventionConcierge({ event, libraryGames, activeLoans, conventionSettings }: Props) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [playerFilter, setPlayerFilter] = useState<string>("any");
   const [timeFilter, setTimeFilter] = useState<string>("any");
   const [spinning, setSpinning] = useState(false);
   const [pickedGame, setPickedGame] = useState<any>(null);
-  const [reserveConfirm, setReserveConfirm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [reservedGameId, setReservedGameId] = useState<string | null>(null);
+  const [reservationId, setReservationId] = useState<string | null>(null);
+
+  // Create reservation mutation
+  const createReservation = useMutation({
+    mutationFn: async (gameId: string) => {
+      if (!conventionSettings?.id || !user?.id) throw new Error("Missing context");
+      const holdMinutes = conventionSettings.reservation_hold_minutes || 30;
+      const expiresAt = new Date(Date.now() + holdMinutes * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("convention_reservations")
+        .insert({
+          convention_event_id: conventionSettings.id,
+          game_id: gameId,
+          reserved_by: user.id,
+          expires_at: expiresAt,
+          status: "active",
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data, gameId) => {
+      setReservedGameId(gameId);
+      setReservationId(data.id);
+      queryClient.invalidateQueries({ queryKey: ["convention-reservations"] });
+      toast({ title: "Game reserved!", description: `Held for ${conventionSettings?.reservation_hold_minutes || 30} minutes.` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Reservation failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // Cancel reservation mutation
+  const cancelReservation = useMutation({
+    mutationFn: async (resId: string) => {
+      const { error } = await supabase
+        .from("convention_reservations")
+        .update({ status: "cancelled" })
+        .eq("id", resId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setReservedGameId(null);
+      setReservationId(null);
+      queryClient.invalidateQueries({ queryKey: ["convention-reservations"] });
+      toast({ title: "Reservation cancelled" });
+    },
+  });
 
   // Compute availability
   const gamesWithAvailability = useMemo(() => {
@@ -55,12 +110,17 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
     if (availableGames.length === 0) return;
     setSpinning(true);
     setPickedGame(null);
-    setReserveConfirm(false);
+    setReservedGameId(null);
+    setReservationId(null);
     setTimeout(() => {
       const pick = availableGames[Math.floor(Math.random() * availableGames.length)];
       setPickedGame(pick);
       setSpinning(false);
     }, 1200);
+  };
+
+  const handleReserve = (gameId: string) => {
+    createReservation.mutate(gameId);
   };
 
   return (
@@ -159,16 +219,7 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
                 <Badge variant="secondary" className="mt-2">{pickedGame.available} of {pickedGame.copies_owned || 1} available</Badge>
               </div>
 
-              {!reserveConfirm ? (
-                <div className="flex gap-3 justify-center">
-                  <Button onClick={() => setReserveConfirm(true)} className="gap-2">
-                    <CalendarClock className="h-4 w-4" /> Reserve This Game
-                  </Button>
-                  <Button variant="outline" onClick={handleSpin} className="gap-2">
-                    <Shuffle className="h-4 w-4" /> Pick Another
-                  </Button>
-                </div>
-              ) : (
+              {reservedGameId === pickedGame.id ? (
                 <Card className="bg-primary/5 border-primary/20 text-left">
                   <CardContent className="pt-4 space-y-3">
                     <p className="text-sm font-medium flex items-center gap-2">
@@ -178,11 +229,32 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
                     <div className="text-xs text-muted-foreground space-y-1">
                       <p>🎫 Show this screen to a volunteer at the lending desk</p>
                     </div>
-                    <Button variant="outline" size="sm" className="w-full" onClick={() => { setPickedGame(null); setReserveConfirm(false); }}>
-                      Browse More Games
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => { setPickedGame(null); setReservedGameId(null); setReservationId(null); }}>
+                        Browse More Games
+                      </Button>
+                      {reservationId && (
+                        <Button variant="ghost" size="sm" className="text-destructive gap-1" onClick={() => cancelReservation.mutate(reservationId)} disabled={cancelReservation.isPending}>
+                          <XCircle className="h-3.5 w-3.5" /> Cancel
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
+              ) : (
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    onClick={() => handleReserve(pickedGame.id)}
+                    className="gap-2"
+                    disabled={createReservation.isPending}
+                  >
+                    {createReservation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarClock className="h-4 w-4" />}
+                    Reserve This Game
+                  </Button>
+                  <Button variant="outline" onClick={handleSpin} className="gap-2">
+                    <Shuffle className="h-4 w-4" /> Pick Another
+                  </Button>
+                </div>
               )}
             </div>
           )}
@@ -224,8 +296,18 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
                   {game.play_time_minutes != null && <><span>·</span><span>{game.play_time_minutes}m</span></>}
                 </div>
                 {game.available > 0 ? (
-                  <Button size="sm" variant="outline" className="w-full mt-2 text-xs h-7 gap-1">
-                    <CalendarClock className="h-3 w-3" /> Reserve
+                  <Button
+                    size="sm"
+                    variant={reservedGameId === game.id ? "secondary" : "outline"}
+                    className="w-full mt-2 text-xs h-7 gap-1"
+                    onClick={() => handleReserve(game.id)}
+                    disabled={createReservation.isPending || reservedGameId === game.id}
+                  >
+                    {reservedGameId === game.id ? (
+                      <><CheckCircle className="h-3 w-3" /> Reserved</>
+                    ) : (
+                      <><CalendarClock className="h-3 w-3" /> Reserve</>
+                    )}
                   </Button>
                 ) : (
                   <Button size="sm" variant="ghost" className="w-full mt-2 text-xs h-7 gap-1" disabled>
