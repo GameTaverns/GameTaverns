@@ -79,6 +79,7 @@ interface AdminSubtabPanelProps {
 
 export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs, isAdmin = false }: AdminSubtabPanelProps) {
   const [editing, setEditing] = useState(false);
+  const featureFlags = useFeatureFlags();
   const allVisibleIds = dashPrefs.getVisibleWidgets("admin");
   const hiddenWidgets = dashPrefs.getHiddenWidgets("admin");
   const registry = TAB_WIDGET_REGISTRY["admin"] ?? [];
