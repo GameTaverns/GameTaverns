@@ -202,7 +202,7 @@ export function useDAUTrend(range: TimeRange) {
 
       if (range !== "all" && startDate) {
         const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
-        for (let i = days - 1; i >= 0; i--) {
+        for (let i = days; i >= 0; i--) {
           dayUsers.set(format(subDays(new Date(), i), "yyyy-MM-dd"), new Set());
         }
       }
