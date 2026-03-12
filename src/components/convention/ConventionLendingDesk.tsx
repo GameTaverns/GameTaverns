@@ -8,10 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import {
-  ScanLine, ArrowRight, CheckCircle, Star, Search, Package, MapPin, Gamepad2,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ArrowRight, CheckCircle, Star, Search, Package, Gamepad2, ScanLine, MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+
+const CONDITIONS = ["mint", "great", "good", "fair", "poor"] as const;
 
 interface Props {
   event: any;
@@ -26,7 +35,10 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGame, setSelectedGame] = useState<any>(null);
   const [guestName, setGuestName] = useState("");
+  const [conditionOut, setConditionOut] = useState<string>("good");
   const [returnSearch, setReturnSearch] = useState("");
+  const [conditionInMap, setConditionInMap] = useState<Record<string, string>>({});
+  const [ratingMap, setRatingMap] = useState<Record<string, number>>({});
 
   // Compute availability
   const gameAvailability = libraryGames.map((g: any) => {
@@ -49,7 +61,6 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
   const checkoutMutation = useMutation({
     mutationFn: async () => {
       if (!selectedGame || !guestName.trim()) throw new Error("Missing game or borrower");
-      // Find the club_id from convention settings or use a default
       const clubId = conventionSettings?.club_id;
       if (!clubId) throw new Error("No club configured for this convention");
 
@@ -60,7 +71,7 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
         checked_out_by: user!.id,
         guest_name: guestName.trim(),
         status: "checked_out",
-        condition_out: "good",
+        condition_out: conditionOut,
       });
       if (error) throw error;
     },
@@ -69,22 +80,30 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
       setSelectedGame(null);
       setGuestName("");
       setSearchQuery("");
+      setConditionOut("good");
       queryClient.invalidateQueries({ queryKey: ["convention-active-loans"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Return mutation
+  // Return mutation with condition tracking
   const returnMutation = useMutation({
     mutationFn: async (loanId: string) => {
+      const condIn = conditionInMap[loanId] || "good";
       const { error } = await supabase
         .from("club_loans")
-        .update({ status: "returned", returned_at: new Date().toISOString() })
+        .update({
+          status: "returned",
+          returned_at: new Date().toISOString(),
+          condition_in: condIn,
+        })
         .eq("id", loanId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, loanId) => {
       toast.success("Game returned successfully");
+      setConditionInMap(prev => { const n = { ...prev }; delete n[loanId]; return n; });
+      setRatingMap(prev => { const n = { ...prev }; delete n[loanId]; return n; });
       queryClient.invalidateQueries({ queryKey: ["convention-active-loans"] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -106,7 +125,13 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
                 autoFocus
               />
             </div>
+            <Button size="lg" className="h-12 px-6 gap-2">
+              <ScanLine className="h-5 w-5" /> Scan
+            </Button>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Search by game name, scan an attendee badge, or scan a game barcode
+          </p>
           {filteredGames.length > 0 && !selectedGame && (
             <div className="mt-3 max-h-48 overflow-y-auto space-y-1 border rounded-lg p-2 bg-background">
               {filteredGames.slice(0, 10).map((g: any) => (
@@ -157,6 +182,19 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
                   value={guestName}
                   onChange={e => setGuestName(e.target.value)}
                 />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Condition Out</span>
+                  <Select value={conditionOut} onValueChange={setConditionOut}>
+                    <SelectTrigger className="w-32 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CONDITIONS.map(c => (
+                        <SelectItem key={c} value={c} className="text-xs capitalize">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Separator />
                 <Button
                   className="w-full"
@@ -169,7 +207,7 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
             ) : (
               <div className="p-4 rounded-lg border-2 border-dashed border-border flex flex-col items-center gap-2 text-muted-foreground">
                 <ScanLine className="h-8 w-8" />
-                <p className="text-sm">Search for a game above to begin checkout</p>
+                <p className="text-sm">Search or scan a game above to begin checkout</p>
               </div>
             )}
           </CardContent>
@@ -181,37 +219,68 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
             <CardTitle className="text-lg flex items-center gap-2 text-accent">
               <CheckCircle className="h-5 w-5" /> Return
             </CardTitle>
-            <CardDescription>Process a game return</CardDescription>
+            <CardDescription>Process a game return with condition check</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search active loans..."
+                placeholder="Search active loans by game or borrower..."
                 className="pl-9"
                 value={returnSearch}
                 onChange={e => setReturnSearch(e.target.value)}
               />
             </div>
-            <div className="max-h-64 overflow-y-auto space-y-2">
+            <div className="max-h-80 overflow-y-auto space-y-2">
               {filteredLoans.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No active loans to return</p>
               ) : (
                 filteredLoans.slice(0, 8).map((loan: any) => (
-                  <div key={loan.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
-                    <div>
-                      <p className="text-sm font-medium">{loan.game?.title}</p>
-                      <p className="text-xs text-muted-foreground">{loan.guest_name || "Attendee"}</p>
+                  <div key={loan.id} className="p-3 rounded-lg bg-muted/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{loan.game?.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {loan.guest_name || "Attendee"}
+                          {loan.condition_out && <span> · Out: <span className="capitalize">{loan.condition_out}</span></span>}
+                        </p>
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs h-7"
-                      disabled={returnMutation.isPending}
-                      onClick={() => returnMutation.mutate(loan.id)}
-                    >
-                      Return
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={conditionInMap[loan.id] || "good"}
+                        onValueChange={(v) => setConditionInMap(prev => ({ ...prev, [loan.id]: v }))}
+                      >
+                        <SelectTrigger className="w-28 h-7 text-xs">
+                          <SelectValue placeholder="Condition" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CONDITIONS.map(c => (
+                            <SelectItem key={c} value={c} className="text-xs capitalize">{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-0.5 ml-auto">
+                        {[1,2,3,4,5].map(s => (
+                          <button
+                            key={s}
+                            onClick={() => setRatingMap(prev => ({ ...prev, [loan.id]: s }))}
+                            className="focus:outline-none"
+                          >
+                            <Star className={`h-4 w-4 transition-colors ${s <= (ratingMap[loan.id] || 0) ? "text-secondary fill-secondary" : "text-muted-foreground/30"}`} />
+                          </button>
+                        ))}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7 ml-2"
+                        disabled={returnMutation.isPending}
+                        onClick={() => returnMutation.mutate(loan.id)}
+                      >
+                        Return
+                      </Button>
+                    </div>
                   </div>
                 ))
               )}
@@ -224,7 +293,7 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" /> Inventory Status
+            <Package className="h-5 w-5 text-primary" /> Inventory — Live Status
           </CardTitle>
         </CardHeader>
         <CardContent>
