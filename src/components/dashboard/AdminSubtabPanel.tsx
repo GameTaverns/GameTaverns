@@ -19,6 +19,11 @@ import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ClubsManagement } from "@/components/admin/ClubsManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
 import { PlatformRoadmap } from "@/components/admin/PlatformRoadmap";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+
+const AdminFeatureFlags = lazy(() =>
+  import("@/components/settings/FeatureFlagsAdmin").then(m => ({ default: m.FeatureFlagsAdmin }))
+);
 import { TAB_WIDGET_REGISTRY, type WidgetDef } from "@/hooks/useUserDashboardPrefs";
 
 const SpecialBadgesManagement = lazy(() =>
