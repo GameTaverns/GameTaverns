@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { Users, Globe, UserPlus } from "lucide-react";
+import { Users, Globe, UserPlus, GitCompare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFollowingFeed } from "@/hooks/useActivityFeed";
 import { ActivityFeedItem } from "@/components/social/ActivityFeedItem";
 import { ActivityFeedBatchItem } from "@/components/social/ActivityFeedBatchItem";
 import { SocialDiscovery } from "@/components/social/SocialDiscovery";
+import { CompareSelector } from "@/components/social/CompareSelector";
 import { groupActivityEvents } from "@/utils/groupActivityEvents";
 import { useActivityFilters, ActivityFilterBar } from "@/components/social/ActivityFilterBar";
 
