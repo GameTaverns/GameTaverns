@@ -97,6 +97,7 @@ const ADMIN_ONLY_TABS = ["settings", "roadmap", "badges", "crons", "server", "se
 const ADMIN_REAUTH_KEY = "gt_admin_reauth_ok";
 
 export default function PlatformAdmin() {
+  const featureFlags = useFeatureFlags();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
