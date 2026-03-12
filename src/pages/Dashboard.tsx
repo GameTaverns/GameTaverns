@@ -340,6 +340,7 @@ export default function Dashboard() {
           {library && <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
