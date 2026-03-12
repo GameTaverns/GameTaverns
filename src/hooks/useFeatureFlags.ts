@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useSiteSettings } from "./useSiteSettings";
 import { useDemoMode } from "@/contexts/DemoContext";
-import { useTenant } from "@/contexts/TenantContext";
+import { useTenantSafe } from "@/contexts/TenantContext";
 import { getRuntimeFeatureFlag, isProductionDeployment, isLovableCloud } from "@/config/runtime";
 
 /**
@@ -106,7 +106,10 @@ function getConfigFlags(): Partial<FeatureFlags> {
 export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
   const { data: siteSettings, isLoading: siteLoading } = useSiteSettings();
   const { isDemoMode, demoFeatureFlags } = useDemoMode();
-  const { settings: librarySettings, isTenantMode, isLoading: tenantLoading } = useTenant();
+  const tenant = useTenantSafe();
+  const librarySettings = tenant?.settings ?? null;
+  const isTenantMode = tenant?.isTenantMode ?? false;
+  const tenantLoading = tenant?.isLoading ?? false;
   
   const isLoading = siteLoading || (isTenantMode && tenantLoading);
   

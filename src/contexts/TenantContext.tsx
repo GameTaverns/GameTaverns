@@ -356,6 +356,11 @@ export function useTenant() {
   return context;
 }
 
+/** Safe version that returns null when outside TenantProvider (e.g. admin subdomain) */
+export function useTenantSafe() {
+  return useContext(TenantContext) ?? null;
+}
+
 export function useTenantSettings() {
   const { settings } = useTenant();
   return settings;
