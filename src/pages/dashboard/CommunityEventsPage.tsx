@@ -63,25 +63,27 @@ export default function CommunityEventsPage() {
         />
 
         {/* Forums */}
-        <Card className={`${cardClass} overflow-hidden`}>
-          <CardHeader className="px-4 pt-4 pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <MessageSquare className="h-4 w-4 text-secondary" />
-                  {t('dashboard.forums')}
-                </CardTitle>
-                <InfoPopover title={t('hub.communityForums')} description={t('hub.communityForumsDesc')} className="text-muted-foreground/60 hover:text-muted-foreground" />
+        {forumsEnabled && (
+          <Card className={`${cardClass} overflow-hidden`}>
+            <CardHeader className="px-4 pt-4 pb-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <MessageSquare className="h-4 w-4 text-secondary" />
+                    {t('dashboard.forums')}
+                  </CardTitle>
+                  <InfoPopover title={t('hub.communityForums')} description={t('hub.communityForumsDesc')} className="text-muted-foreground/60 hover:text-muted-foreground" />
+                </div>
+                <Link to="/community">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted text-xs h-7 gap-1">
+                    {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
               </div>
-              <Link to="/community">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted text-xs h-7 gap-1">
-                  {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4"><CommunityTab /></CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="px-4 pb-4"><CommunityTab /></CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Events */}
