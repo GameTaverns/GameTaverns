@@ -417,6 +417,42 @@ export default function CatalogGameDetail() {
                 </Button>
               )}
 
+              {/* Log a Play - creates played_only entry then opens log dialog */}
+              {isAuthenticated && (myLibrary || myLibraries.length > 0) && playedOnlyGameId && (
+                <LogPlayDialog gameId={playedOnlyGameId} gameTitle={game.title}>
+                  <Button variant="outline" className="gap-2">
+                    <Play className="h-4 w-4" />
+                    Log a Play
+                  </Button>
+                </LogPlayDialog>
+              )}
+              {isAuthenticated && (myLibrary || myLibraries.length > 0) && !playedOnlyGameId && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  disabled={creatingPlayedOnly}
+                  onClick={async () => {
+                    setCreatingPlayedOnly(true);
+                    try {
+                      const targetLibId = myLibrary?.id || myLibraries[0]?.id;
+                      const { data, error } = await supabase.functions.invoke("add-from-catalog", {
+                        body: { catalog_id: game.id, library_id: targetLibId, ownership_status: "played_only" },
+                      });
+                      if (error) throw error;
+                      if (data?.error) throw new Error(data.error);
+                      setPlayedOnlyGameId(data.game.id);
+                      toast({ title: "Ready to log!", description: "Click 'Log a Play' again to record your session." });
+                    } catch (err: any) {
+                      toast({ title: "Error", description: err.message, variant: "destructive" });
+                    } finally {
+                      setCreatingPlayedOnly(false);
+                    }
+                  }}
+                >
+                  {creatingPlayedOnly ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                  Log a Play
+                </Button>
+              )}
 
               {/* Purchase Links */}
               <PurchaseLinks catalogId={game.id} />
