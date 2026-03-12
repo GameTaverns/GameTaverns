@@ -47,6 +47,7 @@ const Features = lazy(lazyRetry(() => import("./pages/Features")));
 const Press = lazy(lazyRetry(() => import("./pages/Press")));
 const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
 const DashboardMockupsPage = lazy(() => import("./components/dashboard/DashboardMockups").then(m => ({ default: m.DashboardMockups })));
+const ConventionMockup = lazy(lazyRetry(() => import("./pages/ConventionMockup")));
 const CollectionPage = lazy(lazyRetry(() => import("./pages/dashboard/CollectionPage")));
 const LendingPage = lazy(lazyRetry(() => import("./pages/dashboard/LendingPage")));
 const InsightsPage = lazy(lazyRetry(() => import("./pages/dashboard/InsightsPage")));
@@ -307,6 +308,7 @@ function PlatformRoutes() {
       <Route path="/dashboard/messages" element={<Suspense fallback={<PageLoader />}><MessagesPage /></Suspense>} />
       <Route path="/dashboard/settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
       <Route path="/dashboard/mockups" element={<Suspense fallback={<PageLoader />}><DashboardMockupsPage /></Suspense>} />
+      <Route path="/convention-mockup" element={<Suspense fallback={<PageLoader />}><ConventionMockup /></Suspense>} />
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />
