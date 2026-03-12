@@ -214,6 +214,14 @@ export default function ConventionHub() {
         </Tabs>
       </div>
       <Footer />
+      {isOwner && (
+        <ConventionSettings
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          conventionSettings={conventionSettings}
+          event={event}
+        />
+      )}
     </div>
   );
 }
