@@ -25,6 +25,7 @@ export interface FeatureFlags {
   events: boolean;
   achievements: boolean;
   lending: boolean;
+  forums: boolean;
 }
 
 // Default values when nothing is configured
