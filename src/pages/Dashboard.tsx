@@ -10,6 +10,7 @@ import { TenantLink } from "@/components/TenantLink";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
+import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
