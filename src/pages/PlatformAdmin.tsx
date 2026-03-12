@@ -19,6 +19,8 @@ import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 import { usePendingClubs } from "@/hooks/useClubs";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+
 
 const SpecialBadgesManagement = lazy(() =>
   import("@/components/admin/SpecialBadgesManagement").then(m => ({ default: m.SpecialBadgesManagement }))
