@@ -7,7 +7,7 @@ import {
   Shield, Activity, Users, Database, Settings, MessageSquare,
   Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Globe,
   Pencil, Eye, EyeOff, ChevronUp, ChevronDown, RotateCcw, X, AlertTriangle, Mail,
-  Accessibility, Star,
+  Accessibility, Star, ToggleRight,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -19,6 +19,11 @@ import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ClubsManagement } from "@/components/admin/ClubsManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
 import { PlatformRoadmap } from "@/components/admin/PlatformRoadmap";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+
+const AdminFeatureFlags = lazy(() =>
+  import("@/components/settings/FeatureFlagsAdmin").then(m => ({ default: m.FeatureFlagsAdmin }))
+);
 import { TAB_WIDGET_REGISTRY, type WidgetDef } from "@/hooks/useUserDashboardPrefs";
 
 const SpecialBadgesManagement = lazy(() =>
@@ -51,7 +56,7 @@ const ReviewModeration = lazy(() =>
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Users, Database, Settings, MessageSquare,
-  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail, Accessibility, Star,
+  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail, Accessibility, Star, ToggleRight,
 };
 
 const SUBTAB_CONTENT: Record<string, React.ReactNode> = {};
@@ -74,6 +79,7 @@ interface AdminSubtabPanelProps {
 
 export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs, isAdmin = false }: AdminSubtabPanelProps) {
   const [editing, setEditing] = useState(false);
+  const featureFlags = useFeatureFlags();
   const allVisibleIds = dashPrefs.getVisibleWidgets("admin");
   const hiddenWidgets = dashPrefs.getHiddenWidgets("admin");
   const registry = TAB_WIDGET_REGISTRY["admin"] ?? [];
@@ -149,6 +155,11 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs,
     reviews: (
       <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading review moderation…</div>}>
         <ReviewModeration />
+      </Suspense>
+    ),
+    features: (
+      <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading feature flags…</div>}>
+        <AdminFeatureFlags currentFlags={featureFlags} />
       </Suspense>
     ),
   };
