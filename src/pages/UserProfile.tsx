@@ -569,6 +569,22 @@ export default function UserProfile() {
               </div>
             </TabsContent>
           )}
+
+          {/* Compare tab */}
+          {currentUserId && currentUserId !== profile.user_id && (
+            <TabsContent value="compare">
+              <LibraryComparison
+                currentUserId={currentUserId}
+                targetUserId={profile.user_id}
+                currentUserName="You"
+                targetUserName={profile.display_name || profile.username}
+                currentUserAvatar={null}
+                targetUserAvatar={profile.avatar_url}
+                hasTheme={hasTheme}
+                profileBgColor={profileBgColor}
+              />
+            </TabsContent>
+          )}
         </Tabs>
 
       </main>
