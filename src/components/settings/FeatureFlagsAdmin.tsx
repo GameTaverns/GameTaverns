@@ -69,6 +69,7 @@ function isEnvLocked(flagKey: keyof FeatureFlags): boolean {
     events: "VITE_FEATURE_EVENTS",
     achievements: "VITE_FEATURE_ACHIEVEMENTS",
     lending: "VITE_FEATURE_LENDING",
+    forums: "VITE_FEATURE_FORUMS",
   };
   
   const value = import.meta.env[envKeys[flagKey]];

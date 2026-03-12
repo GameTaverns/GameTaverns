@@ -205,6 +205,7 @@ export const FEATURE_FLAG_LABELS: Record<keyof FeatureFlags, string> = {
   events: "Events Calendar",
   achievements: "Achievements",
   lending: "Game Lending",
+  forums: "Community Forums",
 };
 
 export const FEATURE_FLAG_DESCRIPTIONS: Record<keyof FeatureFlags, string> = {
@@ -218,4 +219,5 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<keyof FeatureFlags, string> = {
   events: "Show upcoming events and calendar to visitors",
   achievements: "Show achievements and badges for library engagement",
   lending: "Allow registered users to request game loans",
+  forums: "Enable discussion forums for libraries and clubs",
 };
