@@ -151,9 +151,9 @@ export default function Signup() {
   
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
-      {/* Tavern background with overlay */}
-      {/* CSS-only atmospheric background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
+      {/* Licensed tavern background photo */}
+      <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" />
+      <div className="absolute inset-0 bg-background/50" />
       <div 
         className="absolute inset-0 pointer-events-none"
         style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(28 40% 20% / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, hsl(28 50% 15% / 0.2) 0%, transparent 50%)' }}
