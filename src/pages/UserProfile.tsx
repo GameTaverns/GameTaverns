@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, BarChart3, Camera, Globe, Building2 } from "lucide-react";
+import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, BarChart3, Camera, Globe, Building2, GitCompare } from "lucide-react";
 import { BackLink } from "@/components/navigation/BackLink";
 import { SEO } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
