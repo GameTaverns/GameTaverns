@@ -33,6 +33,13 @@ export function SocialTab({ currentUserId }: { currentUserId: string | undefined
             <UserPlus className="h-3.5 w-3.5" />
             Discover
           </TabsTrigger>
+          <TabsTrigger
+            value="compare"
+            className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+          >
+            <GitCompare className="h-3.5 w-3.5" />
+            Compare
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="feed">
