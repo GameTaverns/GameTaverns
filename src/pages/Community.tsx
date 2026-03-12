@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { formatDistanceToNow } from "date-fns";
 import { 
   MessageSquare, 
