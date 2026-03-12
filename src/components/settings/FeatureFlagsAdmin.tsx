@@ -39,6 +39,7 @@ const FEATURE_FLAG_ICONS: Record<keyof FeatureFlags, React.ComponentType<{ class
   events: Calendar,
   achievements: Trophy,
   lending: BookOpen,
+  forums: MessageSquare,
 };
 
 const FEATURE_FLAG_DB_KEYS: Record<keyof FeatureFlags, string> = {
