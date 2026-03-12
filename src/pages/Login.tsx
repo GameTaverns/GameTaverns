@@ -274,8 +274,9 @@ const Login = () => {
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
-      {/* CSS-only atmospheric background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-wood-dark via-background to-wood-medium" />
+      {/* Licensed tavern background photo */}
+      <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" />
+      <div className="absolute inset-0 bg-background/50" />
       <div 
         className="absolute inset-0 pointer-events-none"
         style={{
