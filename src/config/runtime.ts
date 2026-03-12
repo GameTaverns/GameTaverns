@@ -36,7 +36,7 @@ const NATIVE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlI
 
 
 // Type for runtime config injected by inject-config.sh or self-hosted
-interface RuntimeConfig {
+export interface RuntimeConfig {
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   API_BASE_URL?: string;
