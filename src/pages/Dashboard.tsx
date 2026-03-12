@@ -73,6 +73,7 @@ export default function Dashboard() {
   const { myLentLoans, myBorrowedLoans } = useLending();
   const { data: myClubs = [] } = useMyClubs();
   const navigate = useNavigate();
+  const isClubOwner = myClubs.some((c: any) => c.owner_id === user?.id);
 
   const pendingLoanRequests = myLentLoans.filter(l => l.status === "requested").length;
   const activeBorrowedLoans = myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status));
