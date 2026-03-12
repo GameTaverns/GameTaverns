@@ -173,9 +173,9 @@ export default function Signup() {
 
       <Card className="w-full max-w-md relative z-10 card-handcrafted bg-card/95 dark:bg-sidebar/95 border-gold/20 backdrop-blur-md shadow-[0_8px_32px_-8px_hsl(25_30%_8%/0.5)]">
         <CardHeader className="text-center pb-4">
-          <Link to="/" className="flex items-center justify-center gap-3 mb-3 group">
-            <img src={logoImage} alt="GameTaverns" className="h-18 w-auto drop-shadow-[0_2px_8px_hsl(28_50%_48%/0.3)] transition-transform group-hover:scale-105" />
-            <span className="font-display text-3xl font-bold text-foreground drop-shadow-[0_1px_2px_hsl(0_0%_0%/0.1)]">GameTaverns</span>
+          <Link to="/" className="flex flex-col items-center justify-center mb-3 group">
+            <img src={logoImage} alt="GameTaverns" className="h-16 w-auto drop-shadow-[0_2px_8px_hsl(28_50%_48%/0.3)] transition-transform group-hover:scale-105 mx-auto" />
+            <span className="font-display text-2xl font-bold text-foreground drop-shadow-[0_1px_2px_hsl(0_0%_0%/0.1)] mt-2">GameTaverns</span>
           </Link>
           <div className="section-divider mb-4" />
           <CardTitle className="font-display text-2xl text-foreground">{t('signup.createAccount')}</CardTitle>
