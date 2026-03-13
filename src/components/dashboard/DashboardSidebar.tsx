@@ -126,7 +126,7 @@ function HotGamesWidget() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("game_hotness")
-        .select("game_id, title, thumbnail_url, hotness_score")
+        .select("game_id, title, image_url, hotness_score, slug")
         .order("hotness_score", { ascending: false })
         .limit(5);
 
