@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { TenantLink } from "@/components/TenantLink";
 import { getPlatformUrl, getLibraryUrl } from "@/hooks/useTenantUrl";
 import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDialog";
+import { SmartPickerDialog } from "@/components/games/SmartPickerDialog";
 import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
