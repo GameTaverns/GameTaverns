@@ -74,6 +74,7 @@ export default function DirectMessages() {
               selectedUserId={selectedConv?.user_id ?? null}
               onSelectConversation={handleSelectConv}
               onNewMessage={handleNewMessage}
+              onConversationDeleted={() => setSelectedConv(null)}
             />
           </Card>
 
