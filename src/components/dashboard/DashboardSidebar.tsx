@@ -237,7 +237,7 @@ export function DashboardSidebar() {
       <MyStatsWidget />
       <UpcomingEventsWidget />
       <LatestNewsWidget />
-      <HotGamesWidget />
+      
     </div>
   );
 }
