@@ -30,7 +30,7 @@ export function CollectionInsightsWidget({ libraryId, hideNavLinks }: Props) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Sparkles className="h-5 w-5 text-primary" />
-            Your Collection DNA
+            Your Library DNA
           </CardTitle>
           {!hideNavLinks && (
             <Link to="/dashboard/insights">
