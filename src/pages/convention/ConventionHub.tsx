@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/backend/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,12 @@ import {
 } from "lucide-react";
 import { ConventionCommandCenter } from "@/components/convention/ConventionCommandCenter";
 import { ConventionLendingDesk } from "@/components/convention/ConventionLendingDesk";
-
 import { ConventionAnalytics } from "@/components/convention/ConventionAnalytics";
 import { ConventionSettings } from "@/components/convention/ConventionSettings";
 import { ConventionAttendeeView } from "@/components/convention/ConventionAttendeeView";
 import { useAuth } from "@/hooks/useAuth";
 import { useConventionAccess } from "@/hooks/useConventionAccess";
+import { useConventionRealtime } from "@/hooks/useConventionRealtime";
 
 export default function ConventionHub() {
   const { eventId } = useParams<{ eventId: string }>();
