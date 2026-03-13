@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Upload, Tag, Building, Loader2, RefreshCw, Star } from "lucide-react";
+import { Plus, Upload, Tag, Loader2, RefreshCw, Star, Search } from "lucide-react";
 import { BackLink } from "@/components/navigation/BackLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout/Layout";
-import { GameUrlImport } from "@/components/games/GameUrlImport";
+import { CatalogSearchAdd } from "@/components/games/CatalogSearchAdd";
 import { BulkImportDialog } from "@/components/games/BulkImportDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
@@ -170,7 +170,7 @@ export default function LibraryGames() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="w-full h-auto flex-wrap gap-1 p-1">
             <TabsTrigger value="add" className="gap-2">
-              <Plus className="h-4 w-4" />
+              <Search className="h-4 w-4" />
               {t('libraryGames.quickAdd')}
             </TabsTrigger>
             <TabsTrigger value="import" className="gap-2">
@@ -180,7 +180,7 @@ export default function LibraryGames() {
           </TabsList>
 
           <TabsContent value="add">
-            <GameUrlImport libraryId={library.id} />
+            <CatalogSearchAdd libraryId={library.id} />
           </TabsContent>
 
           <TabsContent value="import">
@@ -190,7 +190,7 @@ export default function LibraryGames() {
                 <CardDescription>{t('libraryGames.bulkImportDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 gap-4">
                   <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => openBulkImport("csv")}>
                     <CardContent className="pt-6 text-center">
                       <Upload className="h-8 w-8 mx-auto mb-3 text-primary" />
@@ -203,13 +203,6 @@ export default function LibraryGames() {
                       <Tag className="h-8 w-8 mx-auto mb-3 text-primary" />
                       <h3 className="font-medium mb-1">{t('libraryGames.bggCollection')}</h3>
                       <p className="text-sm text-muted-foreground">{t('libraryGames.bggCollectionDesc')}</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => openBulkImport("bgg_links")}>
-                    <CardContent className="pt-6 text-center">
-                      <Building className="h-8 w-8 mx-auto mb-3 text-primary" />
-                      <h3 className="font-medium mb-1">{t('libraryGames.bggLinks')}</h3>
-                      <p className="text-sm text-muted-foreground">{t('libraryGames.bggLinksDesc')}</p>
                     </CardContent>
                   </Card>
                 </div>
