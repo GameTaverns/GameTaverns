@@ -177,6 +177,7 @@ export function HeaderDropdownNav() {
       </nav>
       <StandaloneLogPlayDialog open={logPlayOpen} onOpenChange={setLogPlayOpen} />
       <SmartPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} />
+      <QuickAddGameDialog open={addGameOpen} onOpenChange={setAddGameOpen} />
     </>
   );
 }
