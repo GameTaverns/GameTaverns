@@ -41,15 +41,10 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
           {/* CBG badge */}
           <span className="text-muted-foreground/40">·</span>
           <div className="flex items-center gap-1.5">
-            <img src={cbgLogo} alt="Christian Board Gamers" className="h-6 w-auto rounded" loading="lazy" />
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground leading-tight">Proud member of the</span>
-              <span className="text-xs font-display font-semibold text-foreground leading-tight">Christian Board Gamers</span>
-              <div className="flex items-center gap-1.5">
-                <ExternalLink href="https://discord.gg/g5N8S6zPMR" className="text-xs text-primary hover:underline">Discord</ExternalLink>
-                <ExternalLink href="https://www.facebook.com/groups/christianboardgamers" className="text-xs text-primary hover:underline">Facebook</ExternalLink>
-              </div>
-            </div>
+            <img src={cbgLogo} alt="Christian Board Gamers" className="h-5 w-5 rounded object-contain" loading="lazy" />
+            <span>Christian Board Gamers</span>
+            <ExternalLink href="https://discord.gg/g5N8S6zPMR" className="text-primary hover:underline">Discord</ExternalLink>
+            <ExternalLink href="https://www.facebook.com/groups/christianboardgamers" className="text-primary hover:underline">Facebook</ExternalLink>
           </div>
         </div>
       </div>
