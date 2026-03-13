@@ -134,18 +134,20 @@ const handler = async (req: Request): Promise<Response> => {
           results.discord = { sent: true, thread_id: thread.id };
 
           // Save the Discord thread ID back to the feedback record
-          if (feedback_id && thread.id) {
+          if (resolvedFeedbackId && thread.id) {
             try {
-              const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-              const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-              const supabase = createClient(supabaseUrl, serviceRoleKey);
+              const supabase = createServiceRoleClient();
 
-              await supabase
-                .from("platform_feedback")
-                .update({ discord_thread_id: thread.id })
-                .eq("id", feedback_id);
+              if (supabase) {
+                await supabase
+                  .from("platform_feedback")
+                  .update({ discord_thread_id: thread.id })
+                  .eq("id", resolvedFeedbackId);
 
-              console.log("Saved discord_thread_id", thread.id, "to feedback", feedback_id);
+                console.log("Saved discord_thread_id", thread.id, "to feedback", resolvedFeedbackId);
+              } else {
+                console.error("Failed to save discord_thread_id: service role not configured");
+              }
             } catch (e) {
               console.error("Failed to save discord_thread_id:", (e as Error).message);
             }
