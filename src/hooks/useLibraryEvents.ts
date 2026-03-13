@@ -181,6 +181,25 @@ export function useCreateEvent() {
         }
       }
 
+      // Auto-create club_events record for club-scoped events (best effort)
+      if (input.club_id && input.created_by_user_id) {
+        try {
+          await (supabase as any)
+            .from("club_events")
+            .insert({
+              club_id: input.club_id,
+              title: input.title,
+              description: input.description || null,
+              event_date: input.event_date,
+              event_location: input.event_location || null,
+              created_by: input.created_by_user_id,
+            });
+          console.log("[event-club] club_events record created for club", input.club_id);
+        } catch (err) {
+          console.error("[event-club] Failed to create club_events record:", err);
+        }
+      }
+
       let forumThreadId: string | null = null;
 
       // Auto-create an event discussion thread in the library forum (best effort)
