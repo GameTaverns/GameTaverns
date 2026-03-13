@@ -55,9 +55,11 @@ export default function ConventionHub() {
     enabled: !!eventId,
   });
 
+  // Enable realtime subscriptions for instant updates
+  useConventionRealtime(libraryId, conventionSettings?.id);
+
   // Fetch active loans for this event's library
-  const libraryId = event?.library_id;
-  
+  const libraryId2 = libraryId; // already declared above
   const { data: activeLoans = [] } = useQuery({
     queryKey: ["convention-active-loans", libraryId],
     queryFn: async () => {
