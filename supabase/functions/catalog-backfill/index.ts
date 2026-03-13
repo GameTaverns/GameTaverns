@@ -1009,7 +1009,12 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Process in sub-batches of 10 for Gemini (multiple games per prompt)
       const SUB_BATCH = 10;
+      const SUB_BATCH_DELAY_MS = 2000; // 2s between sub-batches to avoid RPM limits
       for (let i = 0; i < entries.length; i += SUB_BATCH) {
+        // Delay between sub-batches (skip first)
+        if (i > 0) {
+          await new Promise(r => setTimeout(r, SUB_BATCH_DELAY_MS));
+        }
         const subBatch = entries.slice(i, i + SUB_BATCH);
         
         const gamesPayload = subBatch.map((e, idx) => ({
