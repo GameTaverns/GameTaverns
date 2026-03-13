@@ -42,12 +42,12 @@ export function DashboardActivityFeed() {
           {t('dashboard.emptyFeedTitle', 'Your feed is quiet')}
         </h3>
         <p className="text-sm text-muted-foreground mb-4">
-          {t('dashboard.emptyFeedDesc', 'Follow libraries and connect with other collectors to see their activity here.')}
+          {t('dashboard.emptyFeedDesc', 'Follow other collectors to see their activity here — game additions, play sessions, photos, and more.')}
         </p>
         <Link to="/directory">
           <Button variant="secondary" size="sm" className="gap-2">
             <Globe className="h-4 w-4" />
-            {t('dashboard.browseDirectory', 'Browse Directory')}
+            {t('dashboard.discoverPeople', 'Discover People')}
           </Button>
         </Link>
       </div>
