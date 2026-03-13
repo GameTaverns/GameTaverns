@@ -333,6 +333,7 @@ function PlatformRoutes() {
       <Route path="/join-club" element={<JoinClub />} />
       <Route path="/clubs" element={<Suspense fallback={<PageLoader />}><ClubsDirectory /></Suspense>} />
       <Route path="/picker" element={<SmartPicker />} />
+      <Route path="/recommendations" element={<Suspense fallback={<PageLoader />}><Recommendations /></Suspense>} />
       <Route path="/news" element={<Suspense fallback={<PageLoader />}><NewsFeed /></Suspense>} />
       <Route path="/news/:slug" element={<Suspense fallback={<PageLoader />}><NewsArticlePage /></Suspense>} />
       <Route path="/catalog" element={<CatalogBrowse />} />
