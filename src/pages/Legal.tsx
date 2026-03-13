@@ -2,8 +2,9 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FileText, Shield, Cookie, Scale } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PublicHeader } from "@/components/layout/PublicHeader";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { Footer } from "@/components/layout/Footer";
+import { BackLink } from "@/components/navigation/BackLink";
 
 export default function Legal() {
   const { t } = useTranslation();
@@ -31,9 +32,10 @@ export default function Legal() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <PublicHeader />
+      <AppHeader />
       <main className="flex-1">
         <div className="container max-w-4xl py-16 px-4">
+          <BackLink fallback="/dashboard" />
           <div className="text-center mb-12">
             <FileText className="h-12 w-12 mx-auto mb-4 text-primary" />
             <h1 className="text-4xl font-display font-bold mb-4">{t("legal.title")}</h1>

@@ -438,7 +438,9 @@ export default function CatalogBrowse() {
       <div className="lg:ml-72">
         <div className="container mx-auto px-4 py-8 max-w-[2000px]">
           {/* Header */}
-          <div className="mb-8 flex items-start justify-between">
+          <div className="mb-8">
+            <BackLink fallback="/dashboard" />
+            <div className="flex items-start justify-between">
             <div>
               <h1 className="font-display text-3xl font-bold">{t('catalog.title')}</h1>
               <p className="text-muted-foreground">

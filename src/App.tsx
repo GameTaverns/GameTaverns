@@ -480,7 +480,7 @@ const App = () => (
               <PresenceTracker />
               <GlobalDMListener />
               <AppRoutes />
-              <GlobalFeedbackButton />
+              
               <CookieConsent />
             </TourProvider>
           </AuthProvider>
