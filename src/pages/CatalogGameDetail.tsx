@@ -596,6 +596,18 @@ export default function CatalogGameDetail() {
                         </TableCell>
                       </TableRow>
                     )}
+                    {game.genres.length > 0 && (
+                      <TableRow>
+                        <TableCell className="font-medium text-muted-foreground">Genre</TableCell>
+                        <TableCell className="text-foreground">
+                          <div className="flex flex-wrap gap-1">
+                            {game.genres.map(g => (
+                              <Badge key={g} variant="outline">{g}</Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {game.community_rating != null && (
                       <TableRow>
                          <TableCell className="font-medium text-muted-foreground">{t('catalog.gtRating')}</TableCell>
@@ -604,6 +616,10 @@ export default function CatalogGameDetail() {
                     )}
                   </TableBody>
                 </Table>
+              </TabsContent>
+
+              <TabsContent value="documents" className="mt-0">
+                <CatalogDocuments catalogId={game.id} canManage={isAdmin} />
               </TabsContent>
 
               <TabsContent value="reviews" className="mt-0">
