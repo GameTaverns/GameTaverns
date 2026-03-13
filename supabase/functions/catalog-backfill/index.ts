@@ -1136,7 +1136,12 @@ Do NOT include any other text.`;
           for (const result of genreResults) {
             const entry = subBatch[result.idx];
             if (!entry) continue;
-            const matchedGenre = VALID_GENRES.find(g => g.toLowerCase() === result.genre?.toLowerCase());
+            // Try exact match first, then alias lookup
+            const rawGenre = (result.genre || "").trim();
+            let matchedGenre = VALID_GENRES.find(g => g.toLowerCase() === rawGenre.toLowerCase());
+            if (!matchedGenre) {
+              matchedGenre = GENRE_ALIASES[rawGenre.toLowerCase()] || null;
+            }
             if (!matchedGenre) {
               genreErrors.push(`Invalid genre "${result.genre}" for "${entry.title}"`);
               continue;
