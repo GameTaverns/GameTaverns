@@ -116,7 +116,6 @@ export function HeaderDropdownNav() {
       label: t('nav.social', 'Social'),
       icon: Users,
       items: [
-        { href: getPlatformUrl("/dashboard"), label: t('nav.activityFeed', 'Activity Feed'), icon: Users },
         { href: getPlatformUrl("/directory"), label: t('nav.directory', 'Library Directory'), icon: Globe },
         { href: getPlatformUrl("/near-me"), label: t('nav.nearMe', 'Near Me'), icon: MapPin },
         { separator: true, label: 's2', icon: Users },
