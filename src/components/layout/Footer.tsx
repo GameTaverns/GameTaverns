@@ -10,7 +10,7 @@ const BGG_LOGO_SRC = "/bgg-logo.svg";
 export const Footer = forwardRef<HTMLElement>((_, ref) => {
   const { t } = useTranslation();
   const currentYear = new Date().getFullYear();
-  const showAttributions = !isLovableCloud();
+  
 
   return (
     <footer ref={ref} className="border-t bg-card/50">
