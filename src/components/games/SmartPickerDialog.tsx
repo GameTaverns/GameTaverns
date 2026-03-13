@@ -60,7 +60,7 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
 
   // My Lists state
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
-  const { data: selectedList } = useCuratedListDetail(selectedListId);
+  const { data: selectedList } = useCuratedList(selectedListId);
 
   // Result state
   const [pickedGame, setPickedGame] = useState<PickerGame | null>(null);
