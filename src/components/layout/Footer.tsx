@@ -15,7 +15,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
   return (
     <footer ref={ref} className="border-t bg-card/50">
       <div className="container py-3 px-4">
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+        <div className="flex flex-nowrap items-center justify-center gap-x-2.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap">
           {/* Copyright + LLC */}
           <span>© {currentYear} GameTaverns LLC</span>
           <span className="text-muted-foreground/40">·</span>
