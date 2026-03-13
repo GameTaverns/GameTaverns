@@ -24,6 +24,13 @@ const FEEDBACK_FORUM_CHANNELS: Record<string, string> = {
 
 const DISCORD_API = "https://discord.com/api/v10";
 
+function createServiceRoleClient() {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) return null;
+  return createClient(supabaseUrl, serviceRoleKey);
+}
+
 const handler = async (req: Request): Promise<Response> => {
   const preflight = handleCorsPreFlight(req);
   if (preflight) return preflight;
