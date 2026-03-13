@@ -106,6 +106,7 @@ export default function PublicEventDirectory() {
       <SEO title={title} description={description} canonical="https://gametaverns.com/events" />
 
       <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+        <BackLink fallback="/dashboard" />
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold flex items-center gap-2">
