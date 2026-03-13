@@ -130,7 +130,7 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
     }
 
     return games;
-  }, [mode, games, selectedTypes, selectedGenres, selectedPlayTimes, playerCount, pickedGameIds, selectedList]);
+  }, [mode, games, selectedTypes, selectedMechanics, selectedPlayTimes, playerCount, pickedGameIds, selectedList, gameMechanicMap]);
 
   const handlePick = () => {
     if (eligibleGames.length === 0) return;
