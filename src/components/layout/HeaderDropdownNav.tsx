@@ -148,6 +148,7 @@ export function HeaderDropdownNav() {
       items: [
         { onClick: () => setLogPlayOpen(true), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
         { onClick: () => setPickerOpen(true), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
+        { onClick: () => setAddGameOpen(true), label: t('nav.addGame', 'Add Game'), icon: PlusCircle },
         { href: getPlatformUrl("/create-library"), label: t('nav.createLibrary', 'Create Library'), icon: PlusCircle },
       ],
     },
