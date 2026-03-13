@@ -39,8 +39,9 @@ export default function ConventionIndex() {
         queries.push(
           supabase
             .from("library_events")
-            .select("id, title, event_date, end_date, library_id, created_by_user_id")
+            .select("id, title, event_date, end_date, library_id, created_by_user_id, status")
             .in("library_id", libIds)
+            .neq("status", "cancelled")
             .order("event_date", { ascending: false })
             .limit(100)
         );
@@ -48,8 +49,9 @@ export default function ConventionIndex() {
       queries.push(
         supabase
           .from("library_events")
-          .select("id, title, event_date, end_date, library_id, created_by_user_id")
+          .select("id, title, event_date, end_date, library_id, created_by_user_id, status")
           .eq("created_by_user_id", user.id)
+          .neq("status", "cancelled")
           .order("event_date", { ascending: false })
           .limit(100)
       );
