@@ -228,8 +228,9 @@ export default function ClubDashboard() {
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/dashboard?tab=clubs" className="text-cream/70 hover:text-cream">
-              <ArrowLeft className="h-5 w-5" />
+            <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-cream/70 hover:text-cream transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
             </Link>
             {club.logo_url && (
               <img src={club.logo_url} alt={club.name} className="h-10 w-10 rounded-lg object-cover" />

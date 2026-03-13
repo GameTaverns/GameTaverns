@@ -145,7 +145,7 @@ export function HeaderDropdownNav() {
         { href: getPlatformUrl("/convention"), label: t('nav.conventions', 'Conventions'), icon: Ticket },
         { href: getPlatformUrl("/dashboard/community"), label: t('nav.myEvents', 'My Events'), icon: Calendar },
         ...((myClubs && myClubs.length > 0)
-          ? [{ href: getPlatformUrl(`/club/${myClubs[0].slug}/events`), label: t('nav.clubEvents', 'Club Events'), icon: CalendarDays }]
+          ? [{ href: getPlatformUrl(`/club/${myClubs[0].slug}?tab=events`), label: t('nav.clubEvents', 'Club Events'), icon: CalendarDays }]
           : []),
       ],
     },
