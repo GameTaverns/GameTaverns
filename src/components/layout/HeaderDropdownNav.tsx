@@ -56,7 +56,7 @@ function NavDropdown({ label, icon: Icon, items }: NavMenuProps) {
       <DropdownMenuContent
         align="start"
         sideOffset={8}
-        className="min-w-[180px] bg-wood-dark/95 backdrop-blur-md border-wood-medium/50 text-cream"
+        className="min-w-[180px] bg-popover backdrop-blur-md border-border text-popover-foreground"
       >
         {items.map((item, idx) => {
           if (item.separator) {
