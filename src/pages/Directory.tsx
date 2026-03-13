@@ -33,7 +33,7 @@ import {
   X,
   Globe,
   Map,
-  Building2,
+  
 } from "lucide-react";
 import type { LibraryDirectoryEntry } from "@/hooks/useLibraryDirectory";
 import { BackLink } from "@/components/navigation/BackLink";
