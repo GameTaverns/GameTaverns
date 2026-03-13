@@ -97,6 +97,18 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   </Button>
                 </TenantLink>
 
+                {/* Dashboard */}
+                <TenantLink href={getPlatformUrl("/dashboard")}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
+                    aria-label="Dashboard"
+                  >
+                    <LayoutDashboard className="h-5 w-5" />
+                  </Button>
+                </TenantLink>
+
                 <NotificationsDropdown variant="dashboard" />
 
                 {/* Sign out — desktop only */}
