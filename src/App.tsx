@@ -440,6 +440,7 @@ function LibraryRoutes() {
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
       <Route path="/clubs" element={<Suspense fallback={<PageLoader />}><ClubsDirectory /></Suspense>} />
       <Route path="/picker" element={<SmartPicker />} />
+      <Route path="/recommendations" element={<Suspense fallback={<PageLoader />}><Recommendations /></Suspense>} />
       <Route path="/notifications" element={<Dashboard />} />
       <Route path="/grow" element={<Dashboard />} />
       <Route path="/share-card" element={<ShareCard />} />
