@@ -972,6 +972,131 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // =====================================================================
+    // MODE: classify-genres — AI-classify catalog entries into genres
+    // Uses Google Gemini Flash Lite via direct API call for cost efficiency
+    // =====================================================================
+    if (mode === "classify-genres") {
+      const genreBatchSize = Math.min(body.batch_size || 50, 100);
+      const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
+      if (!googleKey) {
+        return new Response(JSON.stringify({ error: "GOOGLE_AI_API_KEY not configured" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const VALID_GENRES = ["Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure", "Economic", "Abstract", "Humor", "Nature"];
+
+      // Fetch unclassified catalog entries
+      const { data: entries, error: gFetchErr } = await admin
+        .from("game_catalog")
+        .select("id, title, description")
+        .is("genre", null)
+        .eq("is_expansion", false)
+        .not("description", "is", null)
+        .order("created_at", { ascending: true })
+        .limit(genreBatchSize);
+
+      if (gFetchErr) throw gFetchErr;
+      if (!entries || entries.length === 0) {
+        return new Response(JSON.stringify({
+          success: true, mode: "classify-genres", classified: 0,
+          message: "All entries classified", hasMore: false,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      let genreClassified = 0;
+      const genreErrors: string[] = [];
+
+      // Process in sub-batches of 10 for Gemini (multiple games per prompt)
+      const SUB_BATCH = 10;
+      for (let i = 0; i < entries.length; i += SUB_BATCH) {
+        const subBatch = entries.slice(i, i + SUB_BATCH);
+        
+        const gamesPayload = subBatch.map((e, idx) => ({
+          idx,
+          title: e.title,
+          desc: (e.description || "").slice(0, 500),
+        }));
+
+        const classifyPrompt = `Classify each board game into exactly ONE genre from this list: ${VALID_GENRES.join(", ")}.
+
+Games to classify:
+${gamesPayload.map(g => `[${g.idx}] "${g.title}": ${g.desc}`).join("\n\n")}
+
+Return ONLY a JSON array of objects with "idx" and "genre" fields. Example: [{"idx":0,"genre":"Fantasy"},{"idx":1,"genre":"Economic"}]
+Do NOT include any other text.`;
+
+        try {
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${googleKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: classifyPrompt }] }],
+                generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+              }),
+            }
+          );
+
+          if (geminiRes.status === 429) {
+            console.warn("[classify-genres] Rate limited, stopping batch early");
+            genreErrors.push("Rate limited — stopping early");
+            break;
+          }
+
+          if (!geminiRes.ok) {
+            const errText = await geminiRes.text();
+            genreErrors.push(`Gemini API error ${geminiRes.status}: ${errText.slice(0, 200)}`);
+            continue;
+          }
+
+          const geminiData = await geminiRes.json();
+          const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          
+          // Extract JSON array from response (handle markdown code blocks)
+          const jsonMatch = rawText.match(/\[[\s\S]*?\]/);
+          if (!jsonMatch) {
+            genreErrors.push(`No JSON in response for batch starting at ${subBatch[0].title}`);
+            continue;
+          }
+
+          const genreResults: { idx: number; genre: string }[] = JSON.parse(jsonMatch[0]);
+
+          for (const result of genreResults) {
+            const entry = subBatch[result.idx];
+            if (!entry) continue;
+            const matchedGenre = VALID_GENRES.find(g => g.toLowerCase() === result.genre?.toLowerCase());
+            if (!matchedGenre) {
+              genreErrors.push(`Invalid genre "${result.genre}" for "${entry.title}"`);
+              continue;
+            }
+
+            const { error: updateErr } = await admin
+              .from("game_catalog")
+              .update({ genre: matchedGenre })
+              .eq("id", entry.id);
+
+            if (updateErr) {
+              genreErrors.push(`Update failed for "${entry.title}": ${updateErr.message}`);
+            } else {
+              genreClassified++;
+            }
+          }
+        } catch (e) {
+          genreErrors.push(`Sub-batch error: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+
+      const genreHasMore = entries.length === genreBatchSize;
+      return new Response(JSON.stringify({
+        success: true, mode: "classify-genres", classified: genreClassified,
+        total: entries.length, hasMore: genreHasMore,
+        errors: genreErrors.slice(0, 20),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // =====================================================================
     // DEFAULT MODE: Link unlinked games to catalog
     // =====================================================================
     const batchSize = Math.min(body.batch_size || 5, 10);
