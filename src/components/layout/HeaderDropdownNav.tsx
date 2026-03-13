@@ -164,10 +164,13 @@ export function HeaderDropdownNav() {
   ];
 
   return (
-    <nav className="hidden md:flex items-center gap-0.5" aria-label="Main navigation">
-      {menus.map((menu) => (
-        <NavDropdown key={menu.label} {...menu} />
-      ))}
-    </nav>
+    <>
+      <nav className="hidden md:flex items-center gap-0.5" aria-label="Main navigation">
+        {menus.map((menu) => (
+          <NavDropdown key={menu.label} {...menu} />
+        ))}
+      </nav>
+      <StandaloneLogPlayDialog open={logPlayOpen} onOpenChange={setLogPlayOpen} />
+    </>
   );
 }
