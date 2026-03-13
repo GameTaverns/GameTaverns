@@ -97,7 +97,9 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   </Button>
                 </TenantLink>
 
-                {/* Dashboard */}
+                <NotificationsDropdown variant="dashboard" />
+
+                {/* Dashboard / Home */}
                 <TenantLink href={getPlatformUrl("/dashboard")}>
                   <Button
                     variant="ghost"
@@ -108,8 +110,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     <Home className="h-5 w-5" />
                   </Button>
                 </TenantLink>
-
-                <NotificationsDropdown variant="dashboard" />
 
                 {/* Sign out — desktop only */}
                 <Button
