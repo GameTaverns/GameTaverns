@@ -22,6 +22,7 @@ import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
 import { useClubLendingSettings, useIsClubLendingStaff } from "@/hooks/useClubLending";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
+import { CreateEventDialog } from "@/components/events/CreateEventDialog";
 
 import { format } from "date-fns";
 
