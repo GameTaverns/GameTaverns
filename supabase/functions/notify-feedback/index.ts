@@ -51,8 +51,41 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const urls: string[] = Array.isArray(screenshot_urls) ? screenshot_urls : [];
-    console.log("Received feedback:", { type, sender_name, screenshot_count: urls.length, urls, feedback_id });
+    console.log("Received feedback:", { type, sender_name, screenshot_count: urls.length, urls, feedback_id: resolvedFeedbackId, create_feedback });
     const results: Record<string, unknown> = {};
+
+    // Optional server-side persistence fallback (for self-hosted schema drift / RLS mismatches)
+    if (!resolvedFeedbackId || create_feedback === true) {
+      try {
+        const supabase = createServiceRoleClient();
+        if (!supabase) {
+          results.feedback = { saved: false, error: "service_role_not_configured" };
+        } else {
+          const { data: inserted, error: insertError } = await supabase
+            .from("platform_feedback")
+            .insert({
+              type,
+              sender_name,
+              sender_email,
+              message,
+              screenshot_urls: urls,
+            })
+            .select("id")
+            .single();
+
+          if (insertError) {
+            console.error("Server-side feedback insert failed:", insertError.message);
+            results.feedback = { saved: false, error: insertError.message };
+          } else {
+            resolvedFeedbackId = inserted?.id ?? null;
+            results.feedback = { saved: true, feedback_id: resolvedFeedbackId };
+          }
+        }
+      } catch (e) {
+        console.error("Server-side feedback insert error:", (e as Error).message);
+        results.feedback = { saved: false, error: (e as Error).message };
+      }
+    }
 
     // 1. Post to Discord forum channel
     const channelId = FEEDBACK_FORUM_CHANNELS[type];
