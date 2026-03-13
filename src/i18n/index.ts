@@ -55,6 +55,12 @@ i18n
     interpolation: {
       escapeValue: false, // React already escapes
     },
+    returnNull: false,
+    returnEmptyString: false,
+    parseMissingKeyHandler: (key: string) => {
+      // Return undefined so fallback language is used
+      return undefined as any;
+    },
     detection: {
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
