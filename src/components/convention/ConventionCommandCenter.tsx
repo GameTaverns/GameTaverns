@@ -3,11 +3,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   BookOpen, CalendarClock, Package, AlertTriangle, Clock, Gamepad2,
-  Timer, Wifi, Hourglass, ScanLine, Search,
+  Timer, Wifi, Hourglass, ScanLine, Search, ChevronRight,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 function StatCard({ icon: Icon, label, value, trend, color }: {
   icon: any; label: string; value: string | number; trend: string; color: string;
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export function ConventionCommandCenter({ event, activeLoans, reservations, libraryGames, conventionSettings, onSwitchTab }: Props) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const totalCopies = libraryGames.reduce((sum: number, g: any) => sum + (g.copies_owned || 1), 0);
   const checkedOutCount = activeLoans.length;
@@ -67,6 +69,39 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Fulfill reservation → instant checkout
+  const fulfillReservation = useMutation({
+    mutationFn: async (reservation: any) => {
+      const clubId = conventionSettings?.club_id;
+      if (!clubId) throw new Error("No club configured");
+
+      const { error: loanError } = await supabase.from("club_loans").insert({
+        club_id: clubId,
+        library_id: event.library_id,
+        game_id: reservation.game_id,
+        checked_out_by: user!.id,
+        borrower_user_id: reservation.reserved_by,
+        guest_name: "Reservation Pickup",
+        status: "checked_out",
+        condition_out: "good",
+        notes: `Fulfilled from reservation`,
+      });
+      if (loanError) throw loanError;
+
+      const { error: resError } = await supabase
+        .from("convention_reservations")
+        .update({ status: "fulfilled", fulfilled_at: new Date().toISOString() })
+        .eq("id", reservation.id);
+      if (resError) throw resError;
+    },
+    onSuccess: () => {
+      toast.success("Reservation fulfilled — game checked out!");
+      queryClient.invalidateQueries({ queryKey: ["convention-active-loans"] });
+      queryClient.invalidateQueries({ queryKey: ["convention-reservations"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   // Release expired reservation
   const releaseReservation = useMutation({
     mutationFn: async (resId: string) => {
@@ -90,8 +125,16 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
         <StatCard icon={BookOpen} label="Active Loans" value={checkedOutCount} trend={`of ${totalCopies} copies`} color="text-primary" />
         <StatCard icon={CalendarClock} label="Reservations" value={activeReservations.length} trend={expiringSoon.length > 0 ? `${expiringSoon.length} expiring soon` : "None expiring"} color="text-secondary" />
         <StatCard icon={Package} label="Available" value={`${availableCount} / ${totalCopies}`} trend={`${libraryGames.length} unique games`} color="text-accent" />
-        <StatCard icon={AlertTriangle} label="Overdue" value={overdueLoans.length} trend={overdueLoans.length > 0 ? "Needs attention" : "All clear"} color="text-destructive" />
+        <StatCard icon={AlertTriangle} label="Overdue" value={overdueLoans.length} trend={overdueLoans.length > 0 ? "Needs attention" : "All clear"} color={overdueLoans.length > 0 ? "text-destructive" : "text-muted-foreground"} />
       </div>
+
+      {/* Overdue Alert */}
+      {overdueLoans.length > 0 && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm animate-pulse">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span className="font-medium">{overdueLoans.length} overdue loan{overdueLoans.length > 1 ? "s" : ""} need attention!</span>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Active Loans Feed */}
@@ -103,7 +146,7 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
                 Active Loans
               </CardTitle>
               <Badge variant="outline" className="animate-pulse border-primary text-primary">
-                <Wifi className="h-3 w-3 mr-1" /> Auto-refresh
+                <Wifi className="h-3 w-3 mr-1" /> Realtime
               </Badge>
             </div>
           </CardHeader>
@@ -118,7 +161,7 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
                 const isOverdue = loan.due_at && new Date(loan.due_at) < new Date();
                 
                 return (
-                  <div key={loan.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <div key={loan.id} className={`flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors ${isOverdue ? "bg-destructive/5 border border-destructive/20" : "bg-muted/50"}`}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center overflow-hidden">
                         {loan.game?.image_url ? (
@@ -133,7 +176,12 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
                           {loan.copy && <span className="text-muted-foreground text-xs ml-1">#{loan.copy.copy_number}</span>}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {loan.guest_name || "Attendee"}{loan.notes ? ` · ${loan.notes}` : ""}
+                          {loan.guest_name || "Attendee"}
+                          {loan.due_at && (
+                            <span className={isOverdue ? "text-destructive font-medium" : ""}>
+                              {" "}· Due {new Date(loan.due_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -198,8 +246,14 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
                             Release
                           </Button>
                         ) : (
-                          <Button size="sm" variant="secondary" className="text-xs h-6">
-                            Check Out
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="text-xs h-6"
+                            disabled={fulfillReservation.isPending}
+                            onClick={() => fulfillReservation.mutate(r)}
+                          >
+                            Fulfill <ChevronRight className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
@@ -217,16 +271,16 @@ export function ConventionCommandCenter({ event, activeLoans, reservations, libr
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2">
               <Button variant="outline" className="h-16 flex-col gap-1 text-xs" onClick={() => onSwitchTab?.("lending")}>
-                <ScanLine className="h-5 w-5" /> Scan Badge
+                <ScanLine className="h-5 w-5" /> Check Out
               </Button>
               <Button variant="outline" className="h-16 flex-col gap-1 text-xs" onClick={() => onSwitchTab?.("lending")}>
                 <Search className="h-5 w-5" /> Find Game
               </Button>
-              <Button variant="outline" className="h-16 flex-col gap-1 text-xs">
-                <AlertTriangle className="h-5 w-5" /> Flag Issue
+              <Button variant="outline" className="h-16 flex-col gap-1 text-xs" onClick={() => onSwitchTab?.("lending")}>
+                <AlertTriangle className="h-5 w-5" /> Returns
               </Button>
-              <Button variant="outline" className="h-16 flex-col gap-1 text-xs" onClick={() => onSwitchTab?.("concierge")}>
-                <Package className="h-5 w-5" /> Browse Games
+              <Button variant="outline" className="h-16 flex-col gap-1 text-xs" onClick={() => onSwitchTab?.("analytics")}>
+                <Package className="h-5 w-5" /> Analytics
               </Button>
             </CardContent>
           </Card>
