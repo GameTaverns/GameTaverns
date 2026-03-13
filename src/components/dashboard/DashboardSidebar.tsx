@@ -115,7 +115,7 @@ function FollowingWidget() {
   });
 
   return (
-    <WidgetCard title="My Top Friends" icon={Users}>
+    <WidgetCard title="Following" icon={Users}>
       <div className="flex items-center gap-4 mb-3 text-xs text-muted-foreground">
         <span><strong className="text-foreground">{counts?.followers ?? 0}</strong> followers</span>
         <span><strong className="text-foreground">{counts?.following ?? 0}</strong> following</span>
