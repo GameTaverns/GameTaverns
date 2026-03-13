@@ -145,7 +145,7 @@ export default function ConventionHub() {
               </h1>
             </div>
             <p className="text-sm text-muted-foreground ml-9">
-              {event.title} — {(event as any).library?.name}
+              {event.title} — {contextName}
               {event.venue_name && ` · ${event.venue_name}`}
               {libraryGames.length > 0 && ` · ${libraryGames.length} games`}
             </p>

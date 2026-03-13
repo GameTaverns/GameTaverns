@@ -211,7 +211,7 @@ export default function ConventionIndex() {
                           <div>
                             <h3 className="font-semibold text-foreground">{event.title}</h3>
                             <p className="text-xs text-muted-foreground">
-                              {event.libraryName}
+                              {event.displayName}
                               {event.event_date && ` · ${new Date(event.event_date).toLocaleDateString()}`}
                             </p>
                           </div>
