@@ -104,6 +104,11 @@ export function CatalogDataEditor({ catalogId, currentData }: CatalogDataEditorP
 
       if (error) throw error;
 
+      // Save genres
+      if (selectedGenres !== null) {
+        await setGenresMutation.mutateAsync({ catalogId, genres });
+      }
+
       toast({ title: "Catalog entry updated", description: "Changes saved successfully." });
       queryClient.invalidateQueries({ queryKey: ["catalog-game"] });
     } catch (err: any) {
