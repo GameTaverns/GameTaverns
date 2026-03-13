@@ -129,7 +129,7 @@ export function ExploreChecklist({
     {
       id: "earn-achievement",
       title: "Unlock an achievement",
-      description: "Earn badges for milestones like logging plays, growing your collection, and more.",
+      description: "Earn badges for milestones like logging plays, growing your library, and more.",
       icon: <Trophy className="h-4 w-4" />,
       completed: hasAchievements,
       href: getPlatformUrl("/dashboard?tab=library"),

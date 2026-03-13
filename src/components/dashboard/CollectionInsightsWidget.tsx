@@ -121,7 +121,7 @@ export function CollectionInsightsWidget({ libraryId, hideNavLinks }: Props) {
           <Link to="/dashboard/insights">
             <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
               <Share2 className="h-3.5 w-3.5" />
-              View & Share Your Full Collection DNA
+              View & Share Your Full Library DNA
             </Button>
           </Link>
         )}
