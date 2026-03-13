@@ -532,7 +532,7 @@
     "welcomeDesc": "This is your dashboard — the command center for your board game library. Let's walk through the key features by visiting each one!",
     "letsGo": "Let's Go!",
     "createLibraryTitle": "Create Your Library",
-    "createLibraryDesc": "First, create a library. It gets its own subdomain (e.g., yourname.gametaverns.com) where friends can browse your collection.",
+    "createLibraryDesc": "First, create a library. It gets its own subdomain (e.g., yourname.gametaverns.com) where friends can browse your games.",
     "createLibraryAction": "Create Library",
     "importGamesTitle": "Import Your Games",
     "importGamesDesc": "Now let's add some games! Import from BoardGameGeek, a CSV file, or add games manually to build your collection.",
