@@ -26,7 +26,8 @@ import {
   Download,
   Heart,
   ToggleRight,
-  Star
+  Star,
+  Languages
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
