@@ -170,6 +170,7 @@ export default function CatalogGameDetail() {
         parent: parentRes.data || null,
         community_rating: ratingRow?.visitor_count && ratingRow.visitor_count > 0 ? Number(ratingRow.visitor_average) : null,
         community_rating_count: ratingRow?.visitor_count || 0,
+        genres: ((genresRes as any).data || []).map((r: any) => r.genre).filter(Boolean),
       };
     },
     enabled: !!slug,
