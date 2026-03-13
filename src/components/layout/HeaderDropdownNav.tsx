@@ -71,7 +71,7 @@ function NavDropdown({ label, icon: Icon, items }: NavMenuProps) {
                   item.onClick?.();
                   setOpen(false);
                 }}
-                className="gap-2 text-xs text-cream/80 hover:text-cream focus:text-cream focus:bg-wood-medium/40 cursor-pointer"
+                className="gap-2 text-xs text-popover-foreground hover:text-accent-foreground focus:text-accent-foreground focus:bg-accent cursor-pointer"
               >
                 <ItemIcon className="h-3.5 w-3.5" />
                 {item.label}
