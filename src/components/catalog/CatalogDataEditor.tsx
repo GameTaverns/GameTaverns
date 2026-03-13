@@ -214,6 +214,27 @@ export function CatalogDataEditor({ catalogId, currentData }: CatalogDataEditorP
               <Textarea id="cat-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
             </div>
 
+            <div className="space-y-1">
+              <Label>Genres</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {GENRE_OPTIONS.map(g => (
+                  <Badge
+                    key={g}
+                    variant={genres.includes(g) ? "default" : "outline"}
+                    className={cn(
+                      "cursor-pointer text-xs",
+                      genres.includes(g)
+                        ? "bg-primary text-primary-foreground"
+                        : "border-muted-foreground/30 text-muted-foreground hover:bg-muted/50"
+                    )}
+                    onClick={() => toggleGenre(g)}
+                  >
+                    {g}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
             {currentData.bgg_id && (
               <p className="text-xs text-muted-foreground">BGG ID: {currentData.bgg_id}</p>
             )}
