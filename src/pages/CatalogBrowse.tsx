@@ -463,6 +463,7 @@ export default function CatalogBrowse() {
               </Button>
             </Link>
           </div>
+          </div>
 
           {/* Search & Sort Bar */}
           <div className="space-y-4 mb-8">
