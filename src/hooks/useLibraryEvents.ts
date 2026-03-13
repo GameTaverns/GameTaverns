@@ -203,8 +203,19 @@ export function useCreateEvent() {
       let forumThreadId: string | null = null;
 
       // Auto-create an event discussion thread in the library forum (best effort)
+      // Only if the library has forums enabled
       if (input.library_id) {
         try {
+          // Check if forums are enabled for this library
+          const { data: libSettings } = await supabase
+            .from("library_settings")
+            .select("feature_community_forum")
+            .eq("library_id", input.library_id)
+            .maybeSingle();
+
+          if (libSettings?.feature_community_forum === false) {
+            console.log("[event-forum] Forums disabled for library, skipping thread creation");
+          } else {
           const { data: categories, error: catError } = await supabase
             .from("forum_categories")
             .select("id, slug, parent_category_id")
