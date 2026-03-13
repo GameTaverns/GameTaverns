@@ -208,9 +208,8 @@ function AppRoutes() {
 
   return (
     <TenantProvider>
-      {/* Theme applicators */}
+      {/* Theme applicator (runtime config for self-hosted only) */}
       <ThemeApplicator />
-      <TenantThemeApplicator />
       
       <MobileAppShell>
         <MaintenanceGuard>

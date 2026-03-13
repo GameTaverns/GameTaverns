@@ -76,7 +76,6 @@ export default function SettingsPage() {
               <TabsList className="mb-4">
                 <TabsTrigger value="profile">{t('settings.profile')}</TabsTrigger>
                 <TabsTrigger value="security">{t('settings.security')}</TabsTrigger>
-                <TabsTrigger value="appearance">{t('settings.appearance')}</TabsTrigger>
               </TabsList>
               <TabsContent value="profile">
                 <AccountSettings />
@@ -86,9 +85,6 @@ export default function SettingsPage() {
                   <ChangePasswordCard />
                   <TwoFactorSettings />
                 </div>
-              </TabsContent>
-              <TabsContent value="appearance">
-                <ProfileThemeCustomizer />
               </TabsContent>
             </Tabs>
           </CardContent>

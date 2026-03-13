@@ -2150,9 +2150,6 @@ const Settings = () => {
                   </p>
                 </CardContent>
               </Card>
-
-              {/* Theme Customization Section */}
-              <ThemeCustomizer />
             </TabsContent>
           )}
 

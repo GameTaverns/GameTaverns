@@ -153,13 +153,6 @@ export default function LibrarySettings() {
             <LibraryMemberManagement />
           </TabsContent>
 
-          <TabsContent value="theme">
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-display font-semibold">{t('librarySettings.themeCustomization')}</h2>
-              <InfoPopover title={t('librarySettings.theme')} description={t('librarySettings.themeInfo')} tips={["Pick a primary color that matches your brand", "Preview changes in real-time before saving"]} />
-            </div>
-            <LibraryThemeCustomizer />
-          </TabsContent>
 
           <TabsContent value="branding">
             <div className="flex items-center gap-2 mb-4">

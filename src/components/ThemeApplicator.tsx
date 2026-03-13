@@ -1,170 +1,56 @@
 import { useEffect } from "react";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useDemoMode } from "@/contexts/DemoContext";
-import { useTenant } from "@/contexts/TenantContext";
-
-// Track loaded Google Fonts to avoid duplicate loading
-const loadedFonts = new Set<string>();
 
 /**
- * Dynamically load a Google Font if not already loaded
- */
-function loadGoogleFont(fontName: string) {
-  if (!fontName || loadedFonts.has(fontName)) return;
-  
-  // Create the Google Fonts URL
-  const fontFamily = fontName.replace(/\s+/g, '+');
-  const linkId = `google-font-${fontFamily}`;
-  
-  // Check if already in DOM
-  if (document.getElementById(linkId)) {
-    loadedFonts.add(fontName);
-    return;
-  }
-  
-  const link = document.createElement('link');
-  link.id = linkId;
-  link.rel = 'stylesheet';
-  link.href = `https://fonts.googleapis.com/css2?family=${fontFamily}:wght@400;500;600;700&display=swap`;
-  document.head.appendChild(link);
-  loadedFonts.add(fontName);
-}
-
-/**
- * Applies saved theme settings from the database to CSS variables on mount.
- * This component should be rendered once near the root of the app.
- * In demo mode, this applicator is skipped to let DemoThemeApplicator take over.
+ * Applies runtime theme config for self-hosted/standalone deployments only.
+ * In demo mode, this is skipped so DemoThemeApplicator takes over.
  */
 export function ThemeApplicator() {
-  const { data: settings, isLoading } = useSiteSettings();
   const { isDemoMode } = useDemoMode();
-  const { isTenantMode } = useTenant();
 
   useEffect(() => {
-    // Skip in demo mode - DemoThemeApplicator handles theming
     if (isDemoMode) return;
 
-    // Skip in tenant mode - TenantThemeApplicator must fully control branding
-    // for individual libraries (including public/anonymous views).
-    if (isTenantMode) return;
-    
-    // Check for runtime theme config (standalone deployments)
     const runtimeConfig = (window as any).__RUNTIME_CONFIG__;
     const runtimeTheme = runtimeConfig?.THEME;
+    if (!runtimeTheme) return;
 
     const applyTheme = () => {
       const root = document.documentElement;
       const isDark = root.classList.contains("dark");
+      const themeMode = isDark ? runtimeTheme.DARK : runtimeTheme.LIGHT;
+      if (!themeMode) return;
 
-      // Apply runtime theme for standalone deployments (neutral white/grey)
-      if (runtimeTheme) {
-        const themeMode = isDark ? runtimeTheme.DARK : runtimeTheme.LIGHT;
-        if (themeMode) {
-          if (themeMode.background) root.style.setProperty("--background", themeMode.background);
-          if (themeMode.foreground) root.style.setProperty("--foreground", themeMode.foreground);
-          if (themeMode.card) root.style.setProperty("--card", themeMode.card);
-          if (themeMode.cardForeground) root.style.setProperty("--card-foreground", themeMode.cardForeground);
-          if (themeMode.primary) root.style.setProperty("--primary", themeMode.primary);
-          if (themeMode.primaryForeground) root.style.setProperty("--primary-foreground", themeMode.primaryForeground);
-          if (themeMode.secondary) root.style.setProperty("--secondary", themeMode.secondary);
-          if (themeMode.secondaryForeground) root.style.setProperty("--secondary-foreground", themeMode.secondaryForeground);
-          if (themeMode.muted) root.style.setProperty("--muted", themeMode.muted);
-          if (themeMode.mutedForeground) root.style.setProperty("--muted-foreground", themeMode.mutedForeground);
-          if (themeMode.accent) root.style.setProperty("--accent", themeMode.accent);
-          if (themeMode.accentForeground) root.style.setProperty("--accent-foreground", themeMode.accentForeground);
-          if (themeMode.border) root.style.setProperty("--border", themeMode.border);
-          if (themeMode.sidebarBackground) root.style.setProperty("--sidebar-background", themeMode.sidebarBackground);
-          if (themeMode.sidebarForeground) root.style.setProperty("--sidebar-foreground", themeMode.sidebarForeground);
-          if (themeMode.sidebarBorder) root.style.setProperty("--sidebar-border", themeMode.sidebarBorder);
-          // Set neutral fonts for standalone
-          root.style.setProperty("--font-display", '"Inter"');
-          root.style.setProperty("--font-body", '"Inter"');
-          return; // Don't apply DB settings if runtime theme is present
-        }
+      const props: Record<string, string | undefined> = {
+        "--background": themeMode.background,
+        "--foreground": themeMode.foreground,
+        "--card": themeMode.card,
+        "--card-foreground": themeMode.cardForeground,
+        "--primary": themeMode.primary,
+        "--primary-foreground": themeMode.primaryForeground,
+        "--secondary": themeMode.secondary,
+        "--secondary-foreground": themeMode.secondaryForeground,
+        "--muted": themeMode.muted,
+        "--muted-foreground": themeMode.mutedForeground,
+        "--accent": themeMode.accent,
+        "--accent-foreground": themeMode.accentForeground,
+        "--border": themeMode.border,
+        "--sidebar-background": themeMode.sidebarBackground,
+        "--sidebar-foreground": themeMode.sidebarForeground,
+        "--sidebar-border": themeMode.sidebarBorder,
+      };
+
+      for (const [key, value] of Object.entries(props)) {
+        if (value) root.style.setProperty(key, value);
       }
 
-      // Wait for DB settings before applying
-      if (isLoading || !settings) return;
-
-      // Apply primary color
-      if (settings.theme_primary_h && settings.theme_primary_s && settings.theme_primary_l) {
-        root.style.setProperty(
-          "--primary",
-          `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`
-        );
-        root.style.setProperty(
-          "--ring",
-          `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`
-        );
-        root.style.setProperty(
-          "--forest",
-          `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`
-        );
-      }
-
-      // Apply accent color
-      if (settings.theme_accent_h && settings.theme_accent_s && settings.theme_accent_l) {
-        root.style.setProperty(
-          "--accent",
-          `${settings.theme_accent_h} ${settings.theme_accent_s}% ${settings.theme_accent_l}%`
-        );
-        root.style.setProperty(
-          "--sienna",
-          `${settings.theme_accent_h} ${settings.theme_accent_s}% ${settings.theme_accent_l}%`
-        );
-      }
-
-      // Apply background and card colors only in light mode
-      // In dark mode, clear custom styles to use CSS defaults
-      if (isDark) {
-        root.style.removeProperty("--background");
-        root.style.removeProperty("--parchment");
-        root.style.removeProperty("--card");
-        root.style.removeProperty("--popover");
-      } else if (
-        settings.theme_background_h &&
-        settings.theme_background_s &&
-        settings.theme_background_l
-      ) {
-        const bgL = Number(settings.theme_background_l);
-        root.style.setProperty(
-          "--background",
-          `${settings.theme_background_h} ${settings.theme_background_s}% ${settings.theme_background_l}%`
-        );
-        root.style.setProperty(
-          "--parchment",
-          `${settings.theme_background_h} ${settings.theme_background_s}% ${bgL - 2}%`
-        );
-        
-        // Apply card color from dedicated settings if available, otherwise fallback
-        if (settings.theme_card_h && settings.theme_card_s && settings.theme_card_l) {
-          root.style.setProperty(
-            "--card",
-            `${settings.theme_card_h} ${settings.theme_card_s}% ${settings.theme_card_l}%`
-          );
-          root.style.setProperty(
-            "--popover",
-            `${settings.theme_card_h} ${settings.theme_card_s}% ${Math.min(Number(settings.theme_card_l) + 1, 100)}%`
-          );
-        }
-      }
-
-      // Load and apply fonts
-      if (settings.theme_font_display) {
-        loadGoogleFont(settings.theme_font_display);
-        // NOTE: Tailwind maps font-display to CSS var (see tailwind.config.ts)
-        root.style.setProperty("--font-display", `"${settings.theme_font_display}"`);
-      }
-      if (settings.theme_font_body) {
-        loadGoogleFont(settings.theme_font_body);
-        root.style.setProperty("--font-body", `"${settings.theme_font_body}"`);
-      }
+      // Set neutral fonts for standalone
+      root.style.setProperty("--font-display", '"Inter"');
+      root.style.setProperty("--font-body", '"Inter"');
     };
 
-    // Apply immediately
     applyTheme();
 
-    // Watch for dark mode class changes on documentElement
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.attributeName === "class") {
@@ -179,10 +65,8 @@ export function ThemeApplicator() {
       attributeFilter: ["class"],
     });
 
-    return () => {
-      observer.disconnect();
-    };
-  }, [settings, isLoading, isDemoMode, isTenantMode]);
+    return () => observer.disconnect();
+  }, [isDemoMode]);
 
   return null;
 }
