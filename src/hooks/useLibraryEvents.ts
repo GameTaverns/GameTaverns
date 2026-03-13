@@ -269,9 +269,7 @@ export function useCreateEvent() {
       
       toast({
         title: "Event created",
-        description: forumThreadId
-          ? "Your event is live and a discussion thread was created automatically."
-          : variables.library_id 
+        description: variables.library_id 
             ? "Your event has been added to the calendar."
             : "Your community event is now live in the directory.",
       });
