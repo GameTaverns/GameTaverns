@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
-import { ClubDirectoryTab } from "@/components/directory/ClubDirectoryTab";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
