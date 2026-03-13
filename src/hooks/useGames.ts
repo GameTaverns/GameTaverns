@@ -376,7 +376,7 @@ export function useGame(slugOrId: string | undefined) {
 
       if (mechanicsError) throw mechanicsError;
 
-      const mechanics =
+      let mechanics: Mechanic[] =
         gameMechanics?.map((gm: { mechanic: Mechanic | null }) => gm.mechanic).filter((m): m is Mechanic => m !== null) || [];
 
       // Fetch designers
@@ -393,10 +393,14 @@ export function useGame(slugOrId: string | undefined) {
         .eq("game_id", game.id);
       let artists = gameArtists?.map((ga: any) => ga.artist).filter(Boolean) || [];
 
-      // Fall back to catalog data if game-level designers/artists/publisher/upc are empty
+      // Fall back to catalog data if game-level designers/artists/publisher/upc/mechanics/genre are empty
       const catalogId = game.catalog_id;
-      if (catalogId && (designers.length === 0 || artists.length === 0 || !game.publisher || !game.upc)) {
-        const [catDesigners, catArtists, catPublishers, catUpc] = await Promise.all([
+      const needsCatalogFallback = catalogId && (
+        designers.length === 0 || artists.length === 0 || !game.publisher || !game.upc ||
+        mechanics.length === 0 || !game.genre
+      );
+      if (catalogId && needsCatalogFallback) {
+        const [catDesigners, catArtists, catPublishers, catUpc, catMechanics, catGenres] = await Promise.all([
           designers.length === 0
             ? supabase.from("catalog_designers").select("designer:designers(id, name)").eq("catalog_id", catalogId)
             : Promise.resolve({ data: null }),
@@ -408,6 +412,12 @@ export function useGame(slugOrId: string | undefined) {
             : Promise.resolve({ data: null }),
           !game.upc
             ? supabase.from("game_catalog").select("upc, slug").eq("id", catalogId).maybeSingle()
+            : Promise.resolve({ data: null }),
+          mechanics.length === 0
+            ? supabase.from("catalog_mechanics").select("mechanic:mechanics(id, name)").eq("catalog_id", catalogId)
+            : Promise.resolve({ data: null }),
+          !game.genre
+            ? (supabase as any).from("catalog_genres").select("genre").eq("catalog_id", catalogId).order("genre")
             : Promise.resolve({ data: null }),
         ]);
 
@@ -425,6 +435,12 @@ export function useGame(slugOrId: string | undefined) {
         }
         if (catUpc.data?.slug) {
           game.catalog_slug = catUpc.data.slug;
+        }
+        if (catMechanics.data && mechanics.length === 0) {
+          mechanics = catMechanics.data.map((cm: any) => cm.mechanic).filter(Boolean);
+        }
+        if (catGenres.data && catGenres.data.length > 0 && !game.genre) {
+          game.genre = catGenres.data.map((g: any) => g.genre).join(", ");
         }
       }
 
