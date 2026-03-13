@@ -155,6 +155,31 @@ export function useCreateEvent() {
 
       if (error) throw error;
 
+      // Auto-create convention_events record for convention-type events (best effort)
+      if (input.event_type === "convention") {
+        try {
+          const convInsert: Record<string, any> = { event_id: data.id };
+          // If created via a club context, link the club too
+          if (input.library_id) {
+            const { data: clubLink } = await supabase
+              .from("club_libraries")
+              .select("club_id")
+              .eq("library_id", input.library_id)
+              .limit(1)
+              .maybeSingle();
+            if (clubLink?.club_id) {
+              convInsert.club_id = clubLink.club_id;
+            }
+          }
+          await supabase
+            .from("convention_events")
+            .insert(convInsert);
+          console.log("[event-convention] convention_events record created for", data.id);
+        } catch (err) {
+          console.error("[event-convention] Failed to create convention_events record:", err);
+        }
+      }
+
       let forumThreadId: string | null = null;
 
       // Auto-create an event discussion thread in the library forum (best effort)
