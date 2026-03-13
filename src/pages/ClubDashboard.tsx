@@ -40,6 +40,7 @@ import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDash
 import { ClubLogoUpload } from "@/components/clubs/ClubLogoUpload";
 
 import { useClubLendingSettings, useUpdateClubLendingSettings } from "@/hooks/useClubLending";
+import { ConventionStaffManager } from "@/components/clubs/ConventionStaffManager";
 
 const CLUB_EVENT_DIALOG_KEY = "club_dashboard_event_dialog_open";
 const CLUB_EVENT_TITLE_KEY = "club_dashboard_event_title";
