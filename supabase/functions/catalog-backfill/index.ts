@@ -999,7 +999,62 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      const VALID_GENRES = ["Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure", "Economic", "Abstract", "Humor", "Nature"];
+      const VALID_GENRES = [
+        "Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure",
+        "Economic", "Abstract", "Humor", "Nature", "War", "Political",
+        "Exploration", "Civilization", "Party", "Trivia", "Word", "Puzzle",
+        "Racing", "Sports", "Crime", "Mythology", "Pirates", "Western",
+        "Medieval", "Ancient", "Modern", "Religious", "Educational",
+        "City Building", "Farming", "Animals", "Space", "Nautical",
+        "Steampunk", "Post-Apocalyptic", "Espionage", "Zombies",
+        "Miniatures", "Card Game", "Dice", "Cooperative", "Deduction",
+        "Bluffing", "Fighting", "Train", "Aviation", "Industry",
+      ];
+
+      // Aliases for common AI mismatches
+      const GENRE_ALIASES: Record<string, string> = {
+        "science fiction": "Sci-Fi", "scifi": "Sci-Fi", "sci fi": "Sci-Fi",
+        "strategy": "Economic", "euro": "Economic", "resource management": "Economic",
+        "comedy": "Humor", "comedic": "Humor", "funny": "Humor", "humorous": "Humor",
+        "wargame": "War", "military": "War", "warfare": "War", "combat": "War",
+        "detective": "Mystery", "investigation": "Mystery",
+        "negotiation": "Political", "diplomacy": "Political",
+        "survival": "Adventure", "dungeon": "Fantasy", "magic": "Fantasy",
+        "cthulhu": "Horror", "lovecraft": "Horror", "gothic": "Horror",
+        "nautical": "Nautical", "sailing": "Nautical", "pirate": "Pirates",
+        "farming": "Farming", "agriculture": "Farming",
+        "animal": "Animals", "wildlife": "Animals", "dinosaur": "Animals",
+        "city building": "City Building", "urban": "City Building",
+        "train": "Train", "railroad": "Train", "railway": "Train",
+        "racing": "Racing", "race": "Racing",
+        "sports": "Sports", "sport": "Sports",
+        "educational": "Educational", "learning": "Educational",
+        "cooperative": "Cooperative", "co-op": "Cooperative", "coop": "Cooperative",
+        "deduction": "Deduction", "social deduction": "Deduction",
+        "bluffing": "Bluffing", "bluff": "Bluffing",
+        "fighting": "Fighting", "martial arts": "Fighting",
+        "puzzle": "Puzzle", "brain teaser": "Puzzle",
+        "trivia": "Trivia", "quiz": "Trivia",
+        "word game": "Word", "word": "Word", "vocabulary": "Word",
+        "party game": "Party", "party": "Party",
+        "civilization": "Civilization", "civ": "Civilization",
+        "exploration": "Exploration", "explore": "Exploration",
+        "miniatures": "Miniatures", "minis": "Miniatures", "miniature": "Miniatures",
+        "dice game": "Dice", "dice": "Dice",
+        "card game": "Card Game", "cards": "Card Game",
+        "space": "Space", "sci-fi": "Sci-Fi",
+        "post-apocalyptic": "Post-Apocalyptic", "apocalyptic": "Post-Apocalyptic",
+        "steampunk": "Steampunk",
+        "western": "Western", "wild west": "Western",
+        "medieval": "Medieval", "middle ages": "Medieval",
+        "ancient": "Ancient", "antiquity": "Ancient",
+        "mythology": "Mythology", "myth": "Mythology", "mythological": "Mythology",
+        "industry": "Industry", "industrial": "Industry", "manufacturing": "Industry",
+        "espionage": "Espionage", "spy": "Espionage", "spies": "Espionage",
+        "crime": "Crime", "criminal": "Crime", "heist": "Crime",
+        "zombies": "Zombies", "zombie": "Zombies", "undead": "Zombies",
+        "aviation": "Aviation", "flying": "Aviation", "aircraft": "Aviation",
+      };
 
       // Fetch unclassified catalog entries
       const { data: entries, error: gFetchErr } = await admin
