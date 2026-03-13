@@ -205,6 +205,9 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
               <NavItem href={getPlatformUrl("/events")} icon={CalendarDays} label={t('nav.browseEvents', 'Browse Events')} />
               <NavItem href={getPlatformUrl("/convention")} icon={Ticket} label={t('nav.conventions', 'Conventions')} />
               <NavItem href={getPlatformUrl("/dashboard/community")} icon={Calendar} label={t('nav.myEvents', 'My Events')} />
+              {myClubs && myClubs.length > 0 && (
+                <NavItem href={getPlatformUrl(`/club/${myClubs[0].slug}/events`)} icon={CalendarDays} label={t('nav.clubEvents', 'Club Events')} />
+              )}
 
               {/* Messages */}
               <SectionHeader label={t('mobileNav.messages')} />
