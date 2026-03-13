@@ -6745,6 +6745,21 @@ export type Database = {
         Returns: string
       }
       delete_game_safely: { Args: { _game_id: string }; Returns: undefined }
+      discover_similar_users: {
+        Args: { _limit?: number; _user_id: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          display_name: string
+          games_owned: number
+          primary_archetype: string
+          sessions_logged: number
+          shared_mechanics: number
+          similarity_score: number
+          user_id: string
+          username: string
+        }[]
+      }
       generate_slug: { Args: { title: string }; Returns: string }
       get_catalog_enrichment_status: { Args: never; Returns: Json }
       get_catalog_filter_options: { Args: never; Returns: Json }

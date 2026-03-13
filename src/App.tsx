@@ -81,6 +81,7 @@ const PlayStatsPage = lazy(lazyRetry(() => import("./pages/PlayStatsPage")));
 const PollPage = lazy(lazyRetry(() => import("./pages/PollPage")));
 const CatalogPrint = lazy(lazyRetry(() => import("./pages/CatalogPrint")));
 const SmartPicker = lazy(lazyRetry(() => import("./pages/SmartPicker")));
+const Recommendations = lazy(lazyRetry(() => import("./pages/Recommendations")));
 const CatalogBrowse = lazy(lazyRetry(() => import("./pages/CatalogBrowse")));
 const CatalogGameDetail = lazy(lazyRetry(() => import("./pages/CatalogGameDetail")));
 const CatalogAnalytics = lazy(lazyRetry(() => import("./pages/CatalogAnalytics")));
@@ -332,6 +333,7 @@ function PlatformRoutes() {
       <Route path="/join-club" element={<JoinClub />} />
       <Route path="/clubs" element={<Suspense fallback={<PageLoader />}><ClubsDirectory /></Suspense>} />
       <Route path="/picker" element={<SmartPicker />} />
+      <Route path="/recommendations" element={<Suspense fallback={<PageLoader />}><Recommendations /></Suspense>} />
       <Route path="/news" element={<Suspense fallback={<PageLoader />}><NewsFeed /></Suspense>} />
       <Route path="/news/:slug" element={<Suspense fallback={<PageLoader />}><NewsArticlePage /></Suspense>} />
       <Route path="/catalog" element={<CatalogBrowse />} />
@@ -438,6 +440,7 @@ function LibraryRoutes() {
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
       <Route path="/clubs" element={<Suspense fallback={<PageLoader />}><ClubsDirectory /></Suspense>} />
       <Route path="/picker" element={<SmartPicker />} />
+      <Route path="/recommendations" element={<Suspense fallback={<PageLoader />}><Recommendations /></Suspense>} />
       <Route path="/notifications" element={<Dashboard />} />
       <Route path="/grow" element={<Dashboard />} />
       <Route path="/share-card" element={<ShareCard />} />
