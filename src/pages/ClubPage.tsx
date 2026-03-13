@@ -338,6 +338,18 @@ export default function ClubPage() {
           </TabsContent>
 
           <TabsContent value="events">
+            {isOwner && (
+              <div className="flex justify-end mb-4">
+                <Button size="sm" className="gap-1.5" onClick={() => setCreateEventOpen(true)}>
+                  <Plus className="h-4 w-4" /> Create Club Event
+                </Button>
+                <CreateEventDialog
+                  open={createEventOpen}
+                  onOpenChange={setCreateEventOpen}
+                  libraryId={clubLibraries[0]?.library_id}
+                />
+              </div>
+            )}
             {clubEvents.length === 0 ? (
               <div className="text-cream/50 text-center py-12">{t('clubPage.noClubEvents')}</div>
             ) : (
