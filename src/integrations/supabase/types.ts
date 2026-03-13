@@ -6792,8 +6792,10 @@ export type Database = {
           games_owned: number
           primary_archetype: string
           sessions_logged: number
+          shared_games: number
           shared_mechanics: number
           similarity_score: number
+          top_shared_games: string[]
           user_id: string
           username: string
         }[]
