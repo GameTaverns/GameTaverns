@@ -1163,10 +1163,12 @@ Do NOT include any other text.`;
         }
       }
 
-      const genreHasMore = entries.length === genreBatchSize;
+      const wasRateLimited = genreErrors.some((e) => e.toLowerCase().includes("rate limited"));
+      const isStalled = genreClassified === 0;
+      const genreHasMore = entries.length === genreBatchSize && (genreClassified > 0 || wasRateLimited);
       return new Response(JSON.stringify({
         success: true, mode: "classify-genres", classified: genreClassified,
-        total: entries.length, hasMore: genreHasMore,
+        total: entries.length, hasMore: genreHasMore, stalled: isStalled,
         errors: genreErrors.slice(0, 20),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
