@@ -81,6 +81,7 @@ const PlayStatsPage = lazy(lazyRetry(() => import("./pages/PlayStatsPage")));
 const PollPage = lazy(lazyRetry(() => import("./pages/PollPage")));
 const CatalogPrint = lazy(lazyRetry(() => import("./pages/CatalogPrint")));
 const SmartPicker = lazy(lazyRetry(() => import("./pages/SmartPicker")));
+const Recommendations = lazy(lazyRetry(() => import("./pages/Recommendations")));
 const CatalogBrowse = lazy(lazyRetry(() => import("./pages/CatalogBrowse")));
 const CatalogGameDetail = lazy(lazyRetry(() => import("./pages/CatalogGameDetail")));
 const CatalogAnalytics = lazy(lazyRetry(() => import("./pages/CatalogAnalytics")));
