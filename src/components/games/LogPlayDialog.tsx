@@ -150,12 +150,29 @@ export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClos
     (async () => {
       try {
         // 1. Try library expansions first
-        const { data: libraryExps } = await supabase
+        const { data: libraryExps, error: libErr } = await supabase
           .from("games")
           .select("id, title, image_url, expansion_type_override, catalog_id")
           .eq("parent_game_id", gameId)
           .eq("is_expansion", true)
           .order("title");
+
+        if (libErr) {
+          console.warn("Failed to fetch library expansions, trying without override column:", libErr.message);
+          // Retry without expansion_type_override (column may not exist yet)
+          const { data: fallbackExps } = await supabase
+            .from("games")
+            .select("id, title, image_url, catalog_id")
+            .eq("parent_game_id", gameId)
+            .eq("is_expansion", true)
+            .order("title");
+          if (fallbackExps && fallbackExps.length > 0) {
+            setExpansions(fallbackExps.map((d) => ({
+              id: d.id, title: d.title, image_url: d.image_url, expansion_type: "expansion",
+            })));
+            return;
+          }
+        }
 
         if (libraryExps && libraryExps.length > 0) {
           // Resolve catalog expansion_type for entries without override
