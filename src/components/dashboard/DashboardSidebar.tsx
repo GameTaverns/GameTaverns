@@ -281,7 +281,7 @@ export function DashboardSidebar() {
   return (
     <div className="space-y-4">
       <MyStatsWidget />
-      <FollowersWidget />
+      <FollowingWidget />
       <UpcomingEventsWidget />
       <LatestNewsWidget />
     </div>
