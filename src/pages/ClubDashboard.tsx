@@ -450,6 +450,11 @@ export default function ClubDashboard() {
                 <p className="text-cream/50 text-center py-8">No events yet</p>
               )}
             </div>
+
+            {/* Convention Staff Assignment */}
+            <div className="mt-6">
+              <ConventionStaffManager clubId={club.id} />
+            </div>
           </TabsContent>
 
 
