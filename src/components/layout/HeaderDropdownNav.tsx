@@ -60,7 +60,7 @@ function NavDropdown({ label, icon: Icon, items }: NavMenuProps) {
       >
         {items.map((item, idx) => {
           if (item.separator) {
-            return <DropdownMenuSeparator key={`sep-${idx}`} className="bg-wood-medium/30" />;
+            return <DropdownMenuSeparator key={`sep-${idx}`} className="bg-border/50" />;
           }
           const ItemIcon = item.icon;
           if (item.onClick) {
