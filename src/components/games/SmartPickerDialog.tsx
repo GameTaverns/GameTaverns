@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { useMyLibraries } from "@/hooks/useLibrary";
-import { useCuratedListDetail } from "@/hooks/useCuratedLists";
+import { useCuratedList } from "@/hooks/useCuratedLists";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Dices, Heart, Filter, Hand, List } from "lucide-react";
