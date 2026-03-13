@@ -1231,6 +1231,13 @@ export type Database = {
             referencedRelation: "library_events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "convention_events_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "public_event_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       convention_reservations: {
@@ -6662,6 +6669,58 @@ export type Database = {
             columns: ["poll_id"]
             isOneToOne: false
             referencedRelation: "game_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_event_directory: {
+        Row: {
+          created_at: string | null
+          created_by_user_id: string | null
+          creator_avatar: string | null
+          creator_display_name: string | null
+          description: string | null
+          end_date: string | null
+          entry_fee: string | null
+          event_date: string | null
+          event_location: string | null
+          event_type: string | null
+          id: string | null
+          is_public: boolean | null
+          latitude: number | null
+          library_id: string | null
+          library_name: string | null
+          library_slug: string | null
+          location_city: string | null
+          location_country: string | null
+          location_region: string | null
+          longitude: number | null
+          max_attendees: number | null
+          organizer_name: string | null
+          status: string | null
+          title: string | null
+          venue_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_events_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_events_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_events_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
             referencedColumns: ["id"]
           },
         ]
