@@ -265,7 +265,7 @@ function LatestNewsWidget() {
                 {article.title}
               </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                {article.source_name}
+                {(article as any).source?.name}
                 {article.published_at && (
                   <> · {formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}</>
                 )}
