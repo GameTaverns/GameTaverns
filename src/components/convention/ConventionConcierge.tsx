@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 const GAME_TYPES = ["Board Game", "Card Game", "Dice Game", "Party Game", "War Game", "Miniatures", "RPG", "Other"];
-const GENRES = ["Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure", "Economic", "Abstract", "Humor", "Nature"];
 const PLAY_TIMES = ["0-15 Minutes", "15-30 Minutes", "30-45 Minutes", "45-60 Minutes", "60+ Minutes"];
 
 type ConciergeMode = "all" | "want_to_play" | "filter";
