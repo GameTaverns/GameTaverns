@@ -29,7 +29,7 @@ export default function ConventionHub() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("library_events")
-        .select("*, library:libraries(id, name, slug, owner_id)")
+        .select("*, library:libraries(id, name, slug, owner_id), convention_event:convention_events(id, club_id, club:clubs(id, name))")
         .eq("id", eventId!)
         .single();
       if (error) throw error;
@@ -124,7 +124,9 @@ export default function ConventionHub() {
     );
   }
 
-  const isOwner = (event as any).library?.owner_id === user?.id;
+  const isOwner = (event as any).library?.owner_id === user?.id || event?.created_by_user_id === user?.id;
+  const clubName = (event as any).convention_event?.club?.name;
+  const contextName = clubName || (event as any).library?.name;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -143,7 +145,7 @@ export default function ConventionHub() {
               </h1>
             </div>
             <p className="text-sm text-muted-foreground ml-9">
-              {event.title} — {(event as any).library?.name}
+              {event.title} — {contextName}
               {event.venue_name && ` · ${event.venue_name}`}
               {libraryGames.length > 0 && ` · ${libraryGames.length} games`}
             </p>
