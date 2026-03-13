@@ -55,7 +55,7 @@
   "game": {
     "notFound": "Game not found",
     "notFoundDesc": "The game you're looking for doesn't exist.",
-    "backToCollection": "Back to Collection",
+    "backToCollection": "Back to Library",
     "viewOnBGG": "View on BoardGameGeek",
     "description": "Description",
     "noDescription": "No description available.",
