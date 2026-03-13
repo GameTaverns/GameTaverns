@@ -126,6 +126,9 @@ export function HeaderDropdownNav() {
       items: [
         { href: getPlatformUrl("/directory"), label: t('nav.libraryDirectory', 'Library Directory'), icon: Globe },
         { href: getPlatformUrl("/clubs"), label: t('nav.clubDirectory', 'Club Directory'), icon: UserPlus },
+        ...((myClubs && myClubs.length > 0)
+          ? [{ href: getPlatformUrl(`/club/${myClubs[0].slug}`), label: t('nav.myClub', 'My Club'), icon: Users }]
+          : []),
         { href: getPlatformUrl("/near-me"), label: t('nav.nearMe', 'Near Me'), icon: MapPin },
         { separator: true, label: 's2', icon: Users },
         { href: getPlatformUrl("/community"), label: t('nav.forums', 'Community Forums'), icon: MessageSquarePlus },
