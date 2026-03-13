@@ -369,9 +369,6 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
                   {pickedGame.game_type && (
                     <Badge variant="outline" className="text-xs">{pickedGame.game_type}</Badge>
                   )}
-                  {pickedGame.genre && (
-                    <Badge variant="outline" className="text-xs">{pickedGame.genre}</Badge>
-                  )}
                 </div>
                 <Badge variant="secondary" className="mt-2">{pickedGame.available} of {pickedGame.copies_owned || 1} available</Badge>
               </div>
