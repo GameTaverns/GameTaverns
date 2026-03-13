@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { PickerChip } from "@/components/games/picker/PickerChip";
+import { useMechanicFamilies, useGameMechanicFamilyMap } from "@/hooks/useMechanicFamilies";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
