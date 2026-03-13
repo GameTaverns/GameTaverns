@@ -134,7 +134,7 @@ export function HeaderDropdownNav() {
         { href: getPlatformUrl("/lists"), label: t('nav.curatedLists', 'Curated Lists'), icon: List },
         { separator: true, label: 's3', icon: Users },
         { href: getPlatformUrl("/news"), label: t('nav.news', 'News & Reviews'), icon: Newspaper },
-        { href: "https://discord.gg/jTqgCPX8DD", label: "Discord", icon: MessageSquarePlus, external: true },
+        { onClick: () => window.open("https://discord.gg/jTqgCPX8DD", "_blank"), label: "Discord", icon: MessageSquarePlus },
       ],
     },
     {
