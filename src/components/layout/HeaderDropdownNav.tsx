@@ -171,9 +171,6 @@ export function HeaderDropdownNav() {
       icon: Settings,
       items: [
         { href: getPlatformUrl("/dashboard/settings"), label: t('nav.accountSettings', 'Account Settings'), icon: Settings },
-        ...(profile?.username
-          ? [{ href: getPlatformUrl(`/u/${profile.username}`), label: t('nav.myProfile', 'My Profile'), icon: User }]
-          : []),
         { href: getPlatformUrl("/achievements"), label: t('nav.achievements', 'Achievements'), icon: Trophy },
         { separator: true, label: 's4', icon: Settings },
         { href: getPlatformUrl("/docs"), label: t('nav.helpDocs', 'Help & Docs'), icon: HelpCircle },
