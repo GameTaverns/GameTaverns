@@ -49,6 +49,7 @@ export default function ClubPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [switchingLibraryId, setSwitchingLibraryId] = useState<string | null>(null);
+  const [createEventOpen, setCreateEventOpen] = useState(false);
   const [newLibraryId, setNewLibraryId] = useState("");
   const debouncedQuery = useDebounce(searchQuery, 300);
   const { data: games = [], isLoading: searchLoading } = useClubGameSearch(
