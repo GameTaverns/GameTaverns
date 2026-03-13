@@ -142,7 +142,7 @@ export function HeaderDropdownNav() {
       label: t('nav.quickActions', 'Quick Actions'),
       icon: Zap,
       items: [
-        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
+        { onClick: () => setLogPlayOpen(true), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
         { href: getPlatformUrl("/picker"), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
         { href: getPlatformUrl("/create-library"), label: t('nav.createLibrary', 'Create Library'), icon: PlusCircle },
       ],
