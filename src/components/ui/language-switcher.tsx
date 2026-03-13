@@ -25,7 +25,7 @@ export function LanguageSwitcher() {
           className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
           aria-label="Change language"
         >
-          <Globe className="h-4 w-4" />
+          <Languages className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44 z-[9999]" sideOffset={8}>
