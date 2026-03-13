@@ -44,6 +44,7 @@ export interface CreateEventInput {
   location_region?: string;
   location_country?: string;
   status?: string;
+  club_id?: string;
 }
 
 export interface UpdateEventInput {
