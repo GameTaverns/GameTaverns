@@ -80,11 +80,15 @@ function useGameSearch(query: string) {
 }
 
 interface StandaloneLogPlayDialogProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function StandaloneLogPlayDialog({ children }: StandaloneLogPlayDialogProps) {
-  const [open, setOpen] = useState(false);
+export function StandaloneLogPlayDialog({ children, open: controlledOpen, onOpenChange: controlledOnOpenChange }: StandaloneLogPlayDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [search, setSearch] = useState("");
   const [selectedGame, setSelectedGame] = useState<{ id: string; title: string } | null>(null);
   const [resolving, setResolving] = useState(false);
@@ -150,7 +154,7 @@ export function StandaloneLogPlayDialog({ children }: StandaloneLogPlayDialogPro
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TenantLink } from "@/components/TenantLink";
 import { getPlatformUrl, getLibraryUrl } from "@/hooks/useTenantUrl";
+import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDialog";
 import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -94,6 +95,7 @@ export function HeaderDropdownNav() {
   const { data: library } = useMyLibrary();
   const { data: profile } = useUserProfile();
   const navigate = useNavigate();
+  const [logPlayOpen, setLogPlayOpen] = useState(false);
 
   if (!isAuthenticated) return null;
 
@@ -140,7 +142,7 @@ export function HeaderDropdownNav() {
       label: t('nav.quickActions', 'Quick Actions'),
       icon: Zap,
       items: [
-        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
+        { onClick: () => setLogPlayOpen(true), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
         { href: getPlatformUrl("/picker"), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
         { href: getPlatformUrl("/create-library"), label: t('nav.createLibrary', 'Create Library'), icon: PlusCircle },
       ],
@@ -162,10 +164,13 @@ export function HeaderDropdownNav() {
   ];
 
   return (
-    <nav className="hidden md:flex items-center gap-0.5" aria-label="Main navigation">
-      {menus.map((menu) => (
-        <NavDropdown key={menu.label} {...menu} />
-      ))}
-    </nav>
+    <>
+      <nav className="hidden md:flex items-center gap-0.5" aria-label="Main navigation">
+        {menus.map((menu) => (
+          <NavDropdown key={menu.label} {...menu} />
+        ))}
+      </nav>
+      <StandaloneLogPlayDialog open={logPlayOpen} onOpenChange={setLogPlayOpen} />
+    </>
   );
 }
