@@ -171,7 +171,7 @@ export function useCreateEvent() {
               convInsert.club_id = clubLink.club_id;
             }
           }
-          await supabase
+          await (supabase as any)
             .from("convention_events")
             .insert(convInsert);
           console.log("[event-convention] convention_events record created for", data.id);
