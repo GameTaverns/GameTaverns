@@ -24,7 +24,6 @@ import { cn } from "@/lib/utils";
 
 const ESSENTIAL_TABS = [
   { value: "general", labelKey: "librarySettings.general", icon: Settings },
-  { value: "theme", labelKey: "librarySettings.theme", icon: Palette },
   { value: "branding", labelKey: "librarySettings.branding", icon: Image },
   { value: "features", labelKey: "librarySettings.features", icon: ToggleRight },
 ];
