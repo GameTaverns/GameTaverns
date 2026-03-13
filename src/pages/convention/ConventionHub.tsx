@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { ConventionCommandCenter } from "@/components/convention/ConventionCommandCenter";
 import { ConventionLendingDesk } from "@/components/convention/ConventionLendingDesk";
-import { ConventionConcierge } from "@/components/convention/ConventionConcierge";
+
 import { ConventionAnalytics } from "@/components/convention/ConventionAnalytics";
 import { ConventionSettings } from "@/components/convention/ConventionSettings";
 import { useAuth } from "@/hooks/useAuth";
