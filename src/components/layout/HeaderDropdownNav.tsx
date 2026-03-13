@@ -124,6 +124,9 @@ export function HeaderDropdownNav() {
       label: t('nav.social', 'Social'),
       icon: Users,
       items: [
+        ...(profile?.username
+          ? [{ href: getPlatformUrl(`/u/${profile.username}`), label: t('nav.myProfile', 'My Profile'), icon: User }]
+          : []),
         { href: getPlatformUrl("/directory"), label: t('nav.libraryDirectory', 'Library Directory'), icon: Globe },
         { href: getPlatformUrl("/clubs"), label: t('nav.clubDirectory', 'Club Directory'), icon: UserPlus },
         ...((myClubs && myClubs.length > 0)
