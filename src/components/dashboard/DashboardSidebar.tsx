@@ -47,7 +47,7 @@ function MyStatsWidget() {
     <WidgetCard title={t('dashboard.myStats', 'My Stats')} icon={TrendingUp}>
       <div className="grid grid-cols-2 gap-2">
         <StatBlock icon={Gamepad2} label={t('dashboard.games', 'Games')} value={stats?.games ?? 0} />
-        <StatBlock icon={Dices} label={t('dashboard.sessions', 'Sessions')} value={stats?.sessions ?? 0} />
+        
         <StatBlock icon={BookOpen} label={t('dashboard.libraries', 'Libraries')} value={libraries.length} />
       </div>
     </WidgetCard>
