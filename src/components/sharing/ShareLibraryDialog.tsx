@@ -28,10 +28,10 @@ export function ShareLibraryDialog({
   const [showEmbed, setShowEmbed] = useState(false);
 
   const libraryUrl = `https://${librarySlug}.gametaverns.com`;
-  const embedCode = `<iframe src="${libraryUrl}/embed" width="100%" height="600" frameborder="0" style="border-radius:12px;border:1px solid #333;" title="${libraryName} - Board Game Collection"></iframe>`;
+  const embedCode = `<iframe src="${libraryUrl}/embed" width="100%" height="600" frameborder="0" style="border-radius:12px;border:1px solid #333;" title="${libraryName} - Board Game Library"></iframe>`;
   const embedScript = `<script src="https://gametaverns.com/embed.js" data-library="${librarySlug}"></script>`;
 
-  const shareText = `Check out ${libraryName}'s board game collection on GameTaverns! ${gameCount} games to explore.`;
+  const shareText = `Check out ${libraryName}'s board game library on GameTaverns! ${gameCount} games to explore.`;
 
   const handleCopy = async (text: string, label: string) => {
     try {
@@ -47,7 +47,7 @@ export function ShareLibraryDialog({
   const socialLinks = {
     twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(libraryUrl)}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(libraryUrl)}&quote=${encodeURIComponent(shareText)}`,
-    reddit: `https://reddit.com/submit?url=${encodeURIComponent(libraryUrl)}&title=${encodeURIComponent(`${libraryName} — Board Game Collection`)}`,
+    reddit: `https://reddit.com/submit?url=${encodeURIComponent(libraryUrl)}&title=${encodeURIComponent(`${libraryName} — Board Game Library`)}`,
   };
 
   return (
@@ -80,7 +80,7 @@ export function ShareLibraryDialog({
             )}
             <div>
               <h3 className="font-display font-bold text-sm">{libraryName}</h3>
-              <p className="text-xs text-muted-foreground">Board Game Collection on GameTaverns</p>
+              <p className="text-xs text-muted-foreground">Board Game Library on GameTaverns</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -161,7 +161,7 @@ export function ShareLibraryDialog({
               onClick={async () => {
                 try {
                   await navigator.share({
-                    title: `${libraryName} — Board Game Collection`,
+                    title: `${libraryName} — Board Game Library`,
                     text: shareText,
                     url: libraryUrl,
                   });
@@ -226,7 +226,7 @@ export function ShareLibraryDialog({
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Add this to your website to show your board game collection. Perfect for cafés and game stores!
+                Add this to your website to show your board game library. Perfect for cafés and game stores!
               </p>
             </div>
           )}

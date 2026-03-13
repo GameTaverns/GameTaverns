@@ -102,7 +102,7 @@ export function ExploreChecklist({
     {
       id: "bgg-sync",
       title: "Sync with BoardGameGeek",
-      description: "Link your BGG account to auto-import your collection and keep it in sync.",
+      description: "Link your BGG account to auto-import your library and keep it in sync.",
       icon: <Globe className="h-4 w-4" />,
       completed: hasBggSync,
       href: settingsUrl!,
@@ -129,7 +129,7 @@ export function ExploreChecklist({
     {
       id: "earn-achievement",
       title: "Unlock an achievement",
-      description: "Earn badges for milestones like logging plays, growing your collection, and more.",
+      description: "Earn badges for milestones like logging plays, growing your library, and more.",
       icon: <Trophy className="h-4 w-4" />,
       completed: hasAchievements,
       href: getPlatformUrl("/dashboard?tab=library"),

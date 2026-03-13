@@ -580,7 +580,7 @@ export function Sidebar({ isOpen, collapsed = false, onToggleCollapse }: Sidebar
               )}
             >
               <Library className="h-5 w-5" />
-              <span>Full Collection</span>
+              <span>Full Library</span>
             </Link>
             
             {/* Owner quick links removed — use top admin bar instead */}
