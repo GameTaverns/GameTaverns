@@ -121,7 +121,7 @@ export function HeaderDropdownNav() {
         { href: getPlatformUrl("/near-me"), label: t('nav.nearMe', 'Near Me'), icon: MapPin },
         { separator: true, label: 's2', icon: Users },
         { href: getPlatformUrl("/community"), label: t('nav.forums', 'Community Forums'), icon: MessageSquarePlus },
-        { href: getPlatformUrl("/clubs"), label: t('nav.clubs', 'Clubs'), icon: UserPlus },
+        
         { href: getPlatformUrl("/lists"), label: t('nav.curatedLists', 'Curated Lists'), icon: List },
         { separator: true, label: 's3', icon: Users },
         { href: getPlatformUrl("/news"), label: t('nav.news', 'News & Reviews'), icon: Newspaper },
