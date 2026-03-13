@@ -28,7 +28,7 @@ export function ShareLibraryDialog({
   const [showEmbed, setShowEmbed] = useState(false);
 
   const libraryUrl = `https://${librarySlug}.gametaverns.com`;
-  const embedCode = `<iframe src="${libraryUrl}/embed" width="100%" height="600" frameborder="0" style="border-radius:12px;border:1px solid #333;" title="${libraryName} - Board Game Collection"></iframe>`;
+  const embedCode = `<iframe src="${libraryUrl}/embed" width="100%" height="600" frameborder="0" style="border-radius:12px;border:1px solid #333;" title="${libraryName} - Board Game Library"></iframe>`;
   const embedScript = `<script src="https://gametaverns.com/embed.js" data-library="${librarySlug}"></script>`;
 
   const shareText = `Check out ${libraryName}'s board game collection on GameTaverns! ${gameCount} games to explore.`;
