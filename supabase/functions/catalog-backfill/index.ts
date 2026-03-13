@@ -104,24 +104,39 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const token = authHeader.replace("Bearer ", "").trim();
+
+    let tokenRole: string | null = null;
+    try {
+      tokenRole = JSON.parse(atob(token.split(".")[1]))?.role ?? null;
+    } catch {
+      tokenRole = null;
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("ANON_KEY") || "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || (tokenRole === "service_role" ? token : "");
+
+    if (!supabaseUrl || !serviceKey) {
+      return new Response(JSON.stringify({ error: "Function misconfigured: missing SUPABASE_URL/API_EXTERNAL_URL or SUPABASE_SERVICE_ROLE_KEY/SERVICE_ROLE_KEY" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const token = authHeader.replace("Bearer ", "").trim();
-
     // Accept service role key, anon key, or anon-role JWTs as internal/cron calls
-    let isInternalCall = token === serviceKey || token === anonKey;
-    if (!isInternalCall) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        isInternalCall = payload.role === "anon" || payload.role === "service_role";
-      } catch { /* not a JWT */ }
-    }
+    let isInternalCall = token === serviceKey || (!!anonKey && token === anonKey) || tokenRole === "anon" || tokenRole === "service_role";
 
     if (!isInternalCall) {
+      if (!anonKey) {
+        return new Response(JSON.stringify({ error: "Function misconfigured: missing SUPABASE_ANON_KEY/ANON_KEY" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const supabaseUser = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
       });
