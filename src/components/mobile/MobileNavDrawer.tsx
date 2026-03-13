@@ -35,6 +35,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
   const { data: library } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
   const { data: profile } = useUserProfile();
+  const { data: myClubs } = useMyClubs();
   const { data: dmUnreadCount = 0 } = useUnreadDMCount();
   const { toast } = useToast();
   const navigate = useNavigate();
