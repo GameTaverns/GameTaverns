@@ -231,6 +231,7 @@ export default function ConventionHub() {
               activeLoans={activeLoans}
               libraryGames={libraryGames}
               conventionSettings={conventionSettings}
+              reservations={reservations}
             />
           </TabsContent>
           <TabsContent value="concierge">
