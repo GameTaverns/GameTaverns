@@ -182,7 +182,6 @@ export function useGameSessions(gameId: string) {
           .insert(
             input.players.map((p) => {
               const linkedId = (p as any).linked_user_id ?? null;
-              // Auto-accept tag if the tagged user is the person logging the session
               const isself = linkedId && linkedId === currentUserId;
               return {
                 session_id: session.id,
@@ -192,6 +191,8 @@ export function useGameSessions(gameId: string) {
                 is_first_play: p.is_first_play,
                 linked_user_id: linkedId,
                 tag_status: isself ? "accepted" : ((p as any).tag_status ?? "none"),
+                placement: (p as any).placement ?? null,
+                player_outcome: (p as any).player_outcome ?? null,
               };
             })
           )
