@@ -118,7 +118,7 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
-                placeholder="Type a game name or scan barcode..."
+                placeholder="Search game name or scan UPC barcode..."
                 className="pl-10 h-12 text-lg"
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setSelectedGame(null); }}
@@ -130,7 +130,7 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Search by game name, scan an attendee badge, or scan a game barcode
+            Search by game name or scan a UPC barcode
           </p>
           {filteredGames.length > 0 && !selectedGame && (
             <div className="mt-3 max-h-48 overflow-y-auto space-y-1 border rounded-lg p-2 bg-background">
