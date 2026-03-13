@@ -217,6 +217,7 @@ export default function CatalogGameDetail() {
    const complexity = getComplexity(game.weight);
 
   const allCategories = [
+    ...(game.genres.map(g => ({ label: g, type: "genre" }))),
     ...(game.mechanics.map(m => ({ label: m, type: "mechanic" }))),
     ...(game.publishers.map(p => ({ label: p, type: "publisher" }))),
   ];
