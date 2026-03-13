@@ -126,7 +126,7 @@ function HotGamesWidget() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("game_hotness")
-        .select("game_id, title, thumbnail_url, hotness_score")
+        .select("game_id, title, image_url, hotness_score, slug")
         .order("hotness_score", { ascending: false })
         .limit(5);
 
@@ -150,10 +150,10 @@ function HotGamesWidget() {
     <WidgetCard title={t('dashboard.hotGames', 'Hot Games')} icon={Flame}>
       <div className="space-y-2">
         {hotGames.map((game: any, idx: number) => (
-          <Link key={game.game_id} to={`/catalog`} className="flex items-center gap-2 group">
+          <Link key={game.game_id} to={game.slug ? `/catalog/${game.slug}` : `/catalog`} className="flex items-center gap-2 group">
             <span className="text-xs font-bold text-muted-foreground w-4">{idx + 1}</span>
-            {game.thumbnail_url && (
-              <img src={game.thumbnail_url} alt="" className="h-7 w-7 rounded object-cover" />
+            {game.image_url && (
+              <img src={game.image_url} alt="" className="h-7 w-7 rounded object-cover" />
             )}
             <span className="text-sm text-foreground group-hover:text-primary transition-colors truncate">
               {game.title}
