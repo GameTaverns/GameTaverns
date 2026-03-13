@@ -117,18 +117,20 @@ export default function ConventionHub() {
         // Use .eq for single library (more compatible)
         const { data, error } = await supabase
           .from("games")
-          .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, copies_owned, weight, library_id")
+          .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, play_time, copies_owned, weight, library_id, game_type, genre, difficulty, is_unplayed, is_expansion")
           .eq("library_id", lendingLibraryIds[0])
           .eq("ownership_status", "owned")
+          .eq("is_expansion", false)
           .order("title");
         if (error) throw error;
         return data || [];
       }
       const { data, error } = await supabase
         .from("games")
-        .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, copies_owned, weight, library_id")
+        .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, play_time, copies_owned, weight, library_id, game_type, genre, difficulty, is_unplayed, is_expansion")
         .in("library_id", lendingLibraryIds)
         .eq("ownership_status", "owned")
+        .eq("is_expansion", false)
         .order("title");
       if (error) throw error;
       return data || [];
