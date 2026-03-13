@@ -727,6 +727,12 @@ const GameDetail = () => {
                         </TableCell>
                       </TableRow>
                     )}
+                    {(game as any).genre && (
+                      <TableRow>
+                        <TableCell className="font-medium text-muted-foreground">Genre</TableCell>
+                        <TableCell className="text-foreground">{(game as any).genre}</TableCell>
+                      </TableRow>
+                    )}
                     <TableRow>
                       <TableCell className="font-medium text-muted-foreground">
                         {t('game.copiesOwned')}
