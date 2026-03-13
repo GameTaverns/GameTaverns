@@ -21,7 +21,8 @@ export function useCatalogGenres(catalogId: string | null | undefined) {
 export function useSetCatalogGenres() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ catalogId, genres }: { catalogId: string; genres: string[] }) => {
+    mutationFn: async (params: { catalogId: string; genres: string[] }) => {
+      const { catalogId, genres } = params;
       // Delete existing
       await (supabase as any).from("catalog_genres").delete().eq("catalog_id", catalogId);
       // Insert new
@@ -31,7 +32,7 @@ export function useSetCatalogGenres() {
         if (error) throw error;
       }
     },
-    onSuccess: (_: unknown, v: { catalogId: string }) => {
+    onSuccess: (_: unknown, v: { catalogId: string; genres: string[] }) => {
       qc.invalidateQueries({ queryKey: ["catalog-genres", v.catalogId] });
       qc.invalidateQueries({ queryKey: ["catalog-game"] });
     },
