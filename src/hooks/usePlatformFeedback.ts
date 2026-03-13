@@ -362,7 +362,8 @@ export function useSubmitFeedback() {
       }
 
       // Save to database
-      const { data: inserted, error } = await supabase
+      // Note: We don't use .select().single() because non-admin users lack SELECT permission
+      const { error } = await supabase
         .from("platform_feedback")
         .insert({
           type: feedback.type as any,
@@ -370,20 +371,17 @@ export function useSubmitFeedback() {
           sender_email: feedback.sender_email,
           message: feedback.message,
           screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : [],
-        })
-        .select("id")
-        .single();
+        });
 
       if (error) throw error;
 
-      // Fire-and-forget: notify admins via Discord + email (pass feedback_id so thread ID is saved back)
+      // Fire-and-forget: notify admins via Discord + email
       void invokeBackendFunction("notify-feedback", {
         type: feedback.type,
         sender_name: feedback.sender_name,
         sender_email: feedback.sender_email,
         message: feedback.message,
         screenshot_urls: screenshotUrls,
-        feedback_id: inserted?.id,
       });
     },
   });
