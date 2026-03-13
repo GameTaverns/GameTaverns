@@ -315,6 +315,7 @@ function PlatformRoutes() {
       <Route path="/convention" element={<Suspense fallback={<PageLoader />}><ConventionIndex /></Suspense>} />
       <Route path="/convention/:eventId" element={<Suspense fallback={<PageLoader />}><ConventionHub /></Suspense>} />
       <Route path="/convention/:eventId/concierge" element={<Suspense fallback={<PageLoader />}><ConventionConciergePage /></Suspense>} />
+      <Route path="/concierge" element={<Suspense fallback={<PageLoader />}><ConciergeBrowsePage /></Suspense>} />
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />

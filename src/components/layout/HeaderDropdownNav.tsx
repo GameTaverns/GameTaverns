@@ -148,7 +148,7 @@ export function HeaderDropdownNav() {
           ? [{ href: getPlatformUrl(`/club/${myClubs[0].slug}?tab=events`), label: t('nav.clubEvents', 'Club Events'), icon: CalendarDays }]
           : []),
         { separator: true, label: 's-concierge', icon: Calendar },
-        { href: getPlatformUrl("/convention"), label: t('nav.gameConcierge', 'Game Concierge'), icon: Dice5 },
+        { href: getPlatformUrl("/concierge"), label: t('nav.gameConcierge', 'Game Concierge'), icon: Dice5 },
       ],
     },
     {
