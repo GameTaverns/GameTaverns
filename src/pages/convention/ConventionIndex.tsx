@@ -31,33 +31,67 @@ export default function ConventionIndex() {
         .select("id, name")
         .eq("owner_id", user.id);
 
-      if (!libs?.length) return [];
+      const libIds = (libs || []).map((l: any) => l.id);
 
-      const libIds = libs.map((l: any) => l.id);
+      // Get events: owned-library events + events created by user
+      const queries = [];
+      if (libIds.length) {
+        queries.push(
+          supabase
+            .from("library_events")
+            .select("id, title, event_date, end_date, library_id, created_by_user_id")
+            .in("library_id", libIds)
+            .order("event_date", { ascending: false })
+            .limit(100)
+        );
+      }
+      queries.push(
+        supabase
+          .from("library_events")
+          .select("id, title, event_date, end_date, library_id, created_by_user_id")
+          .eq("created_by_user_id", user.id)
+          .order("event_date", { ascending: false })
+          .limit(100)
+      );
 
-      // Get library events for those libraries
-      const { data: events } = await supabase
-        .from("library_events")
-        .select("id, title, event_date, end_date, library_id")
-        .in("library_id", libIds)
-        .order("event_date", { ascending: false })
-        .limit(100);
+      const results = await Promise.all(queries);
+      const allEvents = results.flatMap(r => r.data || []);
+      // Deduplicate by id
+      const eventMap = new Map(allEvents.map((e: any) => [e.id, e]));
+      const events = Array.from(eventMap.values());
 
-      if (!events?.length) return [];
+      if (!events.length) return [];
 
-      // Get convention_events entries
+      // Get convention_events entries (includes club_id)
       const { data: convEvents } = await supabase
         .from("convention_events")
-        .select("id, event_id, lending_enabled, kiosk_mode_enabled")
+        .select("id, event_id, lending_enabled, kiosk_mode_enabled, club_id")
         .in("event_id", events.map((e: any) => e.id));
 
       const convMap = new Map((convEvents || []).map((c: any) => [c.event_id, c]));
 
-      return events.map((e: any) => ({
-        ...e,
-        libraryName: libs.find((l: any) => l.id === e.library_id)?.name,
-        conventionSettings: convMap.get(e.id) || null,
-      }));
+      // Fetch club names for any conventions linked to clubs
+      const clubIds = [...new Set((convEvents || []).filter((c: any) => c.club_id).map((c: any) => c.club_id))];
+      let clubMap = new Map<string, string>();
+      if (clubIds.length) {
+        const { data: clubs } = await supabase
+          .from("clubs")
+          .select("id, name")
+          .in("id", clubIds);
+        clubMap = new Map((clubs || []).map((c: any) => [c.id, c.name]));
+      }
+
+      const libMap = new Map((libs || []).map((l: any) => [l.id, l.name]));
+
+      return events.map((e: any) => {
+        const conv = convMap.get(e.id);
+        const clubName = conv?.club_id ? clubMap.get(conv.club_id) : null;
+        return {
+          ...e,
+          displayName: clubName || libMap.get(e.library_id) || null,
+          conventionSettings: conv || null,
+        };
+      });
     },
     enabled: !!user,
     staleTime: 30000,
