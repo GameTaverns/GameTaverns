@@ -276,6 +276,7 @@ const GameDetail = () => {
     game.difficulty && { label: game.difficulty, type: "difficulty" },
     game.play_time && { label: game.play_time, type: "playtime" },
     game.game_type && { label: game.game_type, type: "type" },
+    (game as any).genre && { label: (game as any).genre, type: "genre" },
     ...game.mechanics.map((m) => ({ label: m.name, type: "mechanic" })),
     game.publisher && { label: game.publisher.name, type: "publisher" },
   ].filter(Boolean) as { label: string; type: string }[];
@@ -724,6 +725,12 @@ const GameDetail = () => {
                         <TableCell className="text-foreground">
                           {game.mechanics.map((m) => m.name).join(", ")}
                         </TableCell>
+                      </TableRow>
+                    )}
+                    {(game as any).genre && (
+                      <TableRow>
+                        <TableCell className="font-medium text-muted-foreground">Genre</TableCell>
+                        <TableCell className="text-foreground">{(game as any).genre}</TableCell>
                       </TableRow>
                     )}
                     <TableRow>
