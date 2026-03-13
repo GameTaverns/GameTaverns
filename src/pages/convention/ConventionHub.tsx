@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Footer } from "@/components/layout/Footer";
 import {
-  LayoutDashboard, BookOpen, Dice5, BarChart3, Wifi, ArrowLeft, Settings,
+  LayoutDashboard, BookOpen, BarChart3, Wifi, ArrowLeft, Settings,
 } from "lucide-react";
 import { ConventionCommandCenter } from "@/components/convention/ConventionCommandCenter";
 import { ConventionLendingDesk } from "@/components/convention/ConventionLendingDesk";
