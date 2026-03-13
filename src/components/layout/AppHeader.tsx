@@ -82,9 +82,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
 
             {isAuthenticated && (
               <>
-                {/* Quick Actions (⚡) */}
-                <HeaderQuickActions />
-
                 {/* Direct Messages */}
                 <TenantLink
                   href={getPlatformUrl("/dm")}
