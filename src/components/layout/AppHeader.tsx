@@ -77,7 +77,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
 
           {/* Right: Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <LanguageSwitcher />
+            
             <ThemeToggle />
 
             {isAuthenticated && (
