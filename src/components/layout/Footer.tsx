@@ -42,7 +42,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
           <span className="text-muted-foreground/40">·</span>
           <div className="flex items-center gap-1.5">
             <img src={cbgLogo} alt="Christian Board Gamers" className="h-5 w-5 rounded object-contain" loading="lazy" />
-            <span>Christian Board Gamers</span>
+            <span>Proud member of Christian Board Gamers</span>
             <ExternalLink href="https://discord.gg/g5N8S6zPMR" className="text-primary hover:underline">Discord</ExternalLink>
             <ExternalLink href="https://www.facebook.com/groups/christianboardgamers" className="text-primary hover:underline">Facebook</ExternalLink>
           </div>
