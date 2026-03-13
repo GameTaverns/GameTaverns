@@ -142,40 +142,74 @@ export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClos
       });
   }, [open, gameId]);
 
-  // Fetch expansions (only real expansions by default, include promos for filter)
+  // Fetch expansions: first from library (games table), fallback to catalog
   useEffect(() => {
-    if (open && gameId) {
-      setLoadingExpansions(true);
-      supabase
-        .from("games")
-        .select("id, title, image_url, expansion_type_override, catalog_id")
-        .eq("parent_game_id", gameId)
-        .eq("is_expansion", true)
-        .order("title")
-        .then(async ({ data, error }) => {
-          if (!error && data) {
-            // Fetch catalog expansion_type for entries without override
-            const catalogIds = [...new Set(data.filter((d) => !d.expansion_type_override && d.catalog_id).map((d) => d.catalog_id!))];
-            let catalogTypes: Record<string, string> = {};
-            if (catalogIds.length > 0) {
-              const { data: cats } = await supabase
-                .from("game_catalog")
-                .select("id, expansion_type")
-                .in("id", catalogIds);
-              catalogTypes = (cats || []).reduce((acc, c) => { acc[c.id] = c.expansion_type; return acc; }, {} as Record<string, string>);
-            }
-            setExpansions(
-              data.map((d) => ({
-                id: d.id,
-                title: d.title,
-                image_url: d.image_url,
-                expansion_type: d.expansion_type_override || (d.catalog_id ? catalogTypes[d.catalog_id] : undefined) || "expansion",
-              }))
-            );
+    if (!open || !gameId) return;
+    setLoadingExpansions(true);
+
+    (async () => {
+      try {
+        // 1. Try library expansions first
+        const { data: libraryExps } = await supabase
+          .from("games")
+          .select("id, title, image_url, expansion_type_override, catalog_id")
+          .eq("parent_game_id", gameId)
+          .eq("is_expansion", true)
+          .order("title");
+
+        if (libraryExps && libraryExps.length > 0) {
+          // Resolve catalog expansion_type for entries without override
+          const catalogIds = [...new Set(libraryExps.filter((d) => !d.expansion_type_override && d.catalog_id).map((d) => d.catalog_id!))];
+          let catalogTypes: Record<string, string> = {};
+          if (catalogIds.length > 0) {
+            const { data: cats } = await supabase
+              .from("game_catalog")
+              .select("id, expansion_type")
+              .in("id", catalogIds);
+            catalogTypes = (cats || []).reduce((acc, c) => { acc[c.id] = c.expansion_type; return acc; }, {} as Record<string, string>);
           }
-          setLoadingExpansions(false);
-        });
-    }
+          setExpansions(
+            libraryExps.map((d) => ({
+              id: d.id,
+              title: d.title,
+              image_url: d.image_url,
+              expansion_type: d.expansion_type_override || (d.catalog_id ? catalogTypes[d.catalog_id] : undefined) || "expansion",
+            }))
+          );
+        } else {
+          // 2. Fallback: fetch from catalog via the game's catalog_id
+          const { data: gameData } = await supabase
+            .from("games")
+            .select("catalog_id")
+            .eq("id", gameId)
+            .maybeSingle();
+
+          if (gameData?.catalog_id) {
+            const { data: catalogExps } = await supabase
+              .from("game_catalog")
+              .select("id, title, image_url, expansion_type")
+              .eq("parent_catalog_id", gameData.catalog_id)
+              .eq("is_expansion", true)
+              .order("title");
+
+            if (catalogExps && catalogExps.length > 0) {
+              setExpansions(
+                catalogExps.map((d) => ({
+                  id: d.id,
+                  title: d.title,
+                  image_url: d.image_url,
+                  expansion_type: d.expansion_type || "expansion",
+                }))
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch expansions:", err);
+      } finally {
+        setLoadingExpansions(false);
+      }
+    })();
   }, [open, gameId]);
 
   // Hydrate draft
