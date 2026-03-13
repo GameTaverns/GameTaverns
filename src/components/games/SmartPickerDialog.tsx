@@ -87,6 +87,12 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
     staleTime: 1000 * 60 * 5,
   });
 
+  // Fetch mechanic families list + game→family mapping
+  const { data: mechanicFamilies = [] } = useMechanicFamilies();
+  const gameIds = useMemo(() => games.map(g => g.id), [games]);
+  const { data: gameMechanicMap } = useGameMechanicFamilyMap(gameIds, open && games.length > 0);
+  const mechanicFamilyNames = useMemo(() => mechanicFamilies.map(f => f.name), [mechanicFamilies]);
+
   const toggleArrayItem = useCallback((arr: string[], item: string) => {
     return arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item];
   }, []);
