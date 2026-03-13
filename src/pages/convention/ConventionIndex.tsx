@@ -38,9 +38,9 @@ export default function ConventionIndex() {
       // Get library events for those libraries
       const { data: events } = await supabase
         .from("library_events")
-        .select("id, title, start_date, end_date, library_id")
+        .select("id, title, event_date, end_date, library_id")
         .in("library_id", libIds)
-        .order("start_date", { ascending: false })
+        .order("event_date", { ascending: false })
         .limit(100);
 
       if (!events?.length) return [];
