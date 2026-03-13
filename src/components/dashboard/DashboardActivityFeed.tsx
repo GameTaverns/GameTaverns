@@ -14,7 +14,7 @@ export function DashboardActivityFeed() {
   const { user } = useAuth();
   const { data: events = [], isLoading } = useFollowingFeed(user?.id, 40);
   const grouped = groupActivityEvents(events);
-  const { filteredItems, hiddenTypes, toggleType, availableTypes } = useActivityFilters(grouped);
+  const { filtered, hiddenTypes, toggle, availableFilters } = useActivityFilters(grouped);
 
   if (isLoading) {
     return (
