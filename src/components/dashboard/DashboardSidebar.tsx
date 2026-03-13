@@ -165,43 +165,68 @@ function HotGamesWidget() {
   );
 }
 
-function CommunityWidget() {
+function LatestNewsWidget() {
   const { t } = useTranslation();
-  const { user } = useAuth();
 
-  const { data: unreadDMs = 0 } = useQuery({
-    queryKey: ["dashboard-unread-dms", user?.id],
+  const { data: articles = [] } = useQuery({
+    queryKey: ["dashboard-latest-news"],
     queryFn: async () => {
-      const { count } = await supabase
-        .from("direct_messages")
-        .select("id", { count: "exact", head: true })
-        .eq("recipient_id", user!.id)
-        .is("read_at", null)
-        .eq("deleted_by_recipient", false);
-      return count ?? 0;
+      const { data, error } = await supabase
+        .from("news_articles")
+        .select("id, title, slug, source_name, published_at, image_url")
+        .eq("status", "published")
+        .order("published_at", { ascending: false })
+        .limit(4);
+
+      if (error) return [];
+      return data || [];
     },
-    enabled: !!user?.id,
-    staleTime: 30000,
+    staleTime: 300000, // 5 min
   });
 
+  if (articles.length === 0) {
+    return (
+      <WidgetCard title={t('dashboard.latestNews', 'Latest News')} icon={Newspaper}>
+        <p className="text-xs text-muted-foreground italic">
+          {t('dashboard.noNews', 'No news articles yet')}
+        </p>
+        <Link to="/news" className="text-xs text-primary hover:underline mt-1 inline-block">
+          {t('dashboard.browseNews', 'Browse news →')}
+        </Link>
+      </WidgetCard>
+    );
+  }
+
   return (
-    <WidgetCard title={t('dashboard.community', 'Community')} icon={Users}>
-      <div className="space-y-1.5">
-        <Link to="/dashboard/messages" className="flex items-center justify-between text-sm hover:text-primary transition-colors">
-          <span>{t('dashboard.messages', 'Messages')}</span>
-          {unreadDMs > 0 && (
-            <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              {unreadDMs}
-            </span>
-          )}
-        </Link>
-        <Link to="/dashboard/community" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
-          {t('dashboard.clubs', 'Clubs & Forums')}
-        </Link>
-        <Link to="/news" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
-          {t('dashboard.newsReviews', 'News & Reviews')}
-        </Link>
+    <WidgetCard title={t('dashboard.latestNews', 'Latest News')} icon={Newspaper}>
+      <div className="space-y-2.5">
+        {articles.map((article: any) => (
+          <Link key={article.id} to={`/news/${article.slug}`} className="flex items-start gap-2.5 group">
+            {article.image_url && (
+              <img
+                src={article.image_url}
+                alt=""
+                className="h-10 w-14 rounded object-cover shrink-0 mt-0.5"
+                loading="lazy"
+              />
+            )}
+            <div className="min-w-0">
+              <p className="text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                {article.title}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {article.source_name}
+                {article.published_at && (
+                  <> · {formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}</>
+                )}
+              </p>
+            </div>
+          </Link>
+        ))}
       </div>
+      <Link to="/news" className="text-xs text-primary hover:underline mt-3 inline-block">
+        {t('dashboard.viewAllNews', 'View all news →')}
+      </Link>
     </WidgetCard>
   );
 }
