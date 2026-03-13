@@ -196,7 +196,6 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                 <NavItem href={getPlatformUrl(`/club/${myClubs[0].slug}`)} icon={Users} label={t('nav.myClub', 'My Club')} />
               )}
               <NavItem href={getPlatformUrl("/near-me")} icon={MapPin} label={t('nav.nearMe', 'Near Me')} />
-              <NavItem href={getPlatformUrl("/community")} icon={MessageSquarePlus} label={t('nav.forums', 'Community Forums')} />
               <NavItem href={getPlatformUrl("/lists")} icon={List} label={t('nav.curatedLists', 'Curated Lists')} />
               <NavItem href={getPlatformUrl("/news")} icon={Newspaper} label={t('nav.news', 'News & Reviews')} />
 
