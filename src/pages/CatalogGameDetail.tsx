@@ -18,6 +18,7 @@ import { WhoHasThis } from "@/components/catalog/WhoHasThis";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
 import { ManagePurchaseLinks } from "@/components/catalog/ManagePurchaseLinks";
 import { CatalogUpcEditor } from "@/components/catalog/CatalogUpcEditor";
+import { CatalogDataEditor } from "@/components/catalog/CatalogDataEditor";
 import { GameImage } from "@/components/games/GameImage";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
