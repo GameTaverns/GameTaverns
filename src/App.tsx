@@ -49,6 +49,7 @@ const DashboardMockupsPage = lazy(() => import("./components/dashboard/Dashboard
 const ConventionMockup = lazy(lazyRetry(() => import("./pages/ConventionMockup")));
 const ConventionIndex = lazy(lazyRetry(() => import("./pages/convention/ConventionIndex")));
 const ConventionHub = lazy(lazyRetry(() => import("./pages/convention/ConventionHub")));
+const ConventionConciergePage = lazy(lazyRetry(() => import("./pages/convention/ConventionConciergePage")));
 const CollectionPage = lazy(lazyRetry(() => import("./pages/dashboard/CollectionPage")));
 const LendingPage = lazy(lazyRetry(() => import("./pages/dashboard/LendingPage")));
 const InsightsPage = lazy(lazyRetry(() => import("./pages/dashboard/InsightsPage")));
@@ -312,6 +313,7 @@ function PlatformRoutes() {
       <Route path="/convention-mockup" element={<Suspense fallback={<PageLoader />}><ConventionMockup /></Suspense>} />
       <Route path="/convention" element={<Suspense fallback={<PageLoader />}><ConventionIndex /></Suspense>} />
       <Route path="/convention/:eventId" element={<Suspense fallback={<PageLoader />}><ConventionHub /></Suspense>} />
+      <Route path="/convention/:eventId/concierge" element={<Suspense fallback={<PageLoader />}><ConventionConciergePage /></Suspense>} />
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />

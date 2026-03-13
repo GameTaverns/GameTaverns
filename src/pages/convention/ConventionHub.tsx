@@ -196,7 +196,7 @@ export default function ConventionHub() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+          <TabsList className="grid grid-cols-4 w-full max-w-2xl mx-auto">
             <TabsTrigger value="command" className="text-xs gap-1">
               <LayoutDashboard className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Command</span>
