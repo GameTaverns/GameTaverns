@@ -38,9 +38,9 @@ export default function ConventionIndex() {
       // Get library events for those libraries
       const { data: events } = await supabase
         .from("library_events")
-        .select("id, title, start_date, end_date, library_id")
+        .select("id, title, event_date, end_date, library_id")
         .in("library_id", libIds)
-        .order("start_date", { ascending: false })
+        .order("event_date", { ascending: false })
         .limit(100);
 
       if (!events?.length) return [];
@@ -139,7 +139,7 @@ export default function ConventionIndex() {
                             <h3 className="font-semibold text-foreground">{event.title}</h3>
                             <p className="text-xs text-muted-foreground">
                               {event.libraryName}
-                              {event.start_date && ` · ${new Date(event.start_date).toLocaleDateString()}`}
+                              {event.event_date && ` · ${new Date(event.event_date).toLocaleDateString()}`}
                             </p>
                           </div>
                         </div>
@@ -178,7 +178,7 @@ export default function ConventionIndex() {
                             <h3 className="font-semibold text-foreground">{event.title}</h3>
                             <p className="text-xs text-muted-foreground">
                               {event.libraryName}
-                              {event.start_date && ` · ${new Date(event.start_date).toLocaleDateString()}`}
+                              {event.event_date && ` · ${new Date(event.event_date).toLocaleDateString()}`}
                             </p>
                           </div>
                         </div>
