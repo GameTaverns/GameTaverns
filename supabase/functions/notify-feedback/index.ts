@@ -40,8 +40,9 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
 
-    const { type, sender_name, sender_email, message, screenshot_urls, feedback_id } = await req.json();
+    const { type, sender_name, sender_email, message, screenshot_urls, feedback_id, create_feedback } = await req.json();
 
+    let resolvedFeedbackId: string | null = typeof feedback_id === "string" && feedback_id.length > 0 ? feedback_id : null;
     if (!type || !sender_name || !message) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
