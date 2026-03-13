@@ -94,9 +94,6 @@ export default function Dashboard() {
           <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
             {/* Main feed column */}
             <div className="flex-1 min-w-0">
-              <h2 className="font-display text-base font-semibold text-foreground mb-3">
-                {t('dashboard.activityFeed', 'Activity Feed')}
-              </h2>
               <DashboardActivityFeed />
             </div>
 
