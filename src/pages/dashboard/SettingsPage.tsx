@@ -42,25 +42,6 @@ export default function SettingsPage() {
     >
       <div className="space-y-6">
         {/* Profile link */}
-        {profile?.username && (
-          <Card className={cardClass}>
-            <CardHeader className="px-4 pt-4 pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <User className="h-4 w-4 text-secondary" />
-                {t('dashboard.myProfile')}
-              </CardTitle>
-              <CardDescription className="text-muted-foreground text-xs">{t('dashboard.myProfileDesc')}</CardDescription>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <Link to={`/u/${profile.username}`}>
-                <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-                  <Eye className="h-3.5 w-3.5" /> {t('dashboard.viewProfile')}
-                  <ArrowRight className="h-3 w-3 ml-auto" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Account Settings with Tabs */}
         <Card className={`${cardClass} overflow-hidden`}>
