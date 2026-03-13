@@ -275,6 +275,9 @@ export function useCreateEvent() {
       }
       queryClient.invalidateQueries({ queryKey: ["public-event-directory"] });
       queryClient.invalidateQueries({ queryKey: ["my-events"] });
+      if (variables.club_id) {
+        queryClient.invalidateQueries({ queryKey: ["club-events", variables.club_id] });
+      }
       
       // Send Discord notification for library events
       if (variables.library_id) {

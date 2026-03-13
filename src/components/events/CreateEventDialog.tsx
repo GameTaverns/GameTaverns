@@ -302,6 +302,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
       await createEvent.mutateAsync({
         library_id: effectiveLibraryId || undefined,
         created_by_user_id: user?.id,
+        club_id: selectedClubId,
         title: title.trim(),
         description: description.trim() || undefined,
         event_date: eventDate.toISOString(),
