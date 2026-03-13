@@ -12,6 +12,8 @@ export interface RecommendedUser {
   sessions_logged: number;
   primary_archetype: string | null;
   shared_mechanics: number;
+  shared_games: number;
+  top_shared_games: string[];
   similarity_score: number;
 }
 
