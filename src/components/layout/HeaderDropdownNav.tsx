@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { TenantLink } from "@/components/TenantLink";
 import { getPlatformUrl, getLibraryUrl } from "@/hooks/useTenantUrl";
 import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDialog";
+import { SmartPickerDialog } from "@/components/games/SmartPickerDialog";
 import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -96,6 +97,7 @@ export function HeaderDropdownNav() {
   const { data: profile } = useUserProfile();
   const navigate = useNavigate();
   const [logPlayOpen, setLogPlayOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   if (!isAuthenticated) return null;
 
@@ -143,7 +145,7 @@ export function HeaderDropdownNav() {
       icon: Zap,
       items: [
         { onClick: () => setLogPlayOpen(true), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
-        { href: getPlatformUrl("/picker"), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
+        { onClick: () => setPickerOpen(true), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
         { href: getPlatformUrl("/create-library"), label: t('nav.createLibrary', 'Create Library'), icon: PlusCircle },
       ],
     },
@@ -171,6 +173,7 @@ export function HeaderDropdownNav() {
         ))}
       </nav>
       <StandaloneLogPlayDialog open={logPlayOpen} onOpenChange={setLogPlayOpen} />
+      <SmartPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} />
     </>
   );
 }
