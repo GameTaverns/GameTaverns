@@ -49,6 +49,7 @@ const DashboardMockupsPage = lazy(() => import("./components/dashboard/Dashboard
 const ConventionMockup = lazy(lazyRetry(() => import("./pages/ConventionMockup")));
 const ConventionIndex = lazy(lazyRetry(() => import("./pages/convention/ConventionIndex")));
 const ConventionHub = lazy(lazyRetry(() => import("./pages/convention/ConventionHub")));
+const ConventionConciergePage = lazy(lazyRetry(() => import("./pages/convention/ConventionConciergePage")));
 const CollectionPage = lazy(lazyRetry(() => import("./pages/dashboard/CollectionPage")));
 const LendingPage = lazy(lazyRetry(() => import("./pages/dashboard/LendingPage")));
 const InsightsPage = lazy(lazyRetry(() => import("./pages/dashboard/InsightsPage")));
