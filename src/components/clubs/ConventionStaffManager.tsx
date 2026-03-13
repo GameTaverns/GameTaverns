@@ -5,8 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { ChevronDown, ChevronRight, Shield, Users, Loader2 } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { ChevronDown, ChevronRight, Shield, Users, Crown, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 interface ConventionStaffManagerProps {
   clubId: string;
@@ -17,6 +21,11 @@ interface ClubMember {
   displayName: string;
   libraryName: string;
 }
+
+const STAFF_ROLES = [
+  { value: "volunteer", label: "Volunteer", icon: UserCheck, description: "Can use Command + Lending Desk" },
+  { value: "lead", label: "Lead", icon: Crown, description: "Volunteer + can manage other volunteers" },
+] as const;
 
 export function ConventionStaffManager({ clubId }: ConventionStaffManagerProps) {
   const queryClient = useQueryClient();
@@ -57,7 +66,6 @@ export function ConventionStaffManager({ clubId }: ConventionStaffManagerProps) 
         // Add library owner
         if (lib.owner_id && !seenUserIds.has(lib.owner_id)) {
           seenUserIds.add(lib.owner_id);
-          // Get display name
           const { data: profile } = await supabase
             .from("user_profiles")
             .select("display_name, username")
@@ -144,11 +152,30 @@ export function ConventionStaffManager({ clubId }: ConventionStaffManagerProps) 
     },
   });
 
+  const updateStaffRole = useMutation({
+    mutationFn: async ({ conventionEventId, userId, role }: {
+      conventionEventId: string; userId: string; role: string;
+    }) => {
+      const { error } = await supabase
+        .from("convention_staff")
+        .update({ role })
+        .eq("convention_event_id", conventionEventId)
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["convention-staff-list", expandedEventId] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to update role");
+    },
+  });
+
   if (conventionEvents.length === 0) {
-    return null; // No convention events for this club
+    return null;
   }
 
-  const staffUserIds = new Set(currentStaff.map((s: any) => s.user_id));
+  const staffMap = new Map(currentStaff.map((s: any) => [s.user_id, s]));
 
   return (
     <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
@@ -158,7 +185,7 @@ export function ConventionStaffManager({ clubId }: ConventionStaffManagerProps) 
           Convention Staff
         </CardTitle>
         <p className="text-xs text-cream/60">
-          Assign club members as convention volunteers for each event
+          Assign club members as convention volunteers — they'll get access to the Command Center and Lending Desk
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -175,12 +202,15 @@ export function ConventionStaffManager({ clubId }: ConventionStaffManagerProps) 
                 className="w-full flex items-center justify-between p-3 hover:bg-wood-medium/20 transition-colors text-left"
               >
                 <div className="flex items-center gap-2">
-                  {isExpanded ? <ChevronDown className="h-4 w-4 text-cream/50" /> : <ChevronRight className="h-4 w-4 text-cream/50" />}
+                  {isExpanded
+                    ? <ChevronDown className="h-4 w-4 text-cream/50" />
+                    : <ChevronRight className="h-4 w-4 text-cream/50" />
+                  }
                   <div>
                     <p className="font-medium text-sm">{event.title}</p>
                     <p className="text-xs text-cream/50">
-                      {event.venue_name && `${event.venue_name} · `}
-                      {event.status}
+                      {event.event_date && format(new Date(event.event_date), "MMM d, yyyy")}
+                      {event.venue_name && ` · ${event.venue_name}`}
                     </p>
                   </div>
                 </div>
@@ -192,40 +222,81 @@ export function ConventionStaffManager({ clubId }: ConventionStaffManagerProps) 
               </button>
 
               {isExpanded && (
-                <div className="border-t border-wood-medium/30 p-3 space-y-2">
+                <div className="border-t border-wood-medium/30 p-3 space-y-1">
                   {clubMembers.length === 0 ? (
-                    <p className="text-sm text-cream/50 text-center py-2">No club members found</p>
+                    <p className="text-sm text-cream/50 text-center py-4">
+                      No club members found. Add libraries to this club first.
+                    </p>
                   ) : (
-                    clubMembers.map((member) => {
-                      const isStaff = staffUserIds.has(member.userId);
-                      return (
-                        <div key={member.userId} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-wood-medium/10">
-                          <div>
-                            <p className="text-sm font-medium">{member.displayName}</p>
-                            <p className="text-xs text-cream/50">{member.libraryName}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isStaff && (
-                              <Badge variant="outline" className="text-xs border-secondary/40 text-secondary">
-                                Volunteer
-                              </Badge>
-                            )}
-                            <Switch
-                              checked={isStaff}
-                              disabled={toggleStaff.isPending}
-                              onCheckedChange={(checked) =>
-                                toggleStaff.mutate({
-                                  conventionEventId: ce.id,
-                                  userId: member.userId,
-                                  displayName: member.displayName,
-                                  isAdding: checked,
-                                })
-                              }
-                            />
-                          </div>
+                    <>
+                      <div className="flex items-center justify-between px-2 pb-2 text-xs text-cream/40 uppercase tracking-wider">
+                        <span>Member</span>
+                        <div className="flex items-center gap-8">
+                          <span>Role</span>
+                          <span className="w-10 text-center">Staff</span>
                         </div>
-                      );
-                    })
+                      </div>
+                      {clubMembers.map((member) => {
+                        const staffRecord = staffMap.get(member.userId);
+                        const isStaff = !!staffRecord;
+                        return (
+                          <div
+                            key={member.userId}
+                            className="flex items-center justify-between py-2 px-2 rounded-md hover:bg-wood-medium/15 transition-colors"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{member.displayName}</p>
+                              <p className="text-xs text-cream/40">{member.libraryName}</p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {isStaff && (
+                                <Select
+                                  value={staffRecord.role || "volunteer"}
+                                  onValueChange={(role) =>
+                                    updateStaffRole.mutate({
+                                      conventionEventId: ce.id,
+                                      userId: member.userId,
+                                      role,
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger className="h-7 w-28 text-xs bg-wood-medium/30 border-wood-medium/40">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {STAFF_ROLES.map((r) => (
+                                      <SelectItem key={r.value} value={r.value} className="text-xs">
+                                        <div className="flex items-center gap-1.5">
+                                          <r.icon className="h-3 w-3" />
+                                          {r.label}
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                              <Switch
+                                checked={isStaff}
+                                disabled={toggleStaff.isPending}
+                                onCheckedChange={(checked) =>
+                                  toggleStaff.mutate({
+                                    conventionEventId: ce.id,
+                                    userId: member.userId,
+                                    displayName: member.displayName,
+                                    isAdding: checked,
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {currentStaff.length > 0 && (
+                        <p className="text-xs text-cream/40 pt-2 px-2">
+                          {currentStaff.length} of {clubMembers.length} members assigned as staff
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               )}
