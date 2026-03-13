@@ -101,15 +101,6 @@ export function HeaderDropdownNav() {
 
   const menus: NavMenuProps[] = [
     {
-      label: t('nav.quickActions', 'Quick Actions'),
-      icon: Zap,
-      items: [
-        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
-        { href: getPlatformUrl("/picker"), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
-        { href: getPlatformUrl("/create-library"), label: t('nav.createLibrary', 'Create Library'), icon: PlusCircle },
-      ],
-    },
-    {
       label: t('nav.library', 'Library'),
       icon: Library,
       items: [
@@ -143,6 +134,15 @@ export function HeaderDropdownNav() {
         { href: getPlatformUrl("/events"), label: t('nav.browseEvents', 'Browse Events'), icon: CalendarDays },
         { href: getPlatformUrl("/convention"), label: t('nav.conventions', 'Conventions'), icon: Ticket },
         { href: getPlatformUrl("/dashboard/community"), label: t('nav.myEvents', 'My Events'), icon: Calendar },
+      ],
+    },
+    {
+      label: t('nav.quickActions', 'Quick Actions'),
+      icon: Zap,
+      items: [
+        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
+        { href: getPlatformUrl("/picker"), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
+        { href: getPlatformUrl("/create-library"), label: t('nav.createLibrary', 'Create Library'), icon: PlusCircle },
       ],
     },
     {
