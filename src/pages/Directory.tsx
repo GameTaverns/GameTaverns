@@ -500,12 +500,6 @@ export default function Directory() {
                 </Tabs>
               </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="clubs">
-            <ClubDirectoryTab />
-          </TabsContent>
-        </Tabs>
       </div>
     </Layout>
   );
