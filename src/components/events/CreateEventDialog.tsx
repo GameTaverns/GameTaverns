@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, MapPin, Clock, Globe, Lock, Building2, Library, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/backend/client";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
