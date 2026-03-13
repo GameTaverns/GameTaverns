@@ -159,6 +159,8 @@ export function HeaderDropdownNav() {
         { onClick: () => setPickerOpen(true), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
         { onClick: () => setAddGameOpen(true), label: t('nav.addGame', 'Add Game'), icon: PlusCircle },
         { href: getPlatformUrl("/create-library"), label: t('nav.createLibrary', 'Create Library'), icon: PlusCircle },
+        { separator: true, label: 's-qa-concierge', icon: Zap },
+        { href: getPlatformUrl("/concierge"), label: t('nav.gameConcierge', 'Game Concierge'), icon: Dice5 },
       ],
     },
     {
