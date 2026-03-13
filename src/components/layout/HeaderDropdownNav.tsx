@@ -79,7 +79,7 @@ function NavDropdown({ label, icon: Icon, items }: NavMenuProps) {
             );
           }
           return (
-            <DropdownMenuItem key={item.label} asChild className="gap-2 text-xs text-cream/80 hover:text-cream focus:text-cream focus:bg-wood-medium/40 cursor-pointer">
+            <DropdownMenuItem key={item.label} asChild className="gap-2 text-xs text-popover-foreground hover:text-accent-foreground focus:text-accent-foreground focus:bg-accent cursor-pointer">
               <TenantLink href={item.href!} onClick={() => setOpen(false)}>
                 <ItemIcon className="h-3.5 w-3.5" />
                 {item.label}
