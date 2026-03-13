@@ -15,34 +15,31 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
   return (
     <footer ref={ref} className="border-t bg-card/50">
       <div className="container py-3 px-4">
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-          {/* Left: copyright + links + attribution */}
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
-            <span>© {currentYear} GameTaverns</span>
-            <span className="text-muted-foreground/40">·</span>
-            <ExternalLink href="mailto:admin@gametaverns.com" className="hover:text-foreground transition-colors">{t('footer.contact')}</ExternalLink>
-            <span className="text-muted-foreground/40">·</span>
-            <ExternalLink href="https://discord.gg/jTqgCPX8DD" className="hover:text-foreground transition-colors">{t('footer.discord')}</ExternalLink>
-            <span className="text-muted-foreground/40">·</span>
-            <Link to="/legal" className="hover:text-foreground transition-colors">{t('footer.allPolicies')}</Link>
-            {showAttributions && (
-              <>
-                <span className="text-muted-foreground/40">·</span>
-                <ExternalLink
-                  href="https://boardgamegeek.com"
-                  className="flex items-center gap-1 hover:opacity-80 transition-opacity"
-                  title="Game data powered by BoardGameGeek"
-                >
-                  <img src={BGG_LOGO_SRC} alt="BoardGameGeek" className="h-3.5 w-3.5 object-contain" loading="lazy" />
-                  {t('footer.poweredByBGG')}
-                </ExternalLink>
-              </>
-            )}
-            <span className="text-muted-foreground/40">·</span>
-            <span className="text-[10px] text-muted-foreground/60 italic">All photographs are property of their respective owners.</span>
-          </div>
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+          {/* Copyright + LLC */}
+          <span>© {currentYear} GameTaverns LLC</span>
+          <span className="text-muted-foreground/40">·</span>
+          <span className="italic">Made with ❤️ for board game enthusiasts</span>
+          <span className="text-muted-foreground/40">·</span>
+          <ExternalLink href="mailto:admin@gametaverns.com" className="hover:text-foreground transition-colors">{t('footer.contact')}</ExternalLink>
+          <span className="text-muted-foreground/40">·</span>
+          <ExternalLink href="https://discord.gg/jTqgCPX8DD" className="hover:text-foreground transition-colors">{t('footer.discord')}</ExternalLink>
+          <span className="text-muted-foreground/40">·</span>
+          <Link to="/legal" className="hover:text-foreground transition-colors">{t('footer.allPolicies')}</Link>
+          <span className="text-muted-foreground/40">·</span>
+          <ExternalLink
+            href="https://boardgamegeek.com"
+            className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+            title="Game data powered by BoardGameGeek"
+          >
+            <img src={BGG_LOGO_SRC} alt="BoardGameGeek" className="h-3.5 w-3.5 object-contain" loading="lazy" />
+            {t('footer.poweredByBGG')}
+          </ExternalLink>
+          <span className="text-muted-foreground/40">·</span>
+          <span className="text-muted-foreground/70 italic">All photographs are property of their respective owners.</span>
 
-          {/* Right: CBG badge */}
+          {/* CBG badge */}
+          <span className="text-muted-foreground/40">·</span>
           <div className="flex items-center gap-1.5">
             <img src={cbgLogo} alt="Christian Board Gamers" className="h-6 w-auto rounded" loading="lazy" />
             <div className="flex flex-col">
