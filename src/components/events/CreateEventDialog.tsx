@@ -32,6 +32,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useCreateEvent, useUpdateEvent, CalendarEvent } from "@/hooks/useLibraryEvents";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibraries } from "@/hooks/useLibrary";
+import { useMyClubs } from "@/hooks/useClubs";
 
 const EVENT_TYPES = [
   { value: "game_night", label: "Game Night" },
