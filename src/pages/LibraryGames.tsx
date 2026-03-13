@@ -190,7 +190,7 @@ export default function LibraryGames() {
                 <CardDescription>{t('libraryGames.bulkImportDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 gap-4">
                   <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => openBulkImport("csv")}>
                     <CardContent className="pt-6 text-center">
                       <Upload className="h-8 w-8 mx-auto mb-3 text-primary" />
@@ -203,13 +203,6 @@ export default function LibraryGames() {
                       <Tag className="h-8 w-8 mx-auto mb-3 text-primary" />
                       <h3 className="font-medium mb-1">{t('libraryGames.bggCollection')}</h3>
                       <p className="text-sm text-muted-foreground">{t('libraryGames.bggCollectionDesc')}</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => openBulkImport("bgg_links")}>
-                    <CardContent className="pt-6 text-center">
-                      <Building className="h-8 w-8 mx-auto mb-3 text-primary" />
-                      <h3 className="font-medium mb-1">{t('libraryGames.bggLinks')}</h3>
-                      <p className="text-sm text-muted-foreground">{t('libraryGames.bggLinksDesc')}</p>
                     </CardContent>
                   </Card>
                 </div>
