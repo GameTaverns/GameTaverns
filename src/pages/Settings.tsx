@@ -30,6 +30,7 @@ import {
   Languages
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
+import { LanguageSelector } from "@/components/ui/LanguageSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { useGames, useDeleteGame, useMechanics, usePublishers, useCreateMechanic, useCreatePublisher } from "@/hooks/useGames";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
