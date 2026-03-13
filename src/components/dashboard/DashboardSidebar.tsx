@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
-import { Calendar, TrendingUp, Flame, Newspaper, Gamepad2, Dices, BookOpen, Users } from "lucide-react";
+import { Calendar, TrendingUp, Flame, Newspaper, Gamepad2, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 
