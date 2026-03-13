@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
-import { Calendar, TrendingUp, Flame, Newspaper, Gamepad2, BookOpen } from "lucide-react";
+import { Calendar, TrendingUp, Newspaper, Gamepad2, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 
@@ -118,52 +118,6 @@ function UpcomingEventsWidget() {
   );
 }
 
-function HotGamesWidget() {
-  const { t } = useTranslation();
-
-  const { data: hotGames = [] } = useQuery({
-    queryKey: ["dashboard-hot-games"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("game_hotness")
-        .select("game_id, title, image_url, hotness_score, slug")
-        .order("hotness_score", { ascending: false })
-        .limit(5);
-
-      if (error) return [];
-      return data || [];
-    },
-    staleTime: 300000, // 5 min
-  });
-
-  if (hotGames.length === 0) {
-    return (
-      <WidgetCard title={t('dashboard.hotGames', 'Hot Games')} icon={Flame}>
-        <p className="text-xs text-muted-foreground italic">
-          {t('dashboard.noHotGames', 'No trending games right now')}
-        </p>
-      </WidgetCard>
-    );
-  }
-
-  return (
-    <WidgetCard title={t('dashboard.hotGames', 'Hot Games')} icon={Flame}>
-      <div className="space-y-2">
-        {hotGames.map((game: any, idx: number) => (
-          <Link key={game.game_id} to={game.slug ? `/catalog/${game.slug}` : `/catalog`} className="flex items-center gap-2 group">
-            <span className="text-xs font-bold text-muted-foreground w-4">{idx + 1}</span>
-            {game.image_url && (
-              <img src={game.image_url} alt="" className="h-7 w-7 rounded object-cover" />
-            )}
-            <span className="text-sm text-foreground group-hover:text-primary transition-colors truncate">
-              {game.title}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </WidgetCard>
-  );
-}
 
 function LatestNewsWidget() {
   const { t } = useTranslation();
