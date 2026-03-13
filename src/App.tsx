@@ -8,7 +8,6 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate, useSearchParams, us
 import { getNativeEffectivePath, isNativeRuntime } from "@/lib/nativeRouting";
 import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
-import { TenantThemeApplicator } from "@/components/TenantThemeApplicator";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TourProvider } from "@/contexts/TourContext";
