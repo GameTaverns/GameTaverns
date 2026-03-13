@@ -129,7 +129,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [endTime, setEndTime] = useState("");
   const [location, setLocation] = useState("");
-  const [isPublic, setIsPublic] = useState(!propLibraryId); // Default public for standalone
+  const [isPublic, setIsPublic] = useState(true);
   const [maxAttendees, setMaxAttendees] = useState("");
   
   // Venue & Logistics
