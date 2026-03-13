@@ -28,6 +28,8 @@ import { useAddWant } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
 import { GameReviews } from "@/components/catalog/GameReviews";
 import { LogPlayDialog } from "@/components/games/LogPlayDialog";
+import { CatalogDocuments } from "@/components/catalog/CatalogDocuments";
+import { useCatalogGenres } from "@/hooks/useCatalogGenres";
 
 interface CatalogGameFull {
   id: string;
