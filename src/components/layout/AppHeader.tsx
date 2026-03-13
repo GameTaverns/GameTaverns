@@ -4,7 +4,7 @@ import {
   Menu,
   BookOpen,
   MessageSquare,
-  LayoutDashboard,
+  Home,
 } from "lucide-react";
 
 import { useTranslation } from "react-i18next";
