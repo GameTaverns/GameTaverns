@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Shuffle } from "lucide-react";
@@ -15,6 +15,36 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { DashboardActivityFeed } from "@/components/dashboard/DashboardActivityFeed";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import tavernBg from "@/assets/tavern-bg.jpg";
+
+const MOTIVATIONAL_MESSAGES = [
+  "Every game night is a memory waiting to happen. 🎲",
+  "Life's too short for boring games — play something epic today!",
+  "A good board game brings people together. What will you play next?",
+  "Your shelf of opportunity awaits. Time to roll the dice! 🎯",
+  "Great adventures start at the table. Gather your crew!",
+  "The best strategy? Making time to play. ♟️",
+  "Cardboard, dice, and good company — the recipe for a perfect evening.",
+  "Your next favorite game might already be on your shelf.",
+  "No screens needed — just friends, snacks, and a great game. 🍕",
+  "Board games: where legends are made and friendships are tested. 😄",
+  "Today's a great day to learn a new game!",
+  "Roll high, play bold, and have fun. That's the only rule that matters.",
+  "Somewhere out there, a meeple believes in you. 🫡",
+  "May your dice be ever in your favor.",
+  "Shuffle the deck. Set the board. Let the adventure begin!",
+];
+
+function MotivationalMessage() {
+  const message = useMemo(() => {
+    // Rotate daily based on the date
+    const dayIndex = Math.floor(Date.now() / 86400000) % MOTIVATIONAL_MESSAGES.length;
+    return MOTIVATIONAL_MESSAGES[dayIndex];
+  }, []);
+
+  return (
+    <p className="text-sm text-muted-foreground italic">{message}</p>
+  );
+}
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -52,16 +82,16 @@ export default function Dashboard() {
         <AppHeader />
 
         <main className="container mx-auto px-4 py-6 max-w-6xl flex-1">
-          {/* Greeting */}
+          {/* Greeting + motivational message */}
           <div className="mb-6">
             <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">
               {t('dashboard.welcomeBack', { name: displayName })}
             </h1>
-            <p className="text-sm text-muted-foreground">{t('dashboard.commandCenter')}</p>
+            <MotivationalMessage />
           </div>
 
-          {/* Two-column layout: Feed + Sidebar */}
-          <div className="flex flex-col lg:flex-row gap-6">
+          {/* Two-column layout: Feed + Sidebar — tops aligned */}
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
             {/* Main feed column */}
             <div className="flex-1 min-w-0">
               <h2 className="font-display text-base font-semibold text-foreground mb-3">
