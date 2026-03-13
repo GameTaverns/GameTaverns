@@ -68,22 +68,9 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
               </span>
             </TenantLink>
 
-            {/* Dashboard button */}
-            {isAuthenticated && (
-              <TenantLink href={getPlatformUrl("/dashboard")}>
-                <Button
-                  variant="ghost"
-                  className="h-8 px-2.5 gap-1 text-cream/80 hover:text-cream hover:bg-wood-medium/40 text-xs font-medium"
-                >
-                  <LayoutDashboard className="h-3.5 w-3.5" />
-                  <span className="hidden lg:inline">Dashboard</span>
-                </Button>
-              </TenantLink>
-            )}
-
             {/* Dropdown menus — desktop only */}
-            <div className="hidden md:flex items-center">
-              <div className="h-4 w-px bg-wood-medium/40 mx-1" />
+            <div className="hidden md:flex items-center ml-2">
+              <div className="h-4 w-px bg-wood-medium/40 mr-1" />
               <HeaderDropdownNav />
             </div>
           </div>
@@ -107,6 +94,18 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                         {dmUnreadCount > 9 ? "9+" : dmUnreadCount}
                       </Badge>
                     )}
+                  </Button>
+                </TenantLink>
+
+                {/* Dashboard */}
+                <TenantLink href={getPlatformUrl("/dashboard")}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
+                    aria-label="Dashboard"
+                  >
+                    <LayoutDashboard className="h-5 w-5" />
                   </Button>
                 </TenantLink>
 
