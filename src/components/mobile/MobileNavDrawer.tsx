@@ -196,7 +196,6 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                 <NavItem href={getPlatformUrl(`/club/${myClubs[0].slug}`)} icon={Users} label={t('nav.myClub', 'My Club')} />
               )}
               <NavItem href={getPlatformUrl("/near-me")} icon={MapPin} label={t('nav.nearMe', 'Near Me')} />
-              <NavItem href={getPlatformUrl("/community")} icon={MessageSquarePlus} label={t('nav.forums', 'Community Forums')} />
               <NavItem href={getPlatformUrl("/lists")} icon={List} label={t('nav.curatedLists', 'Curated Lists')} />
               <NavItem href={getPlatformUrl("/news")} icon={Newspaper} label={t('nav.news', 'News & Reviews')} />
 
@@ -206,7 +205,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
               <NavItem href={getPlatformUrl("/convention")} icon={Ticket} label={t('nav.conventions', 'Conventions')} />
               <NavItem href={getPlatformUrl("/dashboard/community")} icon={Calendar} label={t('nav.myEvents', 'My Events')} />
               {myClubs && myClubs.length > 0 && (
-                <NavItem href={getPlatformUrl(`/club/${myClubs[0].slug}/events`)} icon={CalendarDays} label={t('nav.clubEvents', 'Club Events')} />
+                <NavItem href={getPlatformUrl(`/club/${myClubs[0].slug}?tab=events`)} icon={CalendarDays} label={t('nav.clubEvents', 'Club Events')} />
               )}
 
               {/* Messages */}

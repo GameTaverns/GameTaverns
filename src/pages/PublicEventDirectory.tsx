@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter, Plus, CalendarPlus, Lock, Eye, Archive } from "lucide-react";
+import { BackLink } from "@/components/navigation/BackLink";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -106,6 +107,7 @@ export default function PublicEventDirectory() {
       <SEO title={title} description={description} canonical="https://gametaverns.com/events" />
 
       <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+        <BackLink fallback="/dashboard" />
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold flex items-center gap-2">

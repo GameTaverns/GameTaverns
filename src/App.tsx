@@ -17,7 +17,7 @@ import { TestingEnvironmentBanner } from "@/components/layout/TestingEnvironment
 import { MobileAppShell } from "@/components/mobile/MobileAppShell";
 import { isProductionDeployment } from "@/config/runtime";
 import { isAdminSubdomain } from "@/lib/subdomainDetection";
-import { GlobalFeedbackButton } from "@/components/feedback/FeedbackDialog";
+
 import { CookieConsent } from "@/components/ui/cookie-consent";
 import { PresenceTracker } from "@/components/social/PresenceTracker";
 import { GlobalDMListener } from "@/components/social/GlobalDMListener";
@@ -480,7 +480,7 @@ const App = () => (
               <PresenceTracker />
               <GlobalDMListener />
               <AppRoutes />
-              <GlobalFeedbackButton />
+              
               <CookieConsent />
             </TourProvider>
           </AuthProvider>

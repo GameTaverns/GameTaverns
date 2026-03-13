@@ -13,9 +13,9 @@ export function FeedbackNavItem({ onClose }: { onClose: () => void }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
+        className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
       >
-        <MessageSquarePlus className="h-5 w-5 shrink-0" />
+        <MessageSquarePlus className="h-4 w-4 shrink-0" />
         <span className="flex-1">Send Feedback</span>
       </button>
       <FeedbackFormDialog

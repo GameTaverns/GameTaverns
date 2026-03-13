@@ -5,7 +5,6 @@ import { isLovableCloud } from "@/config/runtime";
 import { ExternalLink } from "@/components/a11y/ExternalLink";
 import cbgLogo from "@/assets/cbg-logo.jpg";
 
-const LTN_LOGO_SRC = "/ltn-logo.png";
 const BGG_LOGO_SRC = "/bgg-logo.svg";
 
 export const Footer = forwardRef<HTMLElement>((_, ref) => {
@@ -15,86 +14,52 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
 
   return (
     <footer ref={ref} className="border-t bg-card/50">
-      <div className="container py-4 px-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <nav aria-label="Footer links">
-            <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 list-none p-0 m-0">
-              <li>
-                <Link to="/" className="flex items-center gap-2">
-                  <img src="/gt-logo.png" alt="GameTaverns" className="h-5 w-5 object-contain" />
-                  <span className="font-display font-bold text-sm">GameTaverns</span>
-                </Link>
-              </li>
-              <li aria-hidden="true"><span className="text-muted-foreground/40">·</span></li>
-              <li>
-                <ExternalLink href="mailto:admin@gametaverns.com" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t('footer.contact')}</ExternalLink>
-              </li>
-              <li>
-                <ExternalLink
-                  href="https://discord.gg/jTqgCPX8DD"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {t('footer.discord')}
-                </ExternalLink>
-              </li>
-            </ul>
-          </nav>
-
-          <nav aria-label="Legal links">
-            <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs list-none p-0 m-0">
-              <li><Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">{t('footer.privacy')}</Link></li>
-              <li><Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">{t('footer.terms')}</Link></li>
-              <li><Link to="/cookies" className="text-muted-foreground hover:text-foreground transition-colors">{t('footer.cookies')}</Link></li>
-              <li><Link to="/legal" className="text-muted-foreground hover:text-foreground transition-colors">{t('footer.allPolicies')}</Link></li>
-            </ul>
-          </nav>
-        </div>
-
-        <div className="mt-3 pt-3 border-t flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            {t('footer.copyright', { year: currentYear })}
-          </p>
-
-          {/* Christian Board Gamers */}
-          <div className="flex items-center gap-2.5">
-            <img src={cbgLogo} alt="Christian Board Gamers" className="h-8 w-auto rounded" loading="lazy" />
-            <div className="flex flex-col">
-              <span className="text-[10px] font-medium text-muted-foreground leading-tight">
-                Proud member of the
-              </span>
-              <span className="text-xs font-display font-semibold text-foreground leading-tight">
-                Christian Board Gamers
-              </span>
-              <div className="flex items-center gap-2 mt-0.5">
-                <ExternalLink
-                  href="https://discord.gg/g5N8S6zPMR"
-                  className="text-[10px] text-primary hover:underline"
-                >
-                  Discord
-                </ExternalLink>
-                <ExternalLink
-                  href="https://www.facebook.com/groups/christianboardgamers"
-                  className="text-[10px] text-primary hover:underline"
-                >
-                  Facebook
-                </ExternalLink>
-              </div>
-            </div>
+      <div className="container py-3 px-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          {/* Left: Brand + copyright + contact */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <Link to="/" className="flex items-center gap-1.5">
+              <img src="/gt-logo.png" alt="GameTaverns" className="h-4 w-4 object-contain" />
+              <span className="font-display font-bold text-xs">GameTaverns</span>
+            </Link>
+            <span className="text-muted-foreground/40">·</span>
+            <span className="text-muted-foreground">{t('footer.copyright', { year: currentYear })}</span>
+            <span className="text-muted-foreground/40">·</span>
+            <ExternalLink href="mailto:admin@gametaverns.com" className="text-muted-foreground hover:text-foreground transition-colors">{t('footer.contact')}</ExternalLink>
+            <ExternalLink href="https://discord.gg/jTqgCPX8DD" className="text-muted-foreground hover:text-foreground transition-colors">{t('footer.discord')}</ExternalLink>
+            <Link to="/legal" className="text-muted-foreground hover:text-foreground transition-colors">{t('footer.allPolicies')}</Link>
           </div>
 
-          {showAttributions && (
-            <div className="flex items-center gap-3">
+          {/* Right: CBG badge + BGG attribution */}
+          <div className="flex items-center gap-4">
+            {/* Christian Board Gamers */}
+            <div className="flex items-center gap-1.5">
+              <img src={cbgLogo} alt="Christian Board Gamers" className="h-6 w-auto rounded" loading="lazy" />
+              <div className="flex flex-col">
+                <span className="text-[9px] text-muted-foreground leading-tight">
+                  Proud member of the
+                </span>
+                <span className="text-[10px] font-display font-semibold text-foreground leading-tight">
+                  Christian Board Gamers
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <ExternalLink href="https://discord.gg/g5N8S6zPMR" className="text-[9px] text-primary hover:underline">Discord</ExternalLink>
+                  <ExternalLink href="https://www.facebook.com/groups/christianboardgamers" className="text-[9px] text-primary hover:underline">Facebook</ExternalLink>
+                </div>
+              </div>
+            </div>
+
+            {showAttributions && (
               <ExternalLink
                 href="https://boardgamegeek.com"
-                className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-xs text-muted-foreground"
+                className="flex items-center gap-1 hover:opacity-80 transition-opacity text-[10px] text-muted-foreground"
                 title="Game data powered by BoardGameGeek"
               >
-                <img src={BGG_LOGO_SRC} alt="BoardGameGeek" className="h-4 w-4 object-contain" loading="lazy" />
+                <img src={BGG_LOGO_SRC} alt="BoardGameGeek" className="h-3.5 w-3.5 object-contain" loading="lazy" />
                 {t('footer.poweredByBGG')}
               </ExternalLink>
-              <span className="text-[10px] text-muted-foreground/50">{t('footer.imagesDisclaimer')}</span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </footer>

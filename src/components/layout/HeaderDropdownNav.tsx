@@ -131,11 +131,10 @@ export function HeaderDropdownNav() {
           : []),
         { href: getPlatformUrl("/near-me"), label: t('nav.nearMe', 'Near Me'), icon: MapPin },
         { separator: true, label: 's2', icon: Users },
-        { href: getPlatformUrl("/community"), label: t('nav.forums', 'Community Forums'), icon: MessageSquarePlus },
-        
         { href: getPlatformUrl("/lists"), label: t('nav.curatedLists', 'Curated Lists'), icon: List },
         { separator: true, label: 's3', icon: Users },
         { href: getPlatformUrl("/news"), label: t('nav.news', 'News & Reviews'), icon: Newspaper },
+        { onClick: () => window.open("https://discord.gg/jTqgCPX8DD", "_blank"), label: "Discord", icon: MessageSquarePlus },
       ],
     },
     {
@@ -146,7 +145,7 @@ export function HeaderDropdownNav() {
         { href: getPlatformUrl("/convention"), label: t('nav.conventions', 'Conventions'), icon: Ticket },
         { href: getPlatformUrl("/dashboard/community"), label: t('nav.myEvents', 'My Events'), icon: Calendar },
         ...((myClubs && myClubs.length > 0)
-          ? [{ href: getPlatformUrl(`/club/${myClubs[0].slug}/events`), label: t('nav.clubEvents', 'Club Events'), icon: CalendarDays }]
+          ? [{ href: getPlatformUrl(`/club/${myClubs[0].slug}?tab=events`), label: t('nav.clubEvents', 'Club Events'), icon: CalendarDays }]
           : []),
       ],
     },

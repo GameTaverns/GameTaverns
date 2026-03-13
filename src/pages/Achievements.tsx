@@ -25,13 +25,13 @@ export default function Achievements() {
           
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <BackLink fallback="/dashboard" className="text-cream/70 hover:text-cream mb-0" />
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
+          <BackLink fallback="/dashboard" className="text-cream/70 hover:text-cream" />
           <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-border p-6 md:p-8">
             <AchievementsDisplay compact={false} />
           </div>

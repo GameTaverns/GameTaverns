@@ -14,7 +14,7 @@ interface BackLinkProps {
  * Smart back navigation that goes to the previous page (browser back)
  * or falls back to a specified route if there's no history.
  */
-export function BackLink({ fallback = "/dashboard", label = "Back", className }: BackLinkProps) {
+export function BackLink({ fallback = "/dashboard", label = "Dashboard", className }: BackLinkProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
