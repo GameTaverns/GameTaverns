@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { FeedbackNavItem } from "@/components/feedback/FeedbackNavItem";
 import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDialog";
 import { SmartPickerDialog } from "@/components/games/SmartPickerDialog";
+import { QuickAddGameDialog } from "@/components/games/QuickAddGameDialog";
 
 interface MobileNavDrawerProps {
   trigger?: React.ReactNode;
