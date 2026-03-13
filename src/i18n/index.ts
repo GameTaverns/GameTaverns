@@ -60,6 +60,9 @@ i18n
       caches: ['localStorage'],
       lookupLocalStorage: 'i18nextLng',
     },
+    react: {
+      useSuspense: false,
+    },
   });
 
 export default i18n;
