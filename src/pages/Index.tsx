@@ -537,7 +537,7 @@ const Index = () => {
               {filter && filterValue ? filterValue : siteConfig.collectionTitle}
             </h1>
             <p className="text-muted-foreground mt-1">
-              {filteredGames.length} {filteredGames.length === 1 ? "game" : "games"} in collection
+              {filteredGames.length} {filteredGames.length === 1 ? "game" : "games"} in catalog
               {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
             </p>
           </div>
