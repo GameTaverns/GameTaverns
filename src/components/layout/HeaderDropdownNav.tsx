@@ -56,11 +56,11 @@ function NavDropdown({ label, icon: Icon, items }: NavMenuProps) {
       <DropdownMenuContent
         align="start"
         sideOffset={8}
-        className="min-w-[180px] bg-wood-dark/95 backdrop-blur-md border-wood-medium/50 text-cream"
+        className="min-w-[180px] bg-popover backdrop-blur-md border-border text-popover-foreground"
       >
         {items.map((item, idx) => {
           if (item.separator) {
-            return <DropdownMenuSeparator key={`sep-${idx}`} className="bg-wood-medium/30" />;
+            return <DropdownMenuSeparator key={`sep-${idx}`} className="bg-border/50" />;
           }
           const ItemIcon = item.icon;
           if (item.onClick) {
@@ -71,7 +71,7 @@ function NavDropdown({ label, icon: Icon, items }: NavMenuProps) {
                   item.onClick?.();
                   setOpen(false);
                 }}
-                className="gap-2 text-xs text-cream/80 hover:text-cream focus:text-cream focus:bg-wood-medium/40 cursor-pointer"
+                className="gap-2 text-xs text-popover-foreground hover:text-accent-foreground focus:text-accent-foreground focus:bg-accent cursor-pointer"
               >
                 <ItemIcon className="h-3.5 w-3.5" />
                 {item.label}
@@ -79,7 +79,7 @@ function NavDropdown({ label, icon: Icon, items }: NavMenuProps) {
             );
           }
           return (
-            <DropdownMenuItem key={item.label} asChild className="gap-2 text-xs text-cream/80 hover:text-cream focus:text-cream focus:bg-wood-medium/40 cursor-pointer">
+            <DropdownMenuItem key={item.label} asChild className="gap-2 text-xs text-popover-foreground hover:text-accent-foreground focus:text-accent-foreground focus:bg-accent cursor-pointer">
               <TenantLink href={item.href!} onClick={() => setOpen(false)}>
                 <ItemIcon className="h-3.5 w-3.5" />
                 {item.label}
