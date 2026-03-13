@@ -106,13 +106,18 @@ function clearDraft(draftKey: string) {
 export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId, editEvent }: CreateEventDialogProps) {
   const { user } = useAuth();
   const { data: myLibraries } = useMyLibraries();
+  const { data: myClubs } = useMyClubs();
   const [activeTab, setActiveTab] = useState("basics");
   
-  // Event scope: "general" or a library ID
+  // Event scope: "general", a library ID, or "club:<club_id>"
   const [eventScope, setEventScope] = useState<string>(propLibraryId || "general");
   
+  // Resolve club scope to its linked library
+  const isClubScope = eventScope.startsWith("club:");
+  const selectedClubId = isClubScope ? eventScope.slice(5) : undefined;
+  
   // Derived: the effective library ID based on scope selection
-  const libraryId = propLibraryId || (eventScope !== "general" ? eventScope : undefined);
+  const libraryId = propLibraryId || (eventScope !== "general" && !isClubScope ? eventScope : undefined);
   
   // Basic fields
   const [title, setTitle] = useState("");
