@@ -19,6 +19,7 @@ import { useUnreadDMCount } from "@/hooks/useDirectMessages";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { FeedbackNavItem } from "@/components/feedback/FeedbackNavItem";
+import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDialog";
 
 interface MobileNavDrawerProps {
   trigger?: React.ReactNode;
