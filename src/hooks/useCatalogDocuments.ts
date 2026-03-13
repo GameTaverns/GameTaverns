@@ -83,7 +83,7 @@ export function useUploadCatalogDocument() {
 
       return data as CatalogDocument;
     },
-    onSuccess: (_: unknown, v: { catalogId: string }) => {
+    onSuccess: (_: unknown, v: { file: File; catalogId: string; title: string; documentType: string; language: string }) => {
       qc.invalidateQueries({ queryKey: ["catalog-documents", v.catalogId] });
     },
   });
