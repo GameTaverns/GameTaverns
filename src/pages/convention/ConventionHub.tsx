@@ -196,7 +196,7 @@ export default function ConventionHub() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full max-w-2xl mx-auto">
+          <TabsList className={`grid w-full max-w-2xl mx-auto ${isOwner ? "grid-cols-3" : "grid-cols-2"}`}>
             <TabsTrigger value="command" className="text-xs gap-1">
               <LayoutDashboard className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Command</span>
@@ -205,14 +205,12 @@ export default function ConventionHub() {
               <BookOpen className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Lending Desk</span>
             </TabsTrigger>
-            <TabsTrigger value="concierge" className="text-xs gap-1">
-              <Dice5 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Concierge</span>
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="text-xs gap-1">
-              <BarChart3 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Analytics</span>
-            </TabsTrigger>
+            {isOwner && (
+              <TabsTrigger value="analytics" className="text-xs gap-1">
+                <BarChart3 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Analytics</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="command">
@@ -234,21 +232,15 @@ export default function ConventionHub() {
               reservations={reservations}
             />
           </TabsContent>
-          <TabsContent value="concierge">
-            <ConventionConcierge
-              event={event}
-              libraryGames={libraryGames}
-              activeLoans={activeLoans}
-              conventionSettings={conventionSettings}
-            />
-          </TabsContent>
-          <TabsContent value="analytics">
-            <ConventionAnalytics
-              event={event}
-              activeLoans={activeLoans}
-              libraryGames={libraryGames}
-            />
-          </TabsContent>
+          {isOwner && (
+            <TabsContent value="analytics">
+              <ConventionAnalytics
+                event={event}
+                activeLoans={activeLoans}
+                libraryGames={libraryGames}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
       <Footer />
