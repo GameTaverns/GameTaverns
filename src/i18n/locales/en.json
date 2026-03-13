@@ -188,7 +188,7 @@
     "selfHostedOnly": "Available on self-hosted deployments only."
   },
   "hub": {
-    "myCollection": "My Collection",
+    "myCollection": "My Library",
     "managingLibrary": "Managing {{name}}",
     "noLibraryYet": "No library yet",
     "gamesAndLibraries": "{{games}} games · {{libraries}} {{libraryWord}}",
