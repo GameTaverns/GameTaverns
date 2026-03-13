@@ -129,12 +129,22 @@ export function RatingsAdmin() {
   }, [library?.id]);
 
   const handleClearAllRatings = async () => {
+    if (!library?.id) return;
     setIsClearing(true);
     try {
+      // Get game IDs for this library, then delete only those ratings
+      const { data: libraryGames } = await supabase
+        .from("games")
+        .select("id")
+        .eq("library_id", library.id);
+      
+      const gameIds = libraryGames?.map(g => g.id) || [];
+      if (gameIds.length === 0) return;
+
       const { error } = await supabase
         .from("game_ratings")
         .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all rows
+        .in("game_id", gameIds);
 
       if (error) throw error;
 
