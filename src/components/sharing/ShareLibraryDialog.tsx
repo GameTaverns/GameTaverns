@@ -161,7 +161,7 @@ export function ShareLibraryDialog({
               onClick={async () => {
                 try {
                   await navigator.share({
-                    title: `${libraryName} — Board Game Collection`,
+                    title: `${libraryName} — Board Game Library`,
                     text: shareText,
                     url: libraryUrl,
                   });
