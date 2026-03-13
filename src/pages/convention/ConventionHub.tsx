@@ -15,7 +15,9 @@ import { ConventionLendingDesk } from "@/components/convention/ConventionLending
 
 import { ConventionAnalytics } from "@/components/convention/ConventionAnalytics";
 import { ConventionSettings } from "@/components/convention/ConventionSettings";
+import { ConventionAttendeeView } from "@/components/convention/ConventionAttendeeView";
 import { useAuth } from "@/hooks/useAuth";
+import { useConventionAccess } from "@/hooks/useConventionAccess";
 
 export default function ConventionHub() {
   const { eventId } = useParams<{ eventId: string }>();
