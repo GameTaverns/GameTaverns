@@ -16,11 +16,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { PickerChip } from "@/components/games/picker/PickerChip";
+import { useMechanicFamilies, useGameMechanicFamilyMap } from "@/hooks/useMechanicFamilies";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 const GAME_TYPES = ["Board Game", "Card Game", "Dice Game", "Party Game", "War Game", "Miniatures", "RPG", "Other"];
-const GENRES = ["Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure", "Economic", "Abstract", "Humor", "Nature"];
 const PLAY_TIMES = ["0-15 Minutes", "15-30 Minutes", "30-45 Minutes", "45-60 Minutes", "60+ Minutes"];
 
 type ConciergeMode = "all" | "want_to_play" | "filter";
@@ -41,9 +41,15 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
 
   // Filter state (matching SmartPickerDialog)
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedMechanics, setSelectedMechanics] = useState<string[]>([]);
   const [selectedPlayTimes, setSelectedPlayTimes] = useState<string[]>([]);
   const [playerCount, setPlayerCount] = useState("any");
+
+  // Mechanic families
+  const { data: mechanicFamilies = [] } = useMechanicFamilies();
+  const gameIds = useMemo(() => libraryGames.map((g: any) => g.id), [libraryGames]);
+  const { data: gameMechanicMap } = useGameMechanicFamilyMap(gameIds, gameIds.length > 0);
+  const mechanicFamilyNames = useMemo(() => mechanicFamilies.map(f => f.name), [mechanicFamilies]);
   const [filtersExpanded, setFiltersExpanded] = useState(true);
 
   // Other state
@@ -127,8 +133,11 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
       if (selectedTypes.length > 0) {
         games = games.filter(g => g.game_type && selectedTypes.includes(g.game_type));
       }
-      if (selectedGenres.length > 0) {
-        games = games.filter(g => g.genre && selectedGenres.some(sg => g.genre?.toLowerCase().includes(sg.toLowerCase())));
+      if (selectedMechanics.length > 0 && gameMechanicMap) {
+        games = games.filter(g => {
+          const families = gameMechanicMap.get(g.id);
+          return families && selectedMechanics.some(m => families.has(m));
+        });
       }
       if (selectedPlayTimes.length > 0) {
         games = games.filter(g => g.play_time && selectedPlayTimes.includes(g.play_time));
@@ -143,10 +152,10 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
       games = games.filter(g => g.title.toLowerCase().includes(searchQuery.toLowerCase()));
     }
     return games;
-  }, [gamesWithAvailability, mode, selectedTypes, selectedGenres, selectedPlayTimes, playerCount, searchQuery]);
+  }, [gamesWithAvailability, mode, selectedTypes, selectedMechanics, selectedPlayTimes, playerCount, searchQuery, gameMechanicMap]);
 
   const availableGames = filteredGames.filter(g => g.available > 0);
-  const activeFilterCount = selectedTypes.length + selectedGenres.length + selectedPlayTimes.length + (playerCount !== "any" ? 1 : 0);
+  const activeFilterCount = selectedTypes.length + selectedMechanics.length + selectedPlayTimes.length + (playerCount !== "any" ? 1 : 0);
 
   const handleSpin = () => {
     if (availableGames.length === 0) return;
@@ -179,7 +188,7 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
 
   const clearFilters = () => {
     setSelectedTypes([]);
-    setSelectedGenres([]);
+    setSelectedMechanics([]);
     setSelectedPlayTimes([]);
     setPlayerCount("any");
     setSearchQuery("");
@@ -250,12 +259,12 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
                   </div>
                 </div>
 
-                {/* Genre */}
+                {/* Mechanic */}
                 <div className="space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">Genre</p>
+                  <p className="text-xs font-medium text-muted-foreground">Mechanic</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {GENRES.map(g => (
-                      <PickerChip key={g} label={g} selected={selectedGenres.includes(g)} onClick={() => setSelectedGenres(prev => toggleArrayItem(prev, g))} />
+                    {mechanicFamilyNames.map(m => (
+                      <PickerChip key={m} label={m} selected={selectedMechanics.includes(m)} onClick={() => setSelectedMechanics(prev => toggleArrayItem(prev, m))} />
                     ))}
                   </div>
                 </div>
@@ -359,9 +368,6 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
                   )}
                   {pickedGame.game_type && (
                     <Badge variant="outline" className="text-xs">{pickedGame.game_type}</Badge>
-                  )}
-                  {pickedGame.genre && (
-                    <Badge variant="outline" className="text-xs">{pickedGame.genre}</Badge>
                   )}
                 </div>
                 <Badge variant="secondary" className="mt-2">{pickedGame.available} of {pickedGame.copies_owned || 1} available</Badge>

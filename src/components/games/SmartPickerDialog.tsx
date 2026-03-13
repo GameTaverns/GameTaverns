@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { useMyLibraries } from "@/hooks/useLibrary";
 import { useCuratedList } from "@/hooks/useCuratedLists";
+import { useMechanicFamilies, useGameMechanicFamilyMap } from "@/hooks/useMechanicFamilies";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Dices, Heart, Filter, Hand, List } from "lucide-react";
@@ -51,7 +52,7 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
 
   // Filter state
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedMechanics, setSelectedMechanics] = useState<string[]>([]);
   const [selectedPlayTimes, setSelectedPlayTimes] = useState<string[]>([]);
   const [playerCount, setPlayerCount] = useState("any");
 
@@ -86,6 +87,12 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
     staleTime: 1000 * 60 * 5,
   });
 
+  // Fetch mechanic families list + game→family mapping
+  const { data: mechanicFamilies = [] } = useMechanicFamilies();
+  const gameIds = useMemo(() => games.map(g => g.id), [games]);
+  const { data: gameMechanicMap } = useGameMechanicFamilyMap(gameIds, open && games.length > 0);
+  const mechanicFamilyNames = useMemo(() => mechanicFamilies.map(f => f.name), [mechanicFamilies]);
+
   const toggleArrayItem = useCallback((arr: string[], item: string) => {
     return arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item];
   }, []);
@@ -99,7 +106,10 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
     if (mode === "filter") {
       return games.filter(game => {
         if (selectedTypes.length > 0 && (!game.game_type || !selectedTypes.includes(game.game_type))) return false;
-        if (selectedGenres.length > 0 && (!game.genre || !selectedGenres.some(g => game.genre?.toLowerCase().includes(g.toLowerCase())))) return false;
+        if (selectedMechanics.length > 0 && gameMechanicMap) {
+          const families = gameMechanicMap.get(game.id);
+          if (!families || !selectedMechanics.some(m => families.has(m))) return false;
+        }
         if (selectedPlayTimes.length > 0 && (!game.play_time || !selectedPlayTimes.includes(game.play_time))) return false;
         if (playerCount !== "any") {
           const count = parseInt(playerCount);
@@ -120,7 +130,7 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
     }
 
     return games;
-  }, [mode, games, selectedTypes, selectedGenres, selectedPlayTimes, playerCount, pickedGameIds, selectedList]);
+  }, [mode, games, selectedTypes, selectedMechanics, selectedPlayTimes, playerCount, pickedGameIds, selectedList, gameMechanicMap]);
 
   const handlePick = () => {
     if (eligibleGames.length === 0) return;
@@ -196,8 +206,9 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
             <PickerFilterTab
               selectedTypes={selectedTypes}
               toggleType={t => setSelectedTypes(prev => toggleArrayItem(prev, t))}
-              selectedGenres={selectedGenres}
-              toggleGenre={g => setSelectedGenres(prev => toggleArrayItem(prev, g))}
+              selectedMechanics={selectedMechanics}
+              toggleMechanic={m => setSelectedMechanics(prev => toggleArrayItem(prev, m))}
+              mechanicFamilyNames={mechanicFamilyNames}
               selectedPlayTimes={selectedPlayTimes}
               togglePlayTime={pt => setSelectedPlayTimes(prev => toggleArrayItem(prev, pt))}
               playerCount={playerCount}
