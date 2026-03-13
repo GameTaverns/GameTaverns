@@ -163,6 +163,7 @@ export function useGameSessions(gameId: string) {
           played_at: input.played_at,
           duration_minutes: input.duration_minutes,
           notes: input.notes,
+          cooperative_result: input.cooperative_result ?? null,
         })
         .select()
         .single();
