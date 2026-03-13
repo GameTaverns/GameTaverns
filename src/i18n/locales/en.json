@@ -535,7 +535,7 @@
     "createLibraryDesc": "First, create a library. It gets its own subdomain (e.g., yourname.gametaverns.com) where friends can browse your games.",
     "createLibraryAction": "Create Library",
     "importGamesTitle": "Import Your Games",
-    "importGamesDesc": "Now let's add some games! Import from BoardGameGeek, a CSV file, or add games manually to build your collection.",
+    "importGamesDesc": "Now let's add some games! Import from BoardGameGeek, a CSV file, or add games manually to build your library.",
     "addGamesAction": "Add Games",
     "customizeTitle": "Customize Your Look",
     "customizeDesc": "Make your library uniquely yours — set a logo, pick colors, and choose fonts in Library Settings.",
