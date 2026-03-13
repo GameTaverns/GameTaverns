@@ -9,6 +9,7 @@ import {
 
 import { useTranslation } from "react-i18next";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
