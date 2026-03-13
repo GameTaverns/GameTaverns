@@ -126,7 +126,7 @@ export function RatingsAdmin() {
 
   useEffect(() => {
     fetchRatingsData();
-  }, []);
+  }, [library?.id]);
 
   const handleClearAllRatings = async () => {
     setIsClearing(true);
