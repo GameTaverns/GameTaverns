@@ -148,7 +148,7 @@ function FollowingWidget() {
           ))}
         </div>
       )}
-      <Link to="/discover" className="text-xs text-primary hover:underline mt-3 inline-block">
+      <Link to="/recommendations" className="text-xs text-primary hover:underline mt-3 inline-block">
         Discover people →
       </Link>
     </WidgetCard>
