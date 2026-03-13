@@ -19,8 +19,6 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
           {/* Copyright + LLC */}
           <span>© {currentYear} GameTaverns LLC</span>
           <span className="text-muted-foreground/40">·</span>
-          <span className="italic">Made with ❤️ for board game enthusiasts</span>
-          <span className="text-muted-foreground/40">·</span>
           <ExternalLink href="mailto:admin@gametaverns.com" className="hover:text-foreground transition-colors">{t('footer.contact')}</ExternalLink>
           <span className="text-muted-foreground/40">·</span>
           <ExternalLink href="https://discord.gg/jTqgCPX8DD" className="hover:text-foreground transition-colors">{t('footer.discord')}</ExternalLink>
