@@ -56,15 +56,15 @@ export function DashboardActivityFeed() {
 
   return (
     <div className="space-y-3">
-      {availableTypes.length > 1 && (
+      {availableFilters.length > 1 && (
         <ActivityFilterBar
-          availableTypes={availableTypes}
+          availableFilters={availableFilters}
           hiddenTypes={hiddenTypes}
-          toggleType={toggleType}
+          toggle={toggle}
         />
       )}
       <div className="space-y-3">
-        {filteredItems.map((item, idx) =>
+        {filtered.map((item, idx) =>
           item.type === "batch" ? (
             <div key={`batch-${idx}`} className="card-handcrafted p-4">
               <ActivityFeedBatchItem batch={item} showUser />

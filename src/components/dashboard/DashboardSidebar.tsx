@@ -30,14 +30,13 @@ function MyStatsWidget() {
     queryFn: async () => {
       if (!library?.id) return { games: 0, sessions: 0, expansions: 0 };
 
-      const [gamesRes, sessionsRes] = await Promise.all([
-        supabase.from("games").select("id", { count: "exact", head: true }).eq("library_id", library.id),
-        supabase.from("play_sessions").select("id", { count: "exact", head: true }).eq("library_id", library.id),
-      ]);
+      const { count } = await supabase
+        .from("games")
+        .select("id", { count: "exact", head: true })
+        .eq("library_id", library.id);
 
       return {
-        games: gamesRes.count ?? 0,
-        sessions: sessionsRes.count ?? 0,
+        games: count ?? 0,
       };
     },
     enabled: !!library?.id,
