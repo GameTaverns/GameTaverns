@@ -102,7 +102,7 @@ export function ExploreChecklist({
     {
       id: "bgg-sync",
       title: "Sync with BoardGameGeek",
-      description: "Link your BGG account to auto-import your collection and keep it in sync.",
+      description: "Link your BGG account to auto-import your library and keep it in sync.",
       icon: <Globe className="h-4 w-4" />,
       completed: hasBggSync,
       href: settingsUrl!,
