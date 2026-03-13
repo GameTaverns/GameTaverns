@@ -403,19 +403,16 @@ export default function Directory() {
           </div>
         </div>
 
-        {/* Top-level: Libraries / Clubs */}
-        <Tabs value={topTab} onValueChange={setTopTab} className="mb-6">
-          <TabsList className="mb-6">
-            <TabsTrigger value="libraries" className="gap-1.5">
-              <Users className="h-4 w-4" /> {t('directory.librariesTab')}
-            </TabsTrigger>
-            <TabsTrigger value="clubs" className="gap-1.5">
-              <Building2 className="h-4 w-4" /> {t('directory.clubsTab')}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="libraries">
-            {/* Search bar */}
+        {/* Search bar */}
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t('directory.searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <div className="relative mb-6">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
