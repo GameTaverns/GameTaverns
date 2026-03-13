@@ -571,7 +571,7 @@
   },
   "catalog": {
     "title": "GameTaverns Library",
-    "gamesInCollection": "{{count}} games in collection",
+    "gamesInCollection": "{{count}} games in library",
     "includeExpansions": "Include expansions",
     "analytics": "Analytics",
     "searchPlaceholder": "Search games, designers, or artists...",
