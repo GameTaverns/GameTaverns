@@ -18,6 +18,7 @@ import { WhoHasThis } from "@/components/catalog/WhoHasThis";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
 import { ManagePurchaseLinks } from "@/components/catalog/ManagePurchaseLinks";
 import { CatalogUpcEditor } from "@/components/catalog/CatalogUpcEditor";
+import { CatalogDataEditor } from "@/components/catalog/CatalogDataEditor";
 import { GameImage } from "@/components/games/GameImage";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
@@ -642,6 +643,22 @@ export default function CatalogGameDetail() {
             {/* Admin: Manage Purchase Links */}
             {isAdmin && (
               <div className="mt-6 space-y-6">
+                <CatalogDataEditor
+                  catalogId={game.id}
+                  currentData={{
+                    title: game.title,
+                    is_expansion: game.is_expansion,
+                    min_players: game.min_players,
+                    max_players: game.max_players,
+                    play_time_minutes: game.play_time_minutes,
+                    weight: game.weight,
+                    year_published: game.year_published,
+                    suggested_age: game.suggested_age,
+                    description: game.description,
+                    image_url: game.image_url,
+                    bgg_id: game.bgg_id,
+                  }}
+                />
                 <ManagePurchaseLinks catalogId={game.id} gameTitle={game.title} />
                 <CatalogUpcEditor catalogId={game.id} currentUpc={(game as any).upc || null} />
               </div>
