@@ -22,6 +22,7 @@ import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDia
 import { SmartPickerDialog } from "@/components/games/SmartPickerDialog";
 import { QuickAddGameDialog } from "@/components/games/QuickAddGameDialog";
 import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
+import { useMyClubs } from "@/hooks/useClubs";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
