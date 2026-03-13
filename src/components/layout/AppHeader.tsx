@@ -4,7 +4,7 @@ import {
   Menu,
   BookOpen,
   MessageSquare,
-  LayoutDashboard,
+  Home,
 } from "lucide-react";
 
 import { useTranslation } from "react-i18next";
@@ -105,7 +105,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
                     aria-label="Dashboard"
                   >
-                    <LayoutDashboard className="h-5 w-5" />
+                    <Home className="h-5 w-5" />
                   </Button>
                 </TenantLink>
 
