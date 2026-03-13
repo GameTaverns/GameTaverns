@@ -123,7 +123,7 @@ export function WishlistAdmin() {
 
   useEffect(() => {
     fetchWishlistData();
-  }, []);
+  }, [library?.id]);
 
   const handleClearAllVotes = async () => {
     setIsClearing(true);
