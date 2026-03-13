@@ -55,6 +55,7 @@ interface CatalogGameFull {
   parent: { id: string; title: string; slug: string | null } | null;
   community_rating: number | null;
   community_rating_count: number;
+  genres: string[];
 }
 
 // URL sanitizer: strip corrupted BGG artifact junk from scraped URLs
