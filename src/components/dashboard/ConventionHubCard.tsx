@@ -33,7 +33,7 @@ export function ConventionHubCard({ user }: ConventionHubCardProps) {
         .from("library_events")
         .select("id, title, library_id")
         .in("library_id", libIds)
-        .order("start_date", { ascending: false })
+        .order("event_date", { ascending: false })
         .limit(50);
 
       if (!events?.length) return null;
