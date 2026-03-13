@@ -101,11 +101,20 @@ export function HeaderDropdownNav() {
 
   const menus: NavMenuProps[] = [
     {
+      label: t('nav.quickActions', 'Quick Actions'),
+      icon: Zap,
+      items: [
+        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
+        { href: getPlatformUrl("/picker"), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
+        { href: getPlatformUrl("/create-library"), label: t('nav.createLibrary', 'Create Library'), icon: PlusCircle },
+      ],
+    },
+    {
       label: t('nav.library', 'Library'),
       icon: Library,
       items: [
         { href: libraryHref, label: t('nav.myLibrary', 'My Library'), icon: Library },
-        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.myLibrary', 'My Library'), icon: BookOpen },
+        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.fullLibrary', 'Full Library'), icon: BookOpen },
         { href: getPlatformUrl("/dashboard/lending"), label: t('nav.lending', 'Lending'), icon: ArrowLeftRight },
         { href: getPlatformUrl("/dashboard/insights"), label: t('nav.insights', 'Insights'), icon: ClipboardList },
         { separator: true, label: 's1', icon: Library },
@@ -158,76 +167,5 @@ export function HeaderDropdownNav() {
         <NavDropdown key={menu.label} {...menu} />
       ))}
     </nav>
-  );
-}
-
-/** Quick actions dropdown for header — Log Play, Random Picker, Create Library */
-export function HeaderQuickActions() {
-  const { t } = useTranslation();
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-
-  if (!isAuthenticated) return null;
-
-  const actions = [
-    {
-      label: t('nav.logPlay', 'Log a Play'),
-      icon: ClipboardList,
-      onClick: () => {
-        navigate(getPlatformUrl("/dashboard/collection"));
-        setOpen(false);
-      },
-    },
-    {
-      label: t('nav.randomPicker', 'Random Picker'),
-      icon: Dice5,
-      onClick: () => {
-        navigate(getPlatformUrl("/picker"));
-        setOpen(false);
-      },
-    },
-    {
-      label: t('nav.createLibrary', 'Create Library'),
-      icon: PlusCircle,
-      onClick: () => {
-        navigate(getPlatformUrl("/create-library"));
-        setOpen(false);
-      },
-    },
-  ];
-
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
-          aria-label={t('nav.quickActions', 'Quick Actions')}
-        >
-          <Zap className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        sideOffset={8}
-        className="min-w-[160px] bg-wood-dark/95 backdrop-blur-md border-wood-medium/50 text-cream"
-      >
-        {actions.map((action) => {
-          const ActionIcon = action.icon;
-          return (
-            <DropdownMenuItem
-              key={action.label}
-              onClick={action.onClick}
-              className="gap-2 text-xs text-cream/80 hover:text-cream focus:text-cream focus:bg-wood-medium/40 cursor-pointer"
-            >
-              <ActionIcon className="h-3.5 w-3.5" />
-              {action.label}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
