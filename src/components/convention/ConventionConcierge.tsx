@@ -188,7 +188,7 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
 
   const clearFilters = () => {
     setSelectedTypes([]);
-    setSelectedGenres([]);
+    setSelectedMechanics([]);
     setSelectedPlayTimes([]);
     setPlayerCount("any");
     setSearchQuery("");
