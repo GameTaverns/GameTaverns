@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen, RefreshCw } from "lucide-react";
+import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen, RefreshCw, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
 import { useClubLendingSettings, useIsClubLendingStaff } from "@/hooks/useClubLending";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
+import { CreateEventDialog } from "@/components/events/CreateEventDialog";
 
 import { format } from "date-fns";
 
@@ -48,6 +49,7 @@ export default function ClubPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [switchingLibraryId, setSwitchingLibraryId] = useState<string | null>(null);
+  const [createEventOpen, setCreateEventOpen] = useState(false);
   const [newLibraryId, setNewLibraryId] = useState("");
   const debouncedQuery = useDebounce(searchQuery, 300);
   const { data: games = [], isLoading: searchLoading } = useClubGameSearch(
@@ -336,6 +338,18 @@ export default function ClubPage() {
           </TabsContent>
 
           <TabsContent value="events">
+            {isOwner && (
+              <div className="flex justify-end mb-4">
+                <Button size="sm" className="gap-1.5" onClick={() => setCreateEventOpen(true)}>
+                  <Plus className="h-4 w-4" /> Create Club Event
+                </Button>
+                <CreateEventDialog
+                  open={createEventOpen}
+                  onOpenChange={setCreateEventOpen}
+                  libraryId={clubLibraries[0]?.library_id}
+                />
+              </div>
+            )}
             {clubEvents.length === 0 ? (
               <div className="text-cream/50 text-center py-12">{t('clubPage.noClubEvents')}</div>
             ) : (

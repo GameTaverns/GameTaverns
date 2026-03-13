@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, MapPin, Clock, Globe, Lock, Building2, Library } from "lucide-react";
+import { CalendarIcon, MapPin, Clock, Globe, Lock, Building2, Library, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/backend/client";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -32,6 +33,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useCreateEvent, useUpdateEvent, CalendarEvent } from "@/hooks/useLibraryEvents";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibraries } from "@/hooks/useLibrary";
+import { useMyClubs } from "@/hooks/useClubs";
 
 const EVENT_TYPES = [
   { value: "game_night", label: "Game Night" },
@@ -105,13 +107,18 @@ function clearDraft(draftKey: string) {
 export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId, editEvent }: CreateEventDialogProps) {
   const { user } = useAuth();
   const { data: myLibraries } = useMyLibraries();
+  const { data: myClubs } = useMyClubs();
   const [activeTab, setActiveTab] = useState("basics");
   
-  // Event scope: "general" or a library ID
+  // Event scope: "general", a library ID, or "club:<club_id>"
   const [eventScope, setEventScope] = useState<string>(propLibraryId || "general");
   
+  // Resolve club scope to its linked library
+  const isClubScope = eventScope.startsWith("club:");
+  const selectedClubId = isClubScope ? eventScope.slice(5) : undefined;
+  
   // Derived: the effective library ID based on scope selection
-  const libraryId = propLibraryId || (eventScope !== "general" ? eventScope : undefined);
+  const libraryId = propLibraryId || (eventScope !== "general" && !isClubScope ? eventScope : undefined);
   
   // Basic fields
   const [title, setTitle] = useState("");
@@ -276,8 +283,24 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
         },
       });
     } else {
+      // Resolve the effective library ID - for club scope, fetch the club's first linked library
+      let effectiveLibraryId = libraryId;
+      if (isClubScope && selectedClubId && !effectiveLibraryId) {
+        try {
+          const { data: clubLib } = await supabase
+            .from("club_libraries")
+            .select("library_id")
+            .eq("club_id", selectedClubId)
+            .limit(1)
+            .maybeSingle();
+          effectiveLibraryId = clubLib?.library_id || undefined;
+        } catch (err) {
+          console.error("[event-create] Failed to resolve club library:", err);
+        }
+      }
+
       await createEvent.mutateAsync({
-        library_id: libraryId || undefined,
+        library_id: effectiveLibraryId || undefined,
         created_by_user_id: user?.id,
         title: title.trim(),
         description: description.trim() || undefined,
@@ -339,7 +362,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
             
             <TabsContent value="basics" className="space-y-4 mt-0">
               {/* Event Scope - only show when not locked to a specific library */}
-              {!isEditMode && myLibraries && myLibraries.length > 0 && (
+              {!isEditMode && (myLibraries?.length || myClubs?.length) && (
                 <div className="space-y-2">
                   <Label>Event Scope</Label>
                   <Select value={eventScope} onValueChange={(val) => {
@@ -351,7 +374,9 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
                       <div className="flex items-center gap-2">
                         {eventScope === "general" 
                           ? <Globe className="h-4 w-4 text-primary" />
-                          : <Library className="h-4 w-4 text-muted-foreground" />
+                          : isClubScope
+                            ? <Users className="h-4 w-4 text-muted-foreground" />
+                            : <Library className="h-4 w-4 text-muted-foreground" />
                         }
                         <SelectValue />
                       </div>
@@ -360,9 +385,14 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
                       <SelectItem value="general">
                         <span className="flex items-center gap-2">General (Community Event)</span>
                       </SelectItem>
-                      {myLibraries.map((lib: any) => (
+                      {myLibraries?.map((lib: any) => (
                         <SelectItem key={lib.id} value={lib.id}>
-                          <span className="flex items-center gap-2">{lib.name}</span>
+                          <span className="flex items-center gap-2">📚 {lib.name}</span>
+                        </SelectItem>
+                      ))}
+                      {myClubs?.map((club: any) => (
+                        <SelectItem key={`club:${club.id}`} value={`club:${club.id}`}>
+                          <span className="flex items-center gap-2">👥 {club.name} (Club)</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -370,7 +400,9 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
                   <p className="text-xs text-muted-foreground">
                     {eventScope === "general" 
                       ? "A standalone community event, not tied to any library." 
-                      : "This event will appear in the selected library and create a forum discussion."}
+                      : isClubScope
+                        ? "This event will be linked to the club's library and visible to club members."
+                        : "This event will appear in the selected library and create a forum discussion."}
                   </p>
                 </div>
               )}
