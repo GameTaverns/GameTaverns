@@ -282,8 +282,24 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
         },
       });
     } else {
+      // Resolve the effective library ID - for club scope, fetch the club's first linked library
+      let effectiveLibraryId = libraryId;
+      if (isClubScope && selectedClubId && !effectiveLibraryId) {
+        try {
+          const { data: clubLib } = await supabase
+            .from("club_libraries")
+            .select("library_id")
+            .eq("club_id", selectedClubId)
+            .limit(1)
+            .maybeSingle();
+          effectiveLibraryId = clubLib?.library_id || undefined;
+        } catch (err) {
+          console.error("[event-create] Failed to resolve club library:", err);
+        }
+      }
+
       await createEvent.mutateAsync({
-        library_id: libraryId || undefined,
+        library_id: effectiveLibraryId || undefined,
         created_by_user_id: user?.id,
         title: title.trim(),
         description: description.trim() || undefined,
