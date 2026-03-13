@@ -1006,17 +1006,10 @@ const handler = async (req: Request): Promise<Response> => {
 
       let genreClassified = 0;
       const genreErrors: string[] = [];
-      let rateLimited = false;
-      let retryAfterMs = 0;
 
       // Process in sub-batches of 10 for Gemini (multiple games per prompt)
       const SUB_BATCH = 10;
-      const SUB_BATCH_DELAY_MS = 2000; // 2s between sub-batches to avoid RPM limits
       for (let i = 0; i < entries.length; i += SUB_BATCH) {
-        // Delay between sub-batches (skip first)
-        if (i > 0) {
-          await new Promise(r => setTimeout(r, SUB_BATCH_DELAY_MS));
-        }
         const subBatch = entries.slice(i, i + SUB_BATCH);
         
         const gamesPayload = subBatch.map((e, idx) => ({
@@ -1047,13 +1040,8 @@ Do NOT include any other text.`;
           );
 
           if (geminiRes.status === 429) {
-            const retryAfterSeconds = Number(geminiRes.headers.get("retry-after") || "60");
-            retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-              ? Math.ceil(retryAfterSeconds * 1000)
-              : 60_000;
-            rateLimited = true;
-            console.warn(`[classify-genres] Rate limited, stopping batch early (retry in ${Math.ceil(retryAfterMs / 1000)}s)`);
-            genreErrors.push(`Rate limited — stopping early (retry in ${Math.ceil(retryAfterMs / 1000)}s)`);
+            console.warn("[classify-genres] Rate limited, stopping batch early");
+            genreErrors.push("Rate limited — stopping early");
             break;
           }
 
@@ -1104,8 +1092,6 @@ Do NOT include any other text.`;
       return new Response(JSON.stringify({
         success: true, mode: "classify-genres", classified: genreClassified,
         total: entries.length, hasMore: genreHasMore,
-        rateLimited,
-        retryAfterMs,
         errors: genreErrors.slice(0, 20),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
