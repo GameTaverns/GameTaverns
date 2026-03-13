@@ -194,6 +194,7 @@ function ReturnForm() {
 
 function LayoutA() {
   const [subView, setSubView] = useState<"checkout" | "return">("checkout");
+  const [activePane, setActivePane] = useState<"desk" | "analytics">("desk");
 
   return (
     <div className="space-y-4">
@@ -204,60 +205,302 @@ function LayoutA() {
 
       <StatBar />
 
-      <div className="grid lg:grid-cols-5 gap-4" style={{ minHeight: 520 }}>
-        {/* Left: Checkout / Return toggle */}
-        <div className="lg:col-span-2 space-y-3">
-          <div className="flex gap-1 p-1 bg-muted rounded-lg">
-            <Button
-              variant={subView === "checkout" ? "default" : "ghost"}
-              size="sm"
-              className="flex-1 text-xs gap-1"
-              onClick={() => setSubView("checkout")}
-            >
-              <ArrowRight className="h-3.5 w-3.5" /> Check Out
-            </Button>
-            <Button
-              variant={subView === "return" ? "default" : "ghost"}
-              size="sm"
-              className="flex-1 text-xs gap-1"
-              onClick={() => setSubView("return")}
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Return
-            </Button>
+      {/* Two-tab switcher */}
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+        <Button
+          variant={activePane === "desk" ? "default" : "ghost"}
+          size="sm"
+          className="text-xs gap-1.5"
+          onClick={() => setActivePane("desk")}
+        >
+          <BookOpen className="h-3.5 w-3.5" /> Lending Desk
+        </Button>
+        <Button
+          variant={activePane === "analytics" ? "default" : "ghost"}
+          size="sm"
+          className="text-xs gap-1.5"
+          onClick={() => setActivePane("analytics")}
+        >
+          <BarChart3 className="h-3.5 w-3.5" /> Analytics
+        </Button>
+      </div>
+
+      {activePane === "desk" ? (
+        <div className="grid lg:grid-cols-5 gap-4" style={{ minHeight: 520 }}>
+          {/* Left: Checkout / Return toggle */}
+          <div className="lg:col-span-2 space-y-3">
+            <div className="flex gap-1 p-1 bg-muted rounded-lg">
+              <Button
+                variant={subView === "checkout" ? "default" : "ghost"}
+                size="sm"
+                className="flex-1 text-xs gap-1"
+                onClick={() => setSubView("checkout")}
+              >
+                <ArrowRight className="h-3.5 w-3.5" /> Check Out
+              </Button>
+              <Button
+                variant={subView === "return" ? "default" : "ghost"}
+                size="sm"
+                className="flex-1 text-xs gap-1"
+                onClick={() => setSubView("return")}
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Return
+              </Button>
+            </div>
+
+            <Card className="border-primary/20">
+              <CardContent className="pt-4">
+                {subView === "checkout" ? <CheckoutForm /> : <ReturnForm />}
+              </CardContent>
+            </Card>
+
+            {/* Reservation queue below the action pane */}
+            <Card>
+              <CardContent className="pt-4">
+                <ReservationQueue compact />
+              </CardContent>
+            </Card>
           </div>
 
-          <Card className="border-primary/20">
-            <CardContent className="pt-4">
-              {subView === "checkout" ? <CheckoutForm /> : <ReturnForm />}
-            </CardContent>
-          </Card>
-
-          {/* Reservation queue below the action pane */}
-          <Card>
-            <CardContent className="pt-4">
-              <ReservationQueue compact />
+          {/* Right: Live loans feed */}
+          <Card className="lg:col-span-3">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Active Loans
+                </CardTitle>
+                <Badge variant="outline" className="animate-pulse border-primary text-primary text-[10px]">
+                  <Wifi className="h-2.5 w-2.5 mr-0.5" /> Live
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ActiveLoansList />
             </CardContent>
           </Card>
         </div>
+      ) : (
+        <LayoutAAnalytics />
+      )}
+    </div>
+  );
+}
 
-        {/* Right: Live loans feed */}
-        <Card className="lg:col-span-3">
+// ─── Analytics Panel for Layout A ───
+
+const MOCK_PUBLISHER_DATA = [
+  { publisher: "Stonemaier Games", totalLoans: 34, uniqueTitles: 4, avgTime: "1h 52m", avgRating: 4.7, topGame: "Wingspan" },
+  { publisher: "Leder Games", totalLoans: 22, uniqueTitles: 3, avgTime: "2h 05m", avgRating: 4.5, topGame: "Root" },
+  { publisher: "Repos Production", totalLoans: 18, uniqueTitles: 2, avgTime: "1h 15m", avgRating: 4.2, topGame: "7 Wonders" },
+  { publisher: "Czech Games Edition", totalLoans: 15, uniqueTitles: 3, avgTime: "1h 40m", avgRating: 4.6, topGame: "Codenames" },
+  { publisher: "Plan B Games", totalLoans: 14, uniqueTitles: 2, avgTime: "38m", avgRating: 4.6, topGame: "Azul" },
+  { publisher: "CMON", totalLoans: 11, uniqueTitles: 2, avgTime: "2h 20m", avgRating: 4.3, topGame: "Zombicide" },
+];
+
+const MOCK_TOP_GAMES = [
+  { game: "Wingspan", checkouts: 18, avgTime: "1h 45m", rating: 4.8, publisher: "Stonemaier Games" },
+  { game: "Catan", checkouts: 15, avgTime: "2h 10m", rating: 4.2, publisher: "Kosmos" },
+  { game: "Azul", checkouts: 14, avgTime: "35m", rating: 4.6, publisher: "Plan B Games" },
+  { game: "Root", checkouts: 12, avgTime: "2h 05m", rating: 4.5, publisher: "Leder Games" },
+  { game: "Terraforming Mars", checkouts: 11, avgTime: "2h 30m", rating: 4.7, publisher: "Stronghold Games" },
+];
+
+const MOCK_LEAST_PLAYED = [
+  { game: "Barrage", checkouts: 0, copies: 2, publisher: "Cranio Creations" },
+  { game: "Brass: Birmingham", checkouts: 1, copies: 2, publisher: "Roxley" },
+  { game: "Spirit Island", checkouts: 1, copies: 1, publisher: "Greater Than Games" },
+];
+
+const MOCK_HOURLY = [
+  { hour: "9 AM", loans: 3 }, { hour: "10 AM", loans: 8 }, { hour: "11 AM", loans: 14 },
+  { hour: "12 PM", loans: 11 }, { hour: "1 PM", loans: 18 }, { hour: "2 PM", loans: 22 },
+  { hour: "3 PM", loans: 19 }, { hour: "4 PM", loans: 15 }, { hour: "5 PM", loans: 9 },
+];
+
+function LayoutAAnalytics() {
+  return (
+    <div className="space-y-4">
+      {/* Top row: key metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Total Checkouts", value: "156", sub: "Today", icon: BookOpen, color: "text-primary" },
+          { label: "Unique Games Played", value: "42", sub: "of 89 available", icon: Gamepad2, color: "text-secondary" },
+          { label: "Avg Session Time", value: "1h 38m", sub: "↑ 12% vs yesterday", icon: Timer, color: "text-accent" },
+          { label: "Avg Rating", value: "4.4", sub: "from 92 ratings", icon: Star, color: "text-secondary" },
+        ].map(m => (
+          <Card key={m.label}>
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center justify-between mb-1">
+                <m.icon className={`h-4 w-4 ${m.color}`} />
+                <span className="text-[10px] text-muted-foreground">{m.sub}</span>
+              </div>
+              <p className="text-2xl font-display">{m.value}</p>
+              <p className="text-xs text-muted-foreground">{m.label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-4">
+        {/* Publisher Leaderboard — THE key datapoint */}
+        <Card className="lg:col-span-2 border-secondary/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                Active Loans
+              <CardTitle className="text-base flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-secondary" />
+                Loans by Publisher
               </CardTitle>
-              <Badge variant="outline" className="animate-pulse border-primary text-primary text-[10px]">
-                <Wifi className="h-2.5 w-2.5 mr-0.5" /> Live
+              <Badge variant="secondary" className="text-[10px]">
+                <TrendingUp className="h-2.5 w-2.5 mr-0.5" /> Key Metric
               </Badge>
             </div>
+            <CardDescription className="text-xs">Total games loaned grouped by publisher — exportable for publisher reports</CardDescription>
           </CardHeader>
           <CardContent>
-            <ActiveLoansList />
+            <div className="space-y-2">
+              {MOCK_PUBLISHER_DATA.map((pub, i) => {
+                const maxLoans = MOCK_PUBLISHER_DATA[0].totalLoans;
+                return (
+                  <div key={pub.publisher} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs font-medium text-muted-foreground w-4 text-right">{i + 1}</span>
+                        <span className="text-sm font-medium truncate">{pub.publisher}</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{pub.uniqueTitles} titles</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-xs text-muted-foreground">{pub.avgTime} avg</span>
+                        <div className="flex items-center gap-0.5">
+                          <Star className="h-3 w-3 text-secondary fill-secondary" />
+                          <span className="text-xs font-medium">{pub.avgRating}</span>
+                        </div>
+                        <span className="text-sm font-display w-8 text-right">{pub.totalLoans}</span>
+                      </div>
+                    </div>
+                    <div className="ml-6">
+                      <Progress value={(pub.totalLoans / maxLoans) * 100} className="h-1.5" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-3 pt-3 border-t flex justify-end">
+              <Button variant="outline" size="sm" className="text-xs gap-1">
+                <Eye className="h-3 w-3" /> Export Publisher Report
+              </Button>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Right column */}
+        <div className="space-y-4">
+          {/* Engagement Timeline (simplified bar chart) */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-1.5">
+                <TrendingUp className="h-4 w-4 text-primary" /> Hourly Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-1 h-24">
+                {MOCK_HOURLY.map(h => {
+                  const maxLoans = Math.max(...MOCK_HOURLY.map(x => x.loans));
+                  const heightPct = (h.loans / maxLoans) * 100;
+                  return (
+                    <div key={h.hour} className="flex-1 flex flex-col items-center gap-0.5">
+                      <span className="text-[8px] text-muted-foreground">{h.loans}</span>
+                      <div
+                        className="w-full rounded-t bg-primary/60 transition-all"
+                        style={{ height: `${heightPct}%`, minHeight: 4 }}
+                      />
+                      <span className="text-[8px] text-muted-foreground">{h.hour.replace(' AM', 'a').replace(' PM', 'p')}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Top Games */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-1.5">
+                <Trophy className="h-4 w-4 text-secondary" /> Most Checked Out
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {MOCK_TOP_GAMES.slice(0, 4).map((g, i) => (
+                <div key={g.game} className="flex items-center justify-between p-2 rounded bg-muted/40">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-medium text-muted-foreground">{i + 1}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{g.game}</p>
+                      <p className="text-[10px] text-muted-foreground">{g.publisher}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-0.5">
+                      <Star className="h-3 w-3 text-secondary fill-secondary" />
+                      <span className="text-[10px]">{g.rating}</span>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px]">{g.checkouts}</Badge>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Least Played — also valuable for publishers */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-1.5">
+                <Flame className="h-4 w-4 text-destructive" /> Least Checked Out
+              </CardTitle>
+              <CardDescription className="text-[10px]">Games with low engagement — useful for shelf placement</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {MOCK_LEAST_PLAYED.map(g => (
+                <div key={g.game} className="flex items-center justify-between p-2 rounded bg-muted/40">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{g.game}</p>
+                    <p className="text-[10px] text-muted-foreground">{g.publisher}</p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">{g.checkouts} loans</Badge>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      {/* Living Reviews / Sentiment row */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <ThumbsUp className="h-4 w-4 text-primary" /> Living Reviews — Real-Time Sentiment
+            </CardTitle>
+            <Badge variant="outline" className="text-[10px]">Captured at return</Badge>
+          </div>
+          <CardDescription className="text-xs">Weighted ratings collected when games are returned — fresher data than BGG</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {MOCK_TOP_GAMES.map(g => (
+              <div key={g.game} className="p-3 rounded-lg border bg-card text-center">
+                <p className="text-sm font-medium truncate">{g.game}</p>
+                <div className="flex items-center justify-center gap-0.5 my-1">
+                  {[1,2,3,4,5].map(s => (
+                    <Star key={s} className={`h-3.5 w-3.5 ${s <= Math.round(g.rating) ? "text-secondary fill-secondary" : "text-muted-foreground/20"}`} />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">{g.rating} · {g.checkouts} reviews</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
