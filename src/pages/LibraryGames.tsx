@@ -180,7 +180,7 @@ export default function LibraryGames() {
           </TabsList>
 
           <TabsContent value="add">
-            <GameUrlImport libraryId={library.id} />
+            <CatalogSearchAdd libraryId={library.id} />
           </TabsContent>
 
           <TabsContent value="import">
