@@ -4061,23 +4061,61 @@ export type Database = {
         }
         Relationships: []
       }
+      mechanic_families: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       mechanics: {
         Row: {
           created_at: string | null
+          family_id: string | null
           id: string
           name: string
         }
         Insert: {
           created_at?: string | null
+          family_id?: string | null
           id?: string
           name: string
         }
         Update: {
           created_at?: string | null
+          family_id?: string | null
           id?: string
           name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mechanics_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "mechanic_families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       news_article_catalog_links: {
         Row: {
