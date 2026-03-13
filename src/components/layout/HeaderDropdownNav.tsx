@@ -105,7 +105,7 @@ export function HeaderDropdownNav() {
       icon: Library,
       items: [
         { href: libraryHref, label: t('nav.myLibrary', 'My Library'), icon: Library },
-        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.fullLibrary', 'Full Library'), icon: BookOpen },
+        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.manageMyLibrary', 'Manage My Library'), icon: BookOpen },
         { href: getPlatformUrl("/dashboard/lending"), label: t('nav.lending', 'Lending'), icon: ArrowLeftRight },
         { href: getPlatformUrl("/dashboard/insights"), label: t('nav.insights', 'Insights'), icon: ClipboardList },
         { separator: true, label: 's1', icon: Library },
