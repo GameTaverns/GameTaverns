@@ -17,7 +17,7 @@ set -uo pipefail
 
 BATCH_SIZE="${1:-50}"
 DELAY="${2:-6}"
-FUNC_URL="http://kong:8000/functions/v1/catalog-backfill"
+FUNC_URL="http://localhost:8000/functions/v1/catalog-backfill"
 MAX_CONSECUTIVE_ERRORS=5
 
 # Get service role key from DB settings
@@ -28,9 +28,9 @@ if [ -z "$SERVICE_ROLE_KEY" ]; then
   exit 1
 fi
 
-# Quick dependency check (prevents silent exits)
-if ! docker exec gametaverns-functions sh -c "command -v curl >/dev/null 2>&1"; then
-  echo "ERROR: curl is not available inside gametaverns-functions container"
+# Verify curl is available on the host
+if ! command -v curl >/dev/null 2>&1; then
+  echo "ERROR: curl is not available on this host. Install with: apt install curl"
   exit 1
 fi
 
