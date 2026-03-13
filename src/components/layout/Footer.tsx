@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { isLovableCloud } from "@/config/runtime";
 import { ExternalLink } from "@/components/a11y/ExternalLink";
+import cbgLogo from "@/assets/cbg-logo.jpg";
 
 const LTN_LOGO_SRC = "/ltn-logo.png";
 const BGG_LOGO_SRC = "/bgg-logo.svg";
@@ -49,10 +50,38 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
           </nav>
         </div>
 
-        <div className="mt-3 pt-3 border-t flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="mt-3 pt-3 border-t flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {t('footer.copyright', { year: currentYear })}
           </p>
+
+          {/* Christian Board Gamers */}
+          <div className="flex items-center gap-2.5">
+            <img src={cbgLogo} alt="Christian Board Gamers" className="h-8 w-auto rounded" loading="lazy" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-medium text-muted-foreground leading-tight">
+                Proud member of the
+              </span>
+              <span className="text-xs font-display font-semibold text-foreground leading-tight">
+                Christian Board Gamers
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <ExternalLink
+                  href="https://discord.gg/g5N8S6zPMR"
+                  className="text-[10px] text-primary hover:underline"
+                >
+                  Discord
+                </ExternalLink>
+                <ExternalLink
+                  href="https://www.facebook.com/groups/christianboardgamers"
+                  className="text-[10px] text-primary hover:underline"
+                >
+                  Facebook
+                </ExternalLink>
+              </div>
+            </div>
+          </div>
+
           {showAttributions && (
             <div className="flex items-center gap-3">
               <ExternalLink
