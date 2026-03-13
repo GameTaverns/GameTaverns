@@ -101,11 +101,20 @@ export function HeaderDropdownNav() {
 
   const menus: NavMenuProps[] = [
     {
+      label: t('nav.quickActions', 'Quick Actions'),
+      icon: Zap,
+      items: [
+        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
+        { href: getPlatformUrl("/picker"), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
+        { href: getPlatformUrl("/create-library"), label: t('nav.createLibrary', 'Create Library'), icon: PlusCircle },
+      ],
+    },
+    {
       label: t('nav.library', 'Library'),
       icon: Library,
       items: [
         { href: libraryHref, label: t('nav.myLibrary', 'My Library'), icon: Library },
-        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.myLibrary', 'My Library'), icon: BookOpen },
+        { href: getPlatformUrl("/dashboard/collection"), label: t('nav.fullLibrary', 'Full Library'), icon: BookOpen },
         { href: getPlatformUrl("/dashboard/lending"), label: t('nav.lending', 'Lending'), icon: ArrowLeftRight },
         { href: getPlatformUrl("/dashboard/insights"), label: t('nav.insights', 'Insights'), icon: ClipboardList },
         { separator: true, label: 's1', icon: Library },
