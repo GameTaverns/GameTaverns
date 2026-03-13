@@ -1,11 +1,10 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/backend/client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -17,6 +16,7 @@ import {
 import {
   ArrowRight, CheckCircle, Star, Search, Package, Gamepad2, ScanLine,
   Clock, RotateCcw, CalendarClock, Hourglass, ChevronRight, Timer, Wifi,
+  AlertTriangle, Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,11 +37,33 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
   const [subView, setSubView] = useState<"checkout" | "return">("checkout");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGame, setSelectedGame] = useState<any>(null);
+  const [selectedCopyId, setSelectedCopyId] = useState<string | null>(null);
   const [guestName, setGuestName] = useState("");
   const [conditionOut, setConditionOut] = useState<string>("good");
+  const [dueMinutes, setDueMinutes] = useState<string>("0"); // 0 = no due time
   const [returnSearch, setReturnSearch] = useState("");
   const [conditionInMap, setConditionInMap] = useState<Record<string, string>>({});
   const [ratingMap, setRatingMap] = useState<Record<string, number>>({});
+
+  // Fetch copies for selected game
+  const { data: gameCopies = [] } = useQuery({
+    queryKey: ["game-copies", selectedGame?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("game_copies")
+        .select("id, copy_number, copy_label, condition")
+        .eq("game_id", selectedGame!.id)
+        .order("copy_number");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedGame && (selectedGame.copies_owned || 1) > 1,
+  });
+
+  // Reset copy selection when game changes
+  useEffect(() => {
+    setSelectedCopyId(null);
+  }, [selectedGame?.id]);
 
   // Compute availability
   const gameAvailability = libraryGames.map((g: any) => {
@@ -60,6 +82,13 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
       )
     : activeLoans;
 
+  // Determine which copies are currently checked out
+  const checkedOutCopyIds = new Set(
+    activeLoans
+      .filter((l: any) => l.game_id === selectedGame?.id && l.copy_id)
+      .map((l: any) => l.copy_id)
+  );
+
   // Checkout mutation
   const checkoutMutation = useMutation({
     mutationFn: async () => {
@@ -67,23 +96,31 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
       const clubId = conventionSettings?.club_id;
       if (!clubId) throw new Error("No club configured for this convention");
 
+      const dueAt = dueMinutes !== "0"
+        ? new Date(Date.now() + parseInt(dueMinutes) * 60000).toISOString()
+        : null;
+
       const { error } = await supabase.from("club_loans").insert({
         club_id: clubId,
-        library_id: event.library_id,
+        library_id: selectedGame.library_id || event.library_id,
         game_id: selectedGame.id,
         checked_out_by: user!.id,
         guest_name: guestName.trim(),
         status: "checked_out",
         condition_out: conditionOut,
+        copy_id: selectedCopyId || null,
+        due_at: dueAt,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success(`Checked out "${selectedGame.title}" to ${guestName}`);
       setSelectedGame(null);
+      setSelectedCopyId(null);
       setGuestName("");
       setSearchQuery("");
       setConditionOut("good");
+      setDueMinutes("0");
       queryClient.invalidateQueries({ queryKey: ["convention-active-loans"] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -112,6 +149,57 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Fulfill reservation → create checkout and mark reservation as fulfilled
+  const fulfillReservation = useMutation({
+    mutationFn: async ({ reservation, borrowerName }: { reservation: any; borrowerName?: string }) => {
+      const clubId = conventionSettings?.club_id;
+      if (!clubId) throw new Error("No club configured");
+
+      // Create the loan
+      const { error: loanError } = await supabase.from("club_loans").insert({
+        club_id: clubId,
+        library_id: event.library_id,
+        game_id: reservation.game_id,
+        checked_out_by: user!.id,
+        borrower_user_id: reservation.reserved_by,
+        guest_name: borrowerName || "Reservation Pickup",
+        status: "checked_out",
+        condition_out: "good",
+        notes: `Fulfilled from reservation ${reservation.id.slice(0, 8)}`,
+      });
+      if (loanError) throw loanError;
+
+      // Mark reservation as fulfilled
+      const { error: resError } = await supabase
+        .from("convention_reservations")
+        .update({ status: "fulfilled", fulfilled_at: new Date().toISOString() })
+        .eq("id", reservation.id);
+      if (resError) throw resError;
+    },
+    onSuccess: () => {
+      toast.success("Reservation fulfilled — game checked out!");
+      queryClient.invalidateQueries({ queryKey: ["convention-active-loans"] });
+      queryClient.invalidateQueries({ queryKey: ["convention-reservations"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Release expired reservation
+  const releaseReservation = useMutation({
+    mutationFn: async (resId: string) => {
+      const { error } = await supabase
+        .from("convention_reservations")
+        .update({ status: "cancelled" })
+        .eq("id", resId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Reservation released");
+      queryClient.invalidateQueries({ queryKey: ["convention-reservations"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   // Stat bar
   const overdueLoans = activeLoans.filter((l: any) => l.due_at && new Date(l.due_at) < new Date());
   const totalAvailable = gameAvailability.reduce((s: number, g: any) => s + g.available, 0);
@@ -125,9 +213,9 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
           { label: "Active Loans", value: activeLoans.length, icon: Clock, color: "text-primary" },
           { label: "Reservations", value: reservations.length, icon: CalendarClock, color: "text-secondary" },
           { label: "Available", value: `${totalAvailable}/${totalCopies}`, icon: Package, color: "text-accent" },
-          { label: "Overdue", value: overdueLoans.length, icon: Timer, color: "text-destructive" },
+          { label: "Overdue", value: overdueLoans.length, icon: Timer, color: overdueLoans.length > 0 ? "text-destructive" : "text-muted-foreground" },
         ].map(s => (
-          <div key={s.label} className="flex items-center gap-2 p-3 rounded-lg bg-card border border-border/60">
+          <div key={s.label} className={`flex items-center gap-2 p-3 rounded-lg bg-card border border-border/60 ${s.label === "Overdue" && overdueLoans.length > 0 ? "border-destructive/40 bg-destructive/5" : ""}`}>
             <s.icon className={`h-4 w-4 ${s.color}`} />
             <div>
               <p className="text-lg font-display leading-tight">{s.value}</p>
@@ -136,6 +224,19 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
           </div>
         ))}
       </div>
+
+      {/* Overdue Alert Banner */}
+      {overdueLoans.length > 0 && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span className="font-medium">{overdueLoans.length} overdue loan{overdueLoans.length > 1 ? "s" : ""}</span>
+          <span className="text-destructive/70">—</span>
+          <span className="text-destructive/70 truncate">
+            {overdueLoans.slice(0, 2).map((l: any) => l.game?.title || "Unknown").join(", ")}
+            {overdueLoans.length > 2 && ` +${overdueLoans.length - 2} more`}
+          </span>
+        </div>
+      )}
 
       {/* Split-pane: Left = checkout/return + reservations, Right = live loans */}
       <div className="grid lg:grid-cols-5 gap-4" style={{ minHeight: 520 }}>
@@ -210,12 +311,41 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
                           <p className="text-xs text-muted-foreground">{selectedGame.available} of {selectedGame.copies_owned || 1} available</p>
                         </div>
                       </div>
+
+                      {/* Copy Selector — only if multiple copies exist */}
+                      {(selectedGame.copies_owned || 1) > 1 && gameCopies.length > 0 && (
+                        <div className="space-y-1.5">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Copy className="h-3 w-3" /> Select Copy
+                          </span>
+                          <Select value={selectedCopyId || "auto"} onValueChange={v => setSelectedCopyId(v === "auto" ? null : v)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="auto" className="text-xs">Auto-assign</SelectItem>
+                              {gameCopies.map((c: any) => {
+                                const isOut = checkedOutCopyIds.has(c.id);
+                                return (
+                                  <SelectItem key={c.id} value={c.id} disabled={isOut} className="text-xs">
+                                    #{c.copy_number}{c.copy_label ? ` — ${c.copy_label}` : ""}
+                                    {c.condition ? ` (${c.condition})` : ""}
+                                    {isOut ? " · OUT" : ""}
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
                       <Input
                         placeholder="Borrower name or badge ID..."
                         className="h-10"
                         value={guestName}
                         onChange={e => setGuestName(e.target.value)}
                       />
+
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Condition Out</span>
                         <Select value={conditionOut} onValueChange={setConditionOut}>
@@ -229,6 +359,26 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {/* Due Time */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Due Back</span>
+                        <Select value={dueMinutes} onValueChange={setDueMinutes}>
+                          <SelectTrigger className="w-32 h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0" className="text-xs">No limit</SelectItem>
+                            <SelectItem value="30" className="text-xs">30 minutes</SelectItem>
+                            <SelectItem value="60" className="text-xs">1 hour</SelectItem>
+                            <SelectItem value="90" className="text-xs">1.5 hours</SelectItem>
+                            <SelectItem value="120" className="text-xs">2 hours</SelectItem>
+                            <SelectItem value="180" className="text-xs">3 hours</SelectItem>
+                            <SelectItem value="240" className="text-xs">4 hours</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <Button
                         className="w-full"
                         disabled={!guestName.trim() || selectedGame.available <= 0 || checkoutMutation.isPending}
@@ -270,6 +420,7 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
                               <p className="text-sm font-medium">{loan.game?.title}</p>
                               <p className="text-xs text-muted-foreground">
                                 {loan.guest_name || "Attendee"}
+                                {loan.copy && <span> · Copy #{loan.copy.copy_number}</span>}
                                 {loan.condition_out && <span> · Out: <span className="capitalize">{loan.condition_out}</span></span>}
                               </p>
                             </div>
@@ -344,16 +495,34 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
                       <div key={r.id} className={`flex items-center justify-between p-2.5 rounded-lg ${isExpired ? "bg-destructive/10 border border-destructive/20" : "bg-secondary/10 border border-secondary/20"}`}>
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{r.game?.title}</p>
-                          <p className="text-xs text-muted-foreground">{r.reserved_by}</p>
+                          <p className="text-xs text-muted-foreground">{r.reserved_by?.slice(0, 8)}…</p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <Badge variant={isExpired ? "destructive" : "outline"} className="text-[10px]">
                             <Hourglass className="h-2.5 w-2.5 mr-0.5" />
-                            {isExpired ? "Expired" : "Active"}
+                            {isExpired ? "Expired" : `${Math.max(0, Math.round((new Date(r.expires_at).getTime() - Date.now()) / 60000))}m`}
                           </Badge>
-                          <Button size="sm" variant={isExpired ? "destructive" : "default"} className="text-[10px] h-6 px-2">
-                            {isExpired ? "Release" : <>Fulfill <ChevronRight className="h-3 w-3" /></>}
-                          </Button>
+                          {isExpired ? (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="text-[10px] h-6 px-2"
+                              disabled={releaseReservation.isPending}
+                              onClick={() => releaseReservation.mutate(r.id)}
+                            >
+                              Release
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="text-[10px] h-6 px-2"
+                              disabled={fulfillReservation.isPending}
+                              onClick={() => fulfillReservation.mutate({ reservation: r })}
+                            >
+                              Fulfill <ChevronRight className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );
@@ -366,27 +535,23 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
 
         {/* Right Pane: Active Loans Feed */}
         <Card className="lg:col-span-3">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm flex items-center gap-2">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />
                 Active Loans
-              </CardTitle>
+              </h3>
               <Badge variant="outline" className="animate-pulse border-primary text-primary text-[10px]">
                 <Wifi className="h-2.5 w-2.5 mr-0.5" /> Live
               </Badge>
             </div>
-          </CardHeader>
-          <CardContent>
             {activeLoans.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No active loans yet. Check out a game to get started.</p>
             ) : (
               <div className="space-y-1.5 max-h-[480px] overflow-y-auto">
                 {activeLoans.map((loan: any) => {
                   const isOverdue = loan.due_at && new Date(loan.due_at) < new Date();
-                  const timeOut = loan.checked_out_at
-                    ? getTimeElapsed(loan.checked_out_at)
-                    : "";
+                  const timeOut = loan.checked_out_at ? getTimeElapsed(loan.checked_out_at) : "";
                   return (
                     <div key={loan.id} className={`flex items-center justify-between p-2.5 rounded-lg hover:bg-muted transition-colors ${isOverdue ? "bg-destructive/5 border border-destructive/20" : "bg-muted/50"}`}>
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -401,7 +566,14 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
                             {loan.game?.title || "Unknown"}
                             {loan.copy && <span className="text-muted-foreground text-xs ml-1">#{loan.copy.copy_number || ""}</span>}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">{loan.guest_name || "Attendee"}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {loan.guest_name || "Attendee"}
+                            {loan.due_at && (
+                              <span className={isOverdue ? "text-destructive font-medium" : ""}>
+                                {" "}· Due {new Date(loan.due_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            )}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -432,7 +604,6 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
   );
 }
 
-/** Helper to compute elapsed time from a timestamp */
 function getTimeElapsed(timestamp: string): string {
   const diffMs = Date.now() - new Date(timestamp).getTime();
   const mins = Math.floor(diffMs / 60000);
