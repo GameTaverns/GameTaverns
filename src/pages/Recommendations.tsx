@@ -161,10 +161,23 @@ export default function Recommendations() {
                     {rec.shared_mechanics > 0 && (
                       <Badge variant="outline" className="text-xs gap-1">
                         <Puzzle className="h-3 w-3" />
-                        {rec.shared_mechanics} shared mechanics
+                        {rec.shared_mechanics} shared mechanic{rec.shared_mechanics !== 1 ? "s" : ""}
+                      </Badge>
+                    )}
+                    {rec.shared_games > 0 && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Library className="h-3 w-3" />
+                        {rec.shared_games} shared game{rec.shared_games !== 1 ? "s" : ""}
                       </Badge>
                     )}
                   </div>
+
+                  {rec.top_shared_games && rec.top_shared_games.length > 0 && (
+                    <p className="text-xs text-muted-foreground mb-3 line-clamp-1">
+                      🎲 {rec.top_shared_games.join(", ")}
+                      {rec.shared_games > 3 && ` +${rec.shared_games - 3} more`}
+                    </p>
+                  )}
 
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
