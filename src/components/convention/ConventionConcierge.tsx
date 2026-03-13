@@ -41,9 +41,15 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
 
   // Filter state (matching SmartPickerDialog)
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedMechanics, setSelectedMechanics] = useState<string[]>([]);
   const [selectedPlayTimes, setSelectedPlayTimes] = useState<string[]>([]);
   const [playerCount, setPlayerCount] = useState("any");
+
+  // Mechanic families
+  const { data: mechanicFamilies = [] } = useMechanicFamilies();
+  const gameIds = useMemo(() => libraryGames.map((g: any) => g.id), [libraryGames]);
+  const { data: gameMechanicMap } = useGameMechanicFamilyMap(gameIds, gameIds.length > 0);
+  const mechanicFamilyNames = useMemo(() => mechanicFamilies.map(f => f.name), [mechanicFamilies]);
   const [filtersExpanded, setFiltersExpanded] = useState(true);
 
   // Other state
