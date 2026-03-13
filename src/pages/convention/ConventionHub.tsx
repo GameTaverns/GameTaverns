@@ -124,7 +124,9 @@ export default function ConventionHub() {
     );
   }
 
-  const isOwner = (event as any).library?.owner_id === user?.id;
+  const isOwner = (event as any).library?.owner_id === user?.id || event?.created_by_user_id === user?.id;
+  const clubName = (event as any).convention_event?.club?.name;
+  const contextName = clubName || (event as any).library?.name;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
