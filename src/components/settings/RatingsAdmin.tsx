@@ -54,22 +54,26 @@ export function RatingsAdmin() {
   const [isClearing, setIsClearing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { library } = useTenant();
 
   const fetchRatingsData = async () => {
+    if (!library?.id) return;
     setIsLoading(true);
     try {
-      // Fetch rating entries from privacy-safe view (excludes IP/fingerprint)
+      // Fetch rating entries scoped to this library via join filtering
       const { data: ratingsData, error: ratingsError } = await supabase
         .from("game_ratings_library_view")
-        .select("*")
+        .select("*, games!inner(library_id)")
+        .eq("games.library_id", library.id)
         .order("created_at", { ascending: false });
 
       if (ratingsError) throw ratingsError;
 
-      // Fetch summary view
+      // Fetch summary view scoped to this library
       const { data: summaryData, error: summaryError } = await supabase
         .from("game_ratings_summary")
-        .select("*");
+        .select("*, games!inner(library_id)")
+        .eq("games.library_id", library.id);
 
       if (summaryError) throw summaryError;
 
