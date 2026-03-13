@@ -47,6 +47,7 @@ interface CreateEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   libraryId?: string;
+  clubId?: string;
   editEvent?: CalendarEvent | null;
 }
 
