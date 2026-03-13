@@ -362,7 +362,6 @@ export function useMyEvents(userId: string | undefined, includeArchived: boolean
       let query = (supabase as any)
         .from("library_events")
         .select("*")
-        .is("library_id", null)
         .eq("created_by_user_id", userId);
 
       if (!includeArchived) {
