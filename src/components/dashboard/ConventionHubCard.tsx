@@ -33,6 +33,7 @@ export function ConventionHubCard({ user }: ConventionHubCardProps) {
         .from("library_events")
         .select("id, title, library_id")
         .in("library_id", libIds)
+        .neq("status", "cancelled")
         .order("event_date", { ascending: false })
         .limit(50);
 
