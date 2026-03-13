@@ -469,6 +469,93 @@ export type Database = {
           },
         ]
       }
+      catalog_documents: {
+        Row: {
+          catalog_id: string
+          created_at: string
+          document_type: string
+          file_path: string
+          file_size_bytes: number | null
+          id: string
+          language: string
+          status: string
+          title: string
+          uploaded_by: string
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string
+          document_type?: string
+          file_path: string
+          file_size_bytes?: number | null
+          id?: string
+          language?: string
+          status?: string
+          title: string
+          uploaded_by: string
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string
+          document_type?: string
+          file_path?: string
+          file_size_bytes?: number | null
+          id?: string
+          language?: string
+          status?: string
+          title?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_documents_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_documents_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_genres: {
+        Row: {
+          catalog_id: string
+          genre: string
+          id: string
+        }
+        Insert: {
+          catalog_id: string
+          genre: string
+          id?: string
+        }
+        Update: {
+          catalog_id?: string
+          genre?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_genres_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_genres_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_mechanics: {
         Row: {
           catalog_id: string
