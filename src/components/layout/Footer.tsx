@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { isLovableCloud } from "@/config/runtime";
 import { ExternalLink } from "@/components/a11y/ExternalLink";
+import cbgLogo from "@/assets/cbg-logo.jpg";
 
 const LTN_LOGO_SRC = "/ltn-logo.png";
 const BGG_LOGO_SRC = "/bgg-logo.svg";
