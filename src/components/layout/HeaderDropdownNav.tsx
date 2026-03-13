@@ -97,6 +97,7 @@ export function HeaderDropdownNav() {
   const { data: profile } = useUserProfile();
   const navigate = useNavigate();
   const [logPlayOpen, setLogPlayOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   if (!isAuthenticated) return null;
 
