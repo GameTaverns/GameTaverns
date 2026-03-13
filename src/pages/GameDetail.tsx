@@ -38,6 +38,7 @@ import { GameRecommendations } from "@/components/games/GameRecommendations";
 import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
 import { GameCopyManager } from "@/components/games/GameCopyManager";
 import { GameDocuments } from "@/components/games/GameDocuments";
+import { InheritedCatalogDocuments } from "@/components/catalog/CatalogDocuments";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { GameReviews } from "@/components/catalog/GameReviews";
