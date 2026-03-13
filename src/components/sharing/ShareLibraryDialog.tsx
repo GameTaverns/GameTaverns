@@ -226,7 +226,7 @@ export function ShareLibraryDialog({
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Add this to your website to show your board game collection. Perfect for cafés and game stores!
+                Add this to your website to show your board game library. Perfect for cafés and game stores!
               </p>
             </div>
           )}
