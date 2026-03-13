@@ -259,12 +259,12 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
                   </div>
                 </div>
 
-                {/* Genre */}
+                {/* Mechanic */}
                 <div className="space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">Genre</p>
+                  <p className="text-xs font-medium text-muted-foreground">Mechanic</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {GENRES.map(g => (
-                      <PickerChip key={g} label={g} selected={selectedGenres.includes(g)} onClick={() => setSelectedGenres(prev => toggleArrayItem(prev, g))} />
+                    {mechanicFamilyNames.map(m => (
+                      <PickerChip key={m} label={m} selected={selectedMechanics.includes(m)} onClick={() => setSelectedMechanics(prev => toggleArrayItem(prev, m))} />
                     ))}
                   </div>
                 </div>
