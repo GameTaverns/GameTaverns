@@ -99,6 +99,7 @@ export function HeaderDropdownNav() {
   const navigate = useNavigate();
   const [logPlayOpen, setLogPlayOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [addGameOpen, setAddGameOpen] = useState(false);
 
   if (!isAuthenticated) return null;
 
