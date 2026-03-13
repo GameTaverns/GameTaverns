@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useLibrary";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
 import { AccountSettings } from "@/components/settings/AccountSettings";
-import { ProfileThemeCustomizer } from "@/components/settings/ProfileThemeCustomizer";
+
 import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
 import { TwoFactorSettings } from "@/components/settings/TwoFactorSettings";
 import { ReferralPanel } from "@/components/referral/ReferralPanel";
