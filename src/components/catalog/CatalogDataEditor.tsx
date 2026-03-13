@@ -5,12 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Settings2, Save, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useCatalogGenres, useSetCatalogGenres } from "@/hooks/useCatalogGenres";
+import { GENRE_OPTIONS } from "@/types/game";
+import { cn } from "@/lib/utils";
 
 const EXPANSION_TYPES = [
   { value: "expansion", label: "Expansion" },
@@ -52,6 +56,17 @@ export function CatalogDataEditor({ catalogId, currentData }: CatalogDataEditorP
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: existingGenres = [] } = useCatalogGenres(catalogId);
+  const setGenresMutation = useSetCatalogGenres();
+  const [selectedGenres, setSelectedGenres] = useState<string[] | null>(null);
+  // Use selectedGenres if user has interacted, otherwise use fetched
+  const genres = selectedGenres ?? existingGenres;
+  const toggleGenre = (g: string) => {
+    setSelectedGenres(prev => {
+      const current = prev ?? existingGenres;
+      return current.includes(g) ? current.filter(x => x !== g) : [...current, g];
+    });
+  };
 
   const [title, setTitle] = useState(currentData.title);
   const [isExpansion, setIsExpansion] = useState(currentData.is_expansion);
@@ -88,6 +103,11 @@ export function CatalogDataEditor({ catalogId, currentData }: CatalogDataEditorP
         .eq("id", catalogId);
 
       if (error) throw error;
+
+      // Save genres
+      if (selectedGenres !== null) {
+        await setGenresMutation.mutateAsync({ catalogId, genres });
+      }
 
       toast({ title: "Catalog entry updated", description: "Changes saved successfully." });
       queryClient.invalidateQueries({ queryKey: ["catalog-game"] });
@@ -192,6 +212,27 @@ export function CatalogDataEditor({ catalogId, currentData }: CatalogDataEditorP
             <div className="space-y-1">
               <Label htmlFor="cat-desc">Description</Label>
               <Textarea id="cat-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Genres</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {GENRE_OPTIONS.map(g => (
+                  <Badge
+                    key={g}
+                    variant={genres.includes(g) ? "default" : "outline"}
+                    className={cn(
+                      "cursor-pointer text-xs",
+                      genres.includes(g)
+                        ? "bg-primary text-primary-foreground"
+                        : "border-muted-foreground/30 text-muted-foreground hover:bg-muted/50"
+                    )}
+                    onClick={() => toggleGenre(g)}
+                  >
+                    {g}
+                  </Badge>
+                ))}
+              </div>
             </div>
 
             {currentData.bgg_id && (

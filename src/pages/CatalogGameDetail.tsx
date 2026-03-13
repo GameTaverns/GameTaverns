@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart, Play } from "lucide-react";
+import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart, Play, FileText } from "lucide-react";
 import { getComplexity } from "@/lib/complexity";
 import { DescriptionContent } from "@/components/games/DescriptionContent";
 import { Layout } from "@/components/layout/Layout";
@@ -28,6 +28,8 @@ import { useAddWant } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
 import { GameReviews } from "@/components/catalog/GameReviews";
 import { LogPlayDialog } from "@/components/games/LogPlayDialog";
+import { CatalogDocuments } from "@/components/catalog/CatalogDocuments";
+import { useCatalogGenres } from "@/hooks/useCatalogGenres";
 
 interface CatalogGameFull {
   id: string;
@@ -53,6 +55,7 @@ interface CatalogGameFull {
   parent: { id: string; title: string; slug: string | null } | null;
   community_rating: number | null;
   community_rating_count: number;
+  genres: string[];
 }
 
 // URL sanitizer: strip corrupted BGG artifact junk from scraped URLs
@@ -142,7 +145,7 @@ export default function CatalogGameDetail() {
       if (!data) return null;
 
       // Fetch related data in parallel
-      const [designersRes, artistsRes, mechanicsRes, publishersRes, expansionsRes, parentRes, ratingsRes] = await Promise.all([
+      const [designersRes, artistsRes, mechanicsRes, publishersRes, expansionsRes, parentRes, ratingsRes, genresRes] = await Promise.all([
         supabase.from("catalog_designers").select("designer:designers(name)").eq("catalog_id", data.id),
         supabase.from("catalog_artists").select("artist:artists(name)").eq("catalog_id", data.id),
         supabase.from("catalog_mechanics").select("mechanic:mechanics(name)").eq("catalog_id", data.id),
@@ -152,6 +155,7 @@ export default function CatalogGameDetail() {
           ? supabase.from("game_catalog").select("id, title, slug").eq("id", data.parent_catalog_id).maybeSingle()
           : Promise.resolve({ data: null }),
         supabase.from("catalog_ratings_summary").select("visitor_average, visitor_count").eq("catalog_id", data.id).maybeSingle(),
+        (supabase as any).from("catalog_genres").select("genre").eq("catalog_id", data.id).order("genre"),
       ]);
 
       const ratingRow = ratingsRes.data;
@@ -166,6 +170,7 @@ export default function CatalogGameDetail() {
         parent: parentRes.data || null,
         community_rating: ratingRow?.visitor_count && ratingRow.visitor_count > 0 ? Number(ratingRow.visitor_average) : null,
         community_rating_count: ratingRow?.visitor_count || 0,
+        genres: ((genresRes as any).data || []).map((r: any) => r.genre).filter(Boolean),
       };
     },
     enabled: !!slug,
@@ -212,6 +217,7 @@ export default function CatalogGameDetail() {
    const complexity = getComplexity(game.weight);
 
   const allCategories = [
+    ...(game.genres.map(g => ({ label: g, type: "genre" }))),
     ...(game.mechanics.map(m => ({ label: m, type: "mechanic" }))),
     ...(game.publishers.map(p => ({ label: p, type: "publisher" }))),
   ];
@@ -493,6 +499,7 @@ export default function CatalogGameDetail() {
               <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4">
                  <TabsTrigger value="description">{t('catalog.description')}</TabsTrigger>
                  <TabsTrigger value="info">{t('catalog.info')}</TabsTrigger>
+                 <TabsTrigger value="documents" className="gap-1"><FileText className="h-3.5 w-3.5" />Documents</TabsTrigger>
                  <TabsTrigger value="reviews">Reviews</TabsTrigger>
                  <TabsTrigger value="videos">{t('catalog.videos')}</TabsTrigger>
               </TabsList>
@@ -589,6 +596,18 @@ export default function CatalogGameDetail() {
                         </TableCell>
                       </TableRow>
                     )}
+                    {game.genres.length > 0 && (
+                      <TableRow>
+                        <TableCell className="font-medium text-muted-foreground">Genre</TableCell>
+                        <TableCell className="text-foreground">
+                          <div className="flex flex-wrap gap-1">
+                            {game.genres.map(g => (
+                              <Badge key={g} variant="outline">{g}</Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {game.community_rating != null && (
                       <TableRow>
                          <TableCell className="font-medium text-muted-foreground">{t('catalog.gtRating')}</TableCell>
@@ -597,6 +616,10 @@ export default function CatalogGameDetail() {
                     )}
                   </TableBody>
                 </Table>
+              </TabsContent>
+
+              <TabsContent value="documents" className="mt-0">
+                <CatalogDocuments catalogId={game.id} canManage={isAdmin} />
               </TabsContent>
 
               <TabsContent value="reviews" className="mt-0">
