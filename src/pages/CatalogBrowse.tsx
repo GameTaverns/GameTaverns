@@ -23,6 +23,7 @@ import { CatalogGameList } from "@/components/catalog/CatalogGameList";
 import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
 import { useAddWant } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
+import { BackLink } from "@/components/navigation/BackLink";
 
 interface CatalogGame {
   id: string;
