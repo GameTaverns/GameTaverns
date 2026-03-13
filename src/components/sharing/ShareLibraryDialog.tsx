@@ -47,7 +47,7 @@ export function ShareLibraryDialog({
   const socialLinks = {
     twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(libraryUrl)}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(libraryUrl)}&quote=${encodeURIComponent(shareText)}`,
-    reddit: `https://reddit.com/submit?url=${encodeURIComponent(libraryUrl)}&title=${encodeURIComponent(`${libraryName} — Board Game Collection`)}`,
+    reddit: `https://reddit.com/submit?url=${encodeURIComponent(libraryUrl)}&title=${encodeURIComponent(`${libraryName} — Board Game Library`)}`,
   };
 
   return (
