@@ -124,6 +124,9 @@ export function HeaderDropdownNav() {
       label: t('nav.social', 'Social'),
       icon: Users,
       items: [
+        ...(profile?.username
+          ? [{ href: getPlatformUrl(`/u/${profile.username}`), label: t('nav.myProfile', 'My Profile'), icon: User }]
+          : []),
         { href: getPlatformUrl("/directory"), label: t('nav.libraryDirectory', 'Library Directory'), icon: Globe },
         { href: getPlatformUrl("/clubs"), label: t('nav.clubDirectory', 'Club Directory'), icon: UserPlus },
         ...((myClubs && myClubs.length > 0)
@@ -168,9 +171,6 @@ export function HeaderDropdownNav() {
       icon: Settings,
       items: [
         { href: getPlatformUrl("/dashboard/settings"), label: t('nav.accountSettings', 'Account Settings'), icon: Settings },
-        ...(profile?.username
-          ? [{ href: getPlatformUrl(`/u/${profile.username}`), label: t('nav.myProfile', 'My Profile'), icon: User }]
-          : []),
         { href: getPlatformUrl("/achievements"), label: t('nav.achievements', 'Achievements'), icon: Trophy },
         { separator: true, label: 's4', icon: Settings },
         { href: getPlatformUrl("/docs"), label: t('nav.helpDocs', 'Help & Docs'), icon: HelpCircle },
