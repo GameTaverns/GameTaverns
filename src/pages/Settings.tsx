@@ -26,9 +26,11 @@ import {
   Download,
   Heart,
   ToggleRight,
-  Star
+  Star,
+  Languages
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
+import { LanguageSelector } from "@/components/ui/LanguageSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { useGames, useDeleteGame, useMechanics, usePublishers, useCreateMechanic, useCreatePublisher } from "@/hooks/useGames";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
@@ -1086,7 +1088,22 @@ const Settings = () => {
                 </CardContent>
               </Card>
 
-              {/* Update Email */}
+              {/* Language Preference */}
+              <Card className="card-elevated">
+                <CardHeader>
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <Languages className="h-5 w-5" />
+                    Language
+                  </CardTitle>
+                  <CardDescription>
+                    Choose your preferred display language
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <LanguageSelector />
+                </CardContent>
+              </Card>
+
               <Card className="card-elevated">
                 <CardHeader>
                   <CardTitle className="font-display flex items-center gap-2">

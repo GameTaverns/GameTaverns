@@ -214,6 +214,7 @@ export function useMarkDMsRead() {
   return useMutation({
     mutationFn: async (partnerId: string) => {
       if (!user) return;
+      // Mark direct_messages as read
       const { error } = await (supabase as any)
         .from("direct_messages")
         .update({ read_at: new Date().toISOString() })
@@ -221,11 +222,21 @@ export function useMarkDMsRead() {
         .eq("sender_id", partnerId)
         .is("read_at", null);
       if (error) throw error;
+
+      // Also mark related notification_log entries as read
+      await (supabase as any)
+        .from("notification_log")
+        .update({ read_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .eq("notification_type", "direct_message")
+        .is("read_at", null)
+        .contains("metadata", { sender_id: partnerId });
     },
     onSuccess: (_, partnerId) => {
       queryClient.invalidateQueries({ queryKey: ["dm-thread", user?.id, partnerId] });
       queryClient.invalidateQueries({ queryKey: ["dm-conversations", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["dm-unread-count", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
     },
   });
 }
