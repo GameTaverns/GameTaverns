@@ -1967,6 +1967,7 @@ export type Database = {
           created_at: string
           description: string | null
           enriched_at: string | null
+          expansion_type: string
           id: string
           image_url: string | null
           is_expansion: boolean
@@ -1974,6 +1975,7 @@ export type Database = {
           min_players: number | null
           parent_catalog_id: string | null
           play_time_minutes: number | null
+          scoring_type: string
           slug: string | null
           suggested_age: string | null
           title: string
@@ -1990,6 +1992,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           enriched_at?: string | null
+          expansion_type?: string
           id?: string
           image_url?: string | null
           is_expansion?: boolean
@@ -1997,6 +2000,7 @@ export type Database = {
           min_players?: number | null
           parent_catalog_id?: string | null
           play_time_minutes?: number | null
+          scoring_type?: string
           slug?: string | null
           suggested_age?: string | null
           title: string
@@ -2013,6 +2017,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           enriched_at?: string | null
+          expansion_type?: string
           id?: string
           image_url?: string | null
           is_expansion?: boolean
@@ -2020,6 +2025,7 @@ export type Database = {
           min_players?: number | null
           parent_catalog_id?: string | null
           play_time_minutes?: number | null
+          scoring_type?: string
           slug?: string | null
           suggested_age?: string | null
           title?: string
@@ -2896,7 +2902,9 @@ export type Database = {
           is_first_play: boolean
           is_winner: boolean
           linked_user_id: string | null
+          placement: number | null
           player_name: string
+          player_outcome: string | null
           score: number | null
           session_id: string
           tag_status: string
@@ -2908,7 +2916,9 @@ export type Database = {
           is_first_play?: boolean
           is_winner?: boolean
           linked_user_id?: string | null
+          placement?: number | null
           player_name: string
+          player_outcome?: string | null
           score?: number | null
           session_id: string
           tag_status?: string
@@ -2920,7 +2930,9 @@ export type Database = {
           is_first_play?: boolean
           is_winner?: boolean
           linked_user_id?: string | null
+          placement?: number | null
           player_name?: string
+          player_outcome?: string | null
           score?: number | null
           session_id?: string
           tag_status?: string
@@ -2937,6 +2949,7 @@ export type Database = {
       }
       game_sessions: {
         Row: {
+          cooperative_result: string | null
           created_at: string
           duration_minutes: number | null
           game_id: string
@@ -2947,6 +2960,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cooperative_result?: string | null
           created_at?: string
           duration_minutes?: number | null
           game_id: string
@@ -2957,6 +2971,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cooperative_result?: string | null
           created_at?: string
           duration_minutes?: number | null
           game_id?: string
@@ -3047,6 +3062,7 @@ export type Database = {
           crowdfunded: boolean | null
           description: string | null
           difficulty: Database["public"]["Enums"]["difficulty_level"] | null
+          expansion_type_override: string | null
           game_type: Database["public"]["Enums"]["game_type"] | null
           genre: string | null
           id: string
@@ -3070,6 +3086,7 @@ export type Database = {
           publisher_id: string | null
           sale_condition: Database["public"]["Enums"]["sale_condition"] | null
           sale_price: number | null
+          scoring_type_override: string | null
           sleeved: boolean | null
           slug: string | null
           suggested_age: string | null
@@ -3090,6 +3107,7 @@ export type Database = {
           crowdfunded?: boolean | null
           description?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
+          expansion_type_override?: string | null
           game_type?: Database["public"]["Enums"]["game_type"] | null
           genre?: string | null
           id?: string
@@ -3113,6 +3131,7 @@ export type Database = {
           publisher_id?: string | null
           sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
           sale_price?: number | null
+          scoring_type_override?: string | null
           sleeved?: boolean | null
           slug?: string | null
           suggested_age?: string | null
@@ -3133,6 +3152,7 @@ export type Database = {
           crowdfunded?: boolean | null
           description?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
+          expansion_type_override?: string | null
           game_type?: Database["public"]["Enums"]["game_type"] | null
           genre?: string | null
           id?: string
@@ -3156,6 +3176,7 @@ export type Database = {
           publisher_id?: string | null
           sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
           sale_price?: number | null
+          scoring_type_override?: string | null
           sleeved?: boolean | null
           slug?: string | null
           suggested_age?: string | null

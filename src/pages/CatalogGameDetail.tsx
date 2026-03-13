@@ -657,6 +657,8 @@ export default function CatalogGameDetail() {
                     description: game.description,
                     image_url: game.image_url,
                     bgg_id: game.bgg_id,
+                    expansion_type: (game as any).expansion_type,
+                    scoring_type: (game as any).scoring_type,
                   }}
                 />
                 <ManagePurchaseLinks catalogId={game.id} gameTitle={game.title} />

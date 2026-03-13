@@ -40,9 +40,12 @@ export interface CreateSessionInput {
   played_at: string;
   duration_minutes?: number | null;
   notes?: string | null;
+  cooperative_result?: string | null;
   players: (Omit<SessionPlayer, "id" | "linked_display_name" | "linked_username" | "linked_avatar_url"> & {
     linked_user_id?: string | null;
     tag_status?: string;
+    placement?: number | null;
+    player_outcome?: string | null;
   })[];
   expansion_ids?: string[];
 }
@@ -160,6 +163,7 @@ export function useGameSessions(gameId: string) {
           played_at: input.played_at,
           duration_minutes: input.duration_minutes,
           notes: input.notes,
+          cooperative_result: input.cooperative_result ?? null,
         })
         .select()
         .single();
@@ -178,7 +182,6 @@ export function useGameSessions(gameId: string) {
           .insert(
             input.players.map((p) => {
               const linkedId = (p as any).linked_user_id ?? null;
-              // Auto-accept tag if the tagged user is the person logging the session
               const isself = linkedId && linkedId === currentUserId;
               return {
                 session_id: session.id,
@@ -188,6 +191,8 @@ export function useGameSessions(gameId: string) {
                 is_first_play: p.is_first_play,
                 linked_user_id: linkedId,
                 tag_status: isself ? "accepted" : ((p as any).tag_status ?? "none"),
+                placement: (p as any).placement ?? null,
+                player_outcome: (p as any).player_outcome ?? null,
               };
             })
           )

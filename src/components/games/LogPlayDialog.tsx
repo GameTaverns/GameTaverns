@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Plus, Minus, Trophy, Sparkles, Clock, Calendar, Puzzle, UserPlus, UserCheck, X } from "lucide-react";
+import { Plus, Clock, Calendar, Users, Handshake } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,11 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGameSessions, type CreateSessionInput } from "@/hooks/useGameSessions";
 import { supabase } from "@/integrations/backend/client";
-import { PlayerTagSearch } from "./PlayerTagSearch";
+import { ExpansionPicker } from "./ExpansionPicker";
+import { PlayerScoreInput, type PlayerInput, type ScoringType } from "./PlayerScoreInput";
 import type { UserSearchResult } from "@/hooks/usePlayerSearch";
 
 function toDateTimeLocalValue(date: Date): string {
@@ -24,19 +24,11 @@ function toDateTimeLocalValue(date: Date): string {
   return local.toISOString().slice(0, 16);
 }
 
-interface PlayerInput {
-  name: string;
-  score: string;
-  isWinner: boolean;
-  isFirstPlay: boolean;
-  linkedUser?: UserSearchResult | null;
-  showSearch?: boolean;
-}
-
 interface Expansion {
   id: string;
   title: string;
   image_url: string | null;
+  expansion_type?: string;
 }
 
 interface LogPlayDialogProps {
@@ -53,6 +45,8 @@ interface LogPlayDraft {
   notes: string;
   players: PlayerInput[];
   selectedExpansionIds: string[];
+  scoringType: ScoringType;
+  cooperativeResult: string;
 }
 
 function readPersistedValue(key: string): string | null {
@@ -67,18 +61,26 @@ function persistValue(key: string, value: string) {
   try {
     sessionStorage.setItem(key, value);
     localStorage.setItem(key, value);
-  } catch {
-    // Ignore storage errors
-  }
+  } catch {}
 }
 
 function clearPersistedValue(key: string) {
   try {
     sessionStorage.removeItem(key);
     localStorage.removeItem(key);
-  } catch {
-    // Ignore storage errors
-  }
+  } catch {}
+}
+
+const SCORING_LABELS: Record<ScoringType, string> = {
+  highest_wins: "Highest Score Wins",
+  lowest_wins: "Lowest Score Wins",
+  win_lose: "Win / Lose (no score)",
+  cooperative: "Co-op (all win or all lose)",
+  no_score: "No scoring",
+};
+
+function defaultPlayer(): PlayerInput {
+  return { name: "", score: "", isWinner: false, isFirstPlay: false, linkedUser: null, showSearch: false, placement: "", playerOutcome: "" };
 }
 
 export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClose }: LogPlayDialogProps) {
@@ -104,38 +106,83 @@ export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClos
   const [playedAt, setPlayedAt] = useState(() => toDateTimeLocalValue(new Date()));
   const [duration, setDuration] = useState("");
   const [notes, setNotes] = useState("");
-  const [players, setPlayers] = useState<PlayerInput[]>([
-    { name: "", score: "", isWinner: false, isFirstPlay: false, linkedUser: null, showSearch: false },
-  ]);
+  const [players, setPlayers] = useState<PlayerInput[]>([defaultPlayer()]);
   const [expansions, setExpansions] = useState<Expansion[]>([]);
   const [selectedExpansions, setSelectedExpansions] = useState<Set<string>>(new Set());
   const [loadingExpansions, setLoadingExpansions] = useState(false);
+  const [scoringType, setScoringType] = useState<ScoringType>("highest_wins");
+  const [cooperativeResult, setCooperativeResult] = useState<string>("");
+  const [detectedScoringType, setDetectedScoringType] = useState<ScoringType | null>(null);
 
+  // Fetch game's scoring type from catalog
+  useEffect(() => {
+    if (!open || !gameId) return;
+    supabase
+      .from("games")
+      .select("catalog_id, scoring_type_override")
+      .eq("id", gameId)
+      .maybeSingle()
+      .then(async ({ data: gameData }) => {
+        if (gameData?.scoring_type_override) {
+          setDetectedScoringType(gameData.scoring_type_override as ScoringType);
+          setScoringType(gameData.scoring_type_override as ScoringType);
+          return;
+        }
+        if (gameData?.catalog_id) {
+          const { data: catalog } = await supabase
+            .from("game_catalog")
+            .select("scoring_type")
+            .eq("id", gameData.catalog_id)
+            .maybeSingle();
+          if (catalog?.scoring_type && catalog.scoring_type !== "highest_wins") {
+            setDetectedScoringType(catalog.scoring_type as ScoringType);
+            setScoringType(catalog.scoring_type as ScoringType);
+          }
+        }
+      });
+  }, [open, gameId]);
+
+  // Fetch expansions (only real expansions by default, include promos for filter)
   useEffect(() => {
     if (open && gameId) {
       setLoadingExpansions(true);
       supabase
         .from("games")
-        .select("id, title, image_url")
+        .select("id, title, image_url, expansion_type_override, catalog_id")
         .eq("parent_game_id", gameId)
         .eq("is_expansion", true)
         .order("title")
-        .then(({ data, error }) => {
-          if (!error && data) setExpansions(data);
+        .then(async ({ data, error }) => {
+          if (!error && data) {
+            // Fetch catalog expansion_type for entries without override
+            const catalogIds = [...new Set(data.filter((d) => !d.expansion_type_override && d.catalog_id).map((d) => d.catalog_id!))];
+            let catalogTypes: Record<string, string> = {};
+            if (catalogIds.length > 0) {
+              const { data: cats } = await supabase
+                .from("game_catalog")
+                .select("id, expansion_type")
+                .in("id", catalogIds);
+              catalogTypes = (cats || []).reduce((acc, c) => { acc[c.id] = c.expansion_type; return acc; }, {} as Record<string, string>);
+            }
+            setExpansions(
+              data.map((d) => ({
+                id: d.id,
+                title: d.title,
+                image_url: d.image_url,
+                expansion_type: d.expansion_type_override || (d.catalog_id ? catalogTypes[d.catalog_id] : undefined) || "expansion",
+              }))
+            );
+          }
           setLoadingExpansions(false);
         });
     }
   }, [open, gameId]);
 
+  // Hydrate draft
   useEffect(() => {
     if (!open || hydratedOnOpenRef.current) return;
-
     const raw = readPersistedValue(draftKey);
-    if (!raw) {
-      hydratedOnOpenRef.current = true;
-      return;
-    }
-
+    if (!raw) { hydratedOnOpenRef.current = true; return; }
     try {
       const draft = JSON.parse(raw) as Partial<LogPlayDraft>;
       if (typeof draft.playedAt === "string" && draft.playedAt) setPlayedAt(draft.playedAt);
@@ -143,26 +190,22 @@ export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClos
       if (typeof draft.notes === "string") setNotes(draft.notes);
       if (Array.isArray(draft.players) && draft.players.length > 0) setPlayers(draft.players);
       if (Array.isArray(draft.selectedExpansionIds)) setSelectedExpansions(new Set(draft.selectedExpansionIds));
-    } catch {
-      // Ignore corrupted drafts
-    }
-
+      if (draft.scoringType) setScoringType(draft.scoringType);
+      if (draft.cooperativeResult) setCooperativeResult(draft.cooperativeResult);
+    } catch {}
     hydratedOnOpenRef.current = true;
   }, [open, draftKey]);
 
+  // Persist draft
   useEffect(() => {
     if (!open || !hydratedOnOpenRef.current) return;
-
     const draft: LogPlayDraft = {
-      playedAt,
-      duration,
-      notes,
-      players,
+      playedAt, duration, notes, players,
       selectedExpansionIds: Array.from(selectedExpansions),
+      scoringType, cooperativeResult,
     };
-
     persistValue(draftKey, JSON.stringify(draft));
-  }, [open, playedAt, duration, notes, players, selectedExpansions, draftKey]);
+  }, [open, playedAt, duration, notes, players, selectedExpansions, scoringType, cooperativeResult, draftKey]);
 
   const toggleExpansion = (expansionId: string) => {
     setSelectedExpansions((prev) => {
@@ -172,15 +215,13 @@ export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClos
     });
   };
 
-  const addPlayer = () => {
-    setPlayers([...players, { name: "", score: "", isWinner: false, isFirstPlay: false, linkedUser: null, showSearch: false }]);
-  };
+  const addPlayer = () => setPlayers([...players, defaultPlayer()]);
 
   const removePlayer = (index: number) => {
     if (players.length > 1) setPlayers(players.filter((_, i) => i !== index));
   };
 
-  const updatePlayer = (index: number, field: keyof PlayerInput, value: string | boolean | UserSearchResult | null | undefined) => {
+  const updatePlayer = (index: number, field: keyof PlayerInput, value: any) => {
     const updated = [...players];
     updated[index] = { ...updated[index], [field]: value };
     setPlayers(updated);
@@ -207,19 +248,26 @@ export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClos
     e.preventDefault();
     const validPlayers = players.filter((p) => p.name.trim());
 
+    // For co-op games, set all players as winners/losers based on cooperative_result
+    const isCoopWin = scoringType === "cooperative" && cooperativeResult === "win";
+    const isCoopLose = scoringType === "cooperative" && cooperativeResult === "lose";
+
     const input: CreateSessionInput = {
       game_id: gameId,
       played_at: new Date(playedAt).toISOString(),
       duration_minutes: duration ? parseInt(duration, 10) : null,
       notes: notes.trim() || null,
-      players: validPlayers.map((p) => ({
+      cooperative_result: scoringType === "cooperative" ? (cooperativeResult || null) : null,
+      players: validPlayers.map((p, i) => ({
         player_name: p.name.trim(),
         score: p.score ? parseInt(p.score, 10) : null,
-        is_winner: p.isWinner,
+        is_winner: scoringType === "cooperative" ? isCoopWin : p.isWinner,
         is_first_play: p.isFirstPlay,
         color: null,
         linked_user_id: p.linkedUser?.user_id ?? null,
         tag_status: p.linkedUser ? "pending" : "none",
+        placement: p.placement ? parseInt(p.placement, 10) : null,
+        player_outcome: p.playerOutcome && p.playerOutcome !== "__active" ? p.playerOutcome : null,
       })),
       expansion_ids: Array.from(selectedExpansions),
     };
@@ -234,8 +282,10 @@ export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClos
     setPlayedAt(toDateTimeLocalValue(new Date()));
     setDuration("");
     setNotes("");
-    setPlayers([{ name: "", score: "", isWinner: false, isFirstPlay: false, linkedUser: null, showSearch: false }]);
+    setPlayers([defaultPlayer()]);
     setSelectedExpansions(new Set());
+    setScoringType(detectedScoringType ?? "highest_wins");
+    setCooperativeResult("");
   };
 
   return (
@@ -279,32 +329,64 @@ export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClos
             </div>
           </div>
 
-          {/* Expansions Used */}
-          {!loadingExpansions && expansions.length > 0 && (
-            <div className="space-y-3">
+          {/* Scoring Type */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Scoring Type
+            </Label>
+            <Select value={scoringType} onValueChange={(v) => setScoringType(v as ScoringType)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.entries(SCORING_LABELS) as [ScoringType, string][]).map(([val, label]) => (
+                  <SelectItem key={val} value={val}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {detectedScoringType && detectedScoringType !== scoringType && (
+              <p className="text-[10px] text-muted-foreground">
+                Auto-detected: {SCORING_LABELS[detectedScoringType]}. You can override per session.
+              </p>
+            )}
+          </div>
+
+          {/* Co-op Result */}
+          {scoringType === "cooperative" && (
+            <div className="space-y-2">
               <Label className="flex items-center gap-2">
-                <Puzzle className="h-4 w-4" />
-                Expansions Used
+                <Handshake className="h-4 w-4" />
+                Co-op Result
               </Label>
-              <div className="grid gap-2 max-h-32 overflow-y-auto">
-                {expansions.map((expansion) => (
-                  <label
-                    key={expansion.id}
-                    className="flex items-center gap-3 p-2 rounded-md bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+              <div className="flex gap-2">
+                {[
+                  { val: "win", label: "🎉 We Won!", cls: "border-green-500/50 bg-green-500/10 text-green-600" },
+                  { val: "lose", label: "💀 We Lost", cls: "border-destructive/50 bg-destructive/10 text-destructive" },
+                ].map(({ val, label, cls }) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setCooperativeResult(val)}
+                    className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-all ${
+                      cooperativeResult === val ? cls + " ring-2 ring-offset-1 ring-offset-background" : "border-muted bg-muted/20 text-muted-foreground hover:bg-muted/40"
+                    }`}
+                    style={undefined}
                   >
-                    <Checkbox
-                      checked={selectedExpansions.has(expansion.id)}
-                      onCheckedChange={() => toggleExpansion(expansion.id)}
-                    />
-                    {expansion.image_url && (
-                      <img src={expansion.image_url} alt={expansion.title || "Expansion cover"} className="w-8 h-8 rounded object-cover" />
-                    )}
-                    <span className="text-sm font-medium truncate">{expansion.title}</span>
-                  </label>
+                    {label}
+                  </button>
                 ))}
               </div>
             </div>
           )}
+
+          {/* Expansions */}
+          <ExpansionPicker
+            expansions={expansions}
+            selected={selectedExpansions}
+            onToggle={toggleExpansion}
+            loading={loadingExpansions}
+          />
 
           {/* Players */}
           <div className="space-y-3">
@@ -318,90 +400,17 @@ export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClos
 
             <div className="space-y-3">
               {players.map((player, index) => (
-                <div key={index} className="p-3 rounded-lg border bg-muted/30 space-y-2">
-                  {/* Name + Score row */}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Player name"
-                      value={player.name}
-                      onChange={(e) => updatePlayer(index, "name", e.target.value)}
-                      className="flex-1"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Score"
-                      value={player.score}
-                      onChange={(e) => updatePlayer(index, "score", e.target.value)}
-                      className="w-24"
-                    />
-                    {players.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removePlayer(index)}
-                        className="h-9 w-9 text-muted-foreground hover:text-destructive flex-shrink-0"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Checkboxes */}
-                  <div className="flex items-center gap-4 text-sm">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={player.isWinner}
-                        onCheckedChange={(checked) => updatePlayer(index, "isWinner", !!checked)}
-                      />
-                      <Trophy className="h-3.5 w-3.5 text-secondary" />
-                      Winner
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={player.isFirstPlay}
-                        onCheckedChange={(checked) => updatePlayer(index, "isFirstPlay", !!checked)}
-                      />
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      First play
-                    </label>
-                  </div>
-
-                  {/* Link user to profile */}
-                  <div className="pt-1">
-                    {player.linkedUser ? (
-                      <PlayerTagSearch
-                        onSelect={(u) => linkUser(index, u)}
-                        selectedUser={player.linkedUser}
-                        onClear={() => unlinkUser(index)}
-                      />
-                    ) : player.showSearch ? (
-                      <div className="space-y-1">
-                        <PlayerTagSearch
-                          onSelect={(u) => linkUser(index, u)}
-                          placeholder="Search by name or @username..."
-                        />
-                        <button
-                          type="button"
-                          onClick={() => updatePlayer(index, "showSearch", false)}
-                          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                        >
-                          <X className="h-3 w-3" /> Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => updatePlayer(index, "showSearch", true)}
-                        className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors"
-                      >
-                        <UserPlus className="h-3.5 w-3.5" />
-                        Link to site profile
-                        <Badge variant="secondary" className="text-[10px] px-1 py-0">ELO</Badge>
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <PlayerScoreInput
+                  key={index}
+                  player={player}
+                  index={index}
+                  scoringType={scoringType}
+                  canRemove={players.length > 1}
+                  onUpdate={updatePlayer}
+                  onRemove={removePlayer}
+                  onLink={linkUser}
+                  onUnlink={unlinkUser}
+                />
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
