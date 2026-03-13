@@ -271,6 +271,7 @@ export function useCreateEvent() {
               hasAuthor: !!authorId,
             });
           }
+          } // end forums-enabled check
         } catch (err) {
           console.error("[event-forum] Failed to create forum thread:", err);
         }

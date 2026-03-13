@@ -19,7 +19,7 @@ export default function ConventionIndex() {
     if (!loading && !isAuthenticated) navigate("/login");
   }, [isAuthenticated, loading, navigate]);
 
-  // Fetch all convention events for libraries the user owns
+  // Fetch convention events: user's own + public ones
   const { data: conventions = [], isLoading } = useQuery({
     queryKey: ["my-conventions", user?.id],
     queryFn: async () => {
@@ -33,13 +33,13 @@ export default function ConventionIndex() {
 
       const libIds = (libs || []).map((l: any) => l.id);
 
-      // Get events: owned-library events + events created by user
+      // Get events: owned-library events + events created by user + public events
       const queries = [];
       if (libIds.length) {
         queries.push(
           supabase
             .from("library_events")
-            .select("id, title, event_date, end_date, library_id, created_by_user_id, status")
+            .select("id, title, event_date, end_date, library_id, created_by_user_id, status, is_public")
             .in("library_id", libIds)
             .neq("status", "cancelled")
             .order("event_date", { ascending: false })
@@ -49,8 +49,18 @@ export default function ConventionIndex() {
       queries.push(
         supabase
           .from("library_events")
-          .select("id, title, event_date, end_date, library_id, created_by_user_id, status")
+          .select("id, title, event_date, end_date, library_id, created_by_user_id, status, is_public")
           .eq("created_by_user_id", user.id)
+          .neq("status", "cancelled")
+          .order("event_date", { ascending: false })
+          .limit(100)
+      );
+      // Also fetch public events that have convention settings
+      queries.push(
+        supabase
+          .from("library_events")
+          .select("id, title, event_date, end_date, library_id, created_by_user_id, status, is_public")
+          .eq("is_public", true)
           .neq("status", "cancelled")
           .order("event_date", { ascending: false })
           .limit(100)
@@ -72,6 +82,14 @@ export default function ConventionIndex() {
 
       const convMap = new Map((convEvents || []).map((c: any) => [c.event_id, c]));
 
+      // For public events, only keep them if they have convention settings
+      const filteredEvents = events.filter((e: any) => {
+        const isOwnerOrCreator = libIds.includes(e.library_id) || e.created_by_user_id === user.id;
+        if (isOwnerOrCreator) return true;
+        // Public events only show if they have convention setup
+        return convMap.has(e.id);
+      });
+
       // Fetch club names for any conventions linked to clubs
       const clubIds = [...new Set((convEvents || []).filter((c: any) => c.club_id).map((c: any) => c.club_id))];
       let clubMap = new Map<string, string>();
@@ -83,9 +101,18 @@ export default function ConventionIndex() {
         clubMap = new Map((clubs || []).map((c: any) => [c.id, c.name]));
       }
 
+      // Fetch library names for any events we don't have lib names for
+      const missingLibIds = [...new Set(filteredEvents.map((e: any) => e.library_id).filter((id: string) => !libIds.includes(id)))];
       const libMap = new Map((libs || []).map((l: any) => [l.id, l.name]));
+      if (missingLibIds.length) {
+        const { data: extraLibs } = await supabase
+          .from("libraries")
+          .select("id, name")
+          .in("id", missingLibIds);
+        (extraLibs || []).forEach((l: any) => libMap.set(l.id, l.name));
+      }
 
-      return events.map((e: any) => {
+      return filteredEvents.map((e: any) => {
         const conv = convMap.get(e.id);
         const clubName = conv?.club_id ? clubMap.get(conv.club_id) : null;
         return {
