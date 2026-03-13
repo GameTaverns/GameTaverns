@@ -15,6 +15,7 @@ import { TenantLink } from "@/components/TenantLink";
 import { getPlatformUrl, getLibraryUrl } from "@/hooks/useTenantUrl";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries, useUserProfile } from "@/hooks/useLibrary";
+import { useMyClubs } from "@/hooks/useClubs";
 import { useUnreadDMCount } from "@/hooks/useDirectMessages";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
