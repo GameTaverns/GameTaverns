@@ -6,7 +6,7 @@ import {
   Timer, Wifi, Hourglass, ScanLine, Search, ChevronRight,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/backend/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
