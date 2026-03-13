@@ -159,7 +159,7 @@ export default function ConventionHub() {
     );
   }
 
-  const isOwner = (event as any).library?.owner_id === user?.id || event?.created_by_user_id === user?.id;
+  const { role: conventionRole, isOwner, isStaffOrOwner } = useConventionAccess(eventId, event);
   const clubName = (event as any).convention_event?.club?.name;
   const contextName = clubName || (event as any).library?.name;
 
