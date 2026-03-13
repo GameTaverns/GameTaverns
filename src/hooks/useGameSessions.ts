@@ -40,9 +40,12 @@ export interface CreateSessionInput {
   played_at: string;
   duration_minutes?: number | null;
   notes?: string | null;
+  cooperative_result?: string | null;
   players: (Omit<SessionPlayer, "id" | "linked_display_name" | "linked_username" | "linked_avatar_url"> & {
     linked_user_id?: string | null;
     tag_status?: string;
+    placement?: number | null;
+    player_outcome?: string | null;
   })[];
   expansion_ids?: string[];
 }

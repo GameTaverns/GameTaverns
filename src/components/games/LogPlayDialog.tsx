@@ -371,7 +371,7 @@ export function LogPlayDialog({ gameId, gameTitle, children, defaultOpen, onClos
                     className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-all ${
                       cooperativeResult === val ? cls + " ring-2 ring-offset-1 ring-offset-background" : "border-muted bg-muted/20 text-muted-foreground hover:bg-muted/40"
                     }`}
-                    style={cooperativeResult === val ? { ringColor: val === "win" ? "hsl(var(--primary))" : undefined } : undefined}
+                    style={undefined}
                   >
                     {label}
                   </button>
