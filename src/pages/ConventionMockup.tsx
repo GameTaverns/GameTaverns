@@ -11,10 +11,10 @@ import { Footer } from "@/components/layout/Footer";
 import {
   LayoutDashboard, BookOpen, ScanLine, Star, Clock,
   AlertTriangle, CheckCircle, Package, ArrowRight, ArrowLeft,
-  Search, BarChart3, Gamepad2,
+  Search, BarChart3, Gamepad2, TrendingUp, Trophy,
   Timer, Wifi, CalendarClock,
   Hourglass, ChevronRight, Users, RotateCcw, UserCheck,
-  Zap, Eye, ShieldCheck,
+  Zap, Eye, ShieldCheck, Building2, Flame, ThumbsUp,
 } from "lucide-react";
 
 // ─── Mock Data ───
