@@ -29,7 +29,7 @@ export default function ConventionHub() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("library_events")
-        .select("*, library:libraries(id, name, slug, owner_id)")
+        .select("*, library:libraries(id, name, slug, owner_id), convention_event:convention_events(id, club_id, club:clubs(id, name))")
         .eq("id", eventId!)
         .single();
       if (error) throw error;
