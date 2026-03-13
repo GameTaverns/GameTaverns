@@ -318,17 +318,25 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
             </CardContent>
           </Card>
 
-          {/* Reservation Queue */}
-          {reservations.length > 0 && (
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium flex items-center gap-1.5">
-                    <CalendarClock className="h-4 w-4 text-secondary" />
-                    Reservations
+          {/* Reservation Queue — always visible */}
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium flex items-center gap-1.5">
+                  <CalendarClock className="h-4 w-4 text-secondary" />
+                  Reservation Queue
+                  {reservations.length > 0 && (
                     <Badge variant="secondary" className="text-[10px] ml-1">{reservations.length}</Badge>
-                  </h3>
+                  )}
+                </h3>
+              </div>
+              {reservations.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <CalendarClock className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No pending reservations</p>
+                  <p className="text-[10px]">Reservations from attendees will appear here for fulfillment</p>
                 </div>
+              ) : (
                 <div className="space-y-2">
                   {reservations.map((r: any) => {
                     const isExpired = r.status === "expired" || new Date(r.expires_at) < new Date();
@@ -351,9 +359,9 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
                     );
                   })}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right Pane: Active Loans Feed */}
