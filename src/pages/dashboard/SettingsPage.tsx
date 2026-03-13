@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { Settings as SettingsIcon, Eye, ArrowRight, Share2, AlertTriangle, User } from "lucide-react";
+import { Settings as SettingsIcon, Share2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
