@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { FeedbackNavItem } from "@/components/feedback/FeedbackNavItem";
 import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDialog";
+import { SmartPickerDialog } from "@/components/games/SmartPickerDialog";
 
 interface MobileNavDrawerProps {
   trigger?: React.ReactNode;
