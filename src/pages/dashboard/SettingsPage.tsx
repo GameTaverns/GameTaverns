@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useLibrary";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
 import { AccountSettings } from "@/components/settings/AccountSettings";
-import { ProfileThemeCustomizer } from "@/components/settings/ProfileThemeCustomizer";
+
 import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
 import { TwoFactorSettings } from "@/components/settings/TwoFactorSettings";
 import { ReferralPanel } from "@/components/referral/ReferralPanel";
@@ -76,7 +76,6 @@ export default function SettingsPage() {
               <TabsList className="mb-4">
                 <TabsTrigger value="profile">{t('settings.profile')}</TabsTrigger>
                 <TabsTrigger value="security">{t('settings.security')}</TabsTrigger>
-                <TabsTrigger value="appearance">{t('settings.appearance')}</TabsTrigger>
               </TabsList>
               <TabsContent value="profile">
                 <AccountSettings />
@@ -86,9 +85,6 @@ export default function SettingsPage() {
                   <ChangePasswordCard />
                   <TwoFactorSettings />
                 </div>
-              </TabsContent>
-              <TabsContent value="appearance">
-                <ProfileThemeCustomizer />
               </TabsContent>
             </Tabs>
           </CardContent>

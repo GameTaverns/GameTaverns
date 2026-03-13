@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare, Users, RefreshCw, ChevronDown } from "lucide-react";
+import { Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare, Users, RefreshCw, ChevronDown } from "lucide-react";
 import { BackLink } from "@/components/navigation/BackLink";
 import { InfoPopover } from "@/components/ui/InfoPopover";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { getLibraryUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { Layout } from "@/components/layout/Layout";
 import { LibrarySettingsGeneral } from "@/components/settings/LibrarySettingsGeneral";
-import { LibraryThemeCustomizer } from "@/components/settings/LibraryThemeCustomizer";
+
 import { RatingsAdmin } from "@/components/settings/RatingsAdmin";
 import { WishlistAdmin } from "@/components/settings/WishlistAdmin";
 import { LibraryBranding } from "@/components/settings/LibraryBranding";
@@ -24,7 +24,6 @@ import { cn } from "@/lib/utils";
 
 const ESSENTIAL_TABS = [
   { value: "general", labelKey: "librarySettings.general", icon: Settings },
-  { value: "theme", labelKey: "librarySettings.theme", icon: Palette },
   { value: "branding", labelKey: "librarySettings.branding", icon: Image },
   { value: "features", labelKey: "librarySettings.features", icon: ToggleRight },
 ];
@@ -154,13 +153,6 @@ export default function LibrarySettings() {
             <LibraryMemberManagement />
           </TabsContent>
 
-          <TabsContent value="theme">
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-display font-semibold">{t('librarySettings.themeCustomization')}</h2>
-              <InfoPopover title={t('librarySettings.theme')} description={t('librarySettings.themeInfo')} tips={["Pick a primary color that matches your brand", "Preview changes in real-time before saving"]} />
-            </div>
-            <LibraryThemeCustomizer />
-          </TabsContent>
 
           <TabsContent value="branding">
             <div className="flex items-center gap-2 mb-4">

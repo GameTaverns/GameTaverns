@@ -78,7 +78,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ThemeCustomizer } from "@/components/settings/ThemeCustomizer";
+
 import { BulkImportDialog } from "@/components/games/BulkImportDialog";
 import { WishlistAdmin } from "@/components/settings/WishlistAdmin";
 import { FeatureFlagsAdmin } from "@/components/settings/FeatureFlagsAdmin";
@@ -2150,9 +2150,6 @@ const Settings = () => {
                   </p>
                 </CardContent>
               </Card>
-
-              {/* Theme Customization Section */}
-              <ThemeCustomizer />
             </TabsContent>
           )}
 
