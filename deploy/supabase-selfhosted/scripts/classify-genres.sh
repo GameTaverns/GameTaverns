@@ -50,7 +50,7 @@ BATCH_NUM=0
 while true; do
   BATCH_NUM=$((BATCH_NUM + 1))
 
-  RAW_RESPONSE=$(docker exec gametaverns-functions curl -sS \
+  RAW_RESPONSE=$(curl -sS \
     --connect-timeout 10 \
     --max-time 120 \
     -w "\nHTTP_STATUS:%{http_code}" \
