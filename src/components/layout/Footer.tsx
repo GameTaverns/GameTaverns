@@ -59,6 +59,10 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
                 {t('footer.poweredByBGG')}
               </ExternalLink>
             )}
+
+            <span className="text-[9px] text-muted-foreground/60 italic">
+              All photographs are property of their respective owners.
+            </span>
           </div>
         </div>
       </div>
