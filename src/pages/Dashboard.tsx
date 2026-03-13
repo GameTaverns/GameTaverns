@@ -52,16 +52,16 @@ export default function Dashboard() {
         <AppHeader />
 
         <main className="container mx-auto px-4 py-6 max-w-6xl flex-1">
-          {/* Greeting */}
+          {/* Greeting + motivational message */}
           <div className="mb-6">
             <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">
               {t('dashboard.welcomeBack', { name: displayName })}
             </h1>
-            <p className="text-sm text-muted-foreground">{t('dashboard.commandCenter')}</p>
+            <MotivationalMessage />
           </div>
 
-          {/* Two-column layout: Feed + Sidebar */}
-          <div className="flex flex-col lg:flex-row gap-6">
+          {/* Two-column layout: Feed + Sidebar — tops aligned */}
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
             {/* Main feed column */}
             <div className="flex-1 min-w-0">
               <h2 className="font-display text-base font-semibold text-foreground mb-3">
