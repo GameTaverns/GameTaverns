@@ -80,7 +80,7 @@ export function ShareLibraryDialog({
             )}
             <div>
               <h3 className="font-display font-bold text-sm">{libraryName}</h3>
-              <p className="text-xs text-muted-foreground">Board Game Collection on GameTaverns</p>
+              <p className="text-xs text-muted-foreground">Board Game Library on GameTaverns</p>
             </div>
           </div>
           <div className="flex gap-3">
