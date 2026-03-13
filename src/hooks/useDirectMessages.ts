@@ -260,6 +260,56 @@ export function useDeleteDM() {
   });
 }
 
+// Delete an entire conversation (soft-delete all messages with a partner)
+export function useDeleteConversation() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (partnerId: string) => {
+      if (!user) throw new Error("Not authenticated");
+
+      // Get all messages in this conversation
+      const { data: msgs, error: fetchError } = await (supabase as any)
+        .from("direct_messages")
+        .select("id, sender_id, recipient_id")
+        .or(
+          `and(sender_id.eq.${user.id},recipient_id.eq.${partnerId}),and(sender_id.eq.${partnerId},recipient_id.eq.${user.id})`
+        );
+
+      if (fetchError) throw fetchError;
+      if (!msgs || msgs.length === 0) return partnerId;
+
+      // Soft-delete each message for the current user
+      const sentIds = msgs.filter((m: any) => m.sender_id === user.id).map((m: any) => m.id);
+      const receivedIds = msgs.filter((m: any) => m.recipient_id === user.id).map((m: any) => m.id);
+
+      if (sentIds.length > 0) {
+        const { error } = await (supabase as any)
+          .from("direct_messages")
+          .update({ deleted_by_sender: true })
+          .in("id", sentIds);
+        if (error) throw error;
+      }
+
+      if (receivedIds.length > 0) {
+        const { error } = await (supabase as any)
+          .from("direct_messages")
+          .update({ deleted_by_recipient: true })
+          .in("id", receivedIds);
+        if (error) throw error;
+      }
+
+      return partnerId;
+    },
+    onSuccess: (partnerId) => {
+      queryClient.invalidateQueries({ queryKey: ["dm-conversations", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["dm-thread", user?.id, partnerId] });
+      queryClient.invalidateQueries({ queryKey: ["dm-unread-count", user?.id] });
+    },
+  });
+}
+
 export function useUnreadDMCount() {
   const { user } = useAuth();
   return useQuery({
@@ -275,6 +325,6 @@ export function useUnreadDMCount() {
       return count ?? 0;
     },
     enabled: !!user,
-    refetchInterval: 30_000, // self-correct every 30s in case realtime lags
+    refetchInterval: 30_000,
   });
 }
