@@ -100,6 +100,8 @@ while true; do
   SUCCESS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('success', False))" 2>/dev/null || echo "False")
   CLASSIFIED=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('classified', 0))" 2>/dev/null || echo "0")
   HAS_MORE=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('hasMore', False))" 2>/dev/null || echo "False")
+  RATE_LIMITED=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('rateLimited', False))" 2>/dev/null || echo "False")
+  RETRY_AFTER_MS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(int(d.get('retryAfterMs', 0) or 0))" 2>/dev/null || echo "0")
   ERRORS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); errs=d.get('errors',[]); print(len(errs))" 2>/dev/null || echo "0")
   ERROR_MSG=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error',''))" 2>/dev/null || echo "")
 
@@ -132,6 +134,16 @@ while true; do
 
   if [ "$ERRORS" -gt 0 ]; then
     echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f'   ⚠️  {e}') for e in d.get('errors',[])]" 2>/dev/null || true
+  fi
+
+  if [ "$RATE_LIMITED" = "True" ] || echo "$RESPONSE" | grep -qi "rate limited"; then
+    WAIT_SECONDS=$(( (RETRY_AFTER_MS + 999) / 1000 ))
+    if [ "$WAIT_SECONDS" -lt 60 ]; then
+      WAIT_SECONDS=60
+    fi
+    echo "   ⏳ Provider rate limit hit. Waiting ${WAIT_SECONDS}s before next batch..."
+    sleep "$WAIT_SECONDS"
+    continue
   fi
 
   if [ "$HAS_MORE" != "True" ]; then
