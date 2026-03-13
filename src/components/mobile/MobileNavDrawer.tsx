@@ -175,10 +175,10 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
               {/* Social */}
               <SectionHeader label={t('nav.social', 'Social')} />
               <NavItem href={getPlatformUrl("/dashboard")} icon={Users} label={t('nav.activityFeed', 'Activity Feed')} />
-              <NavItem href={getPlatformUrl("/directory")} icon={Globe} label={t('nav.directory', 'Library Directory')} />
+              <NavItem href={getPlatformUrl("/directory")} icon={Globe} label={t('nav.libraryDirectory', 'Library Directory')} />
+              <NavItem href={getPlatformUrl("/clubs")} icon={UserPlus} label={t('nav.clubDirectory', 'Club Directory')} />
               <NavItem href={getPlatformUrl("/near-me")} icon={MapPin} label={t('nav.nearMe', 'Near Me')} />
               <NavItem href={getPlatformUrl("/community")} icon={MessageSquarePlus} label={t('nav.forums', 'Community Forums')} />
-              <NavItem href={getPlatformUrl("/clubs")} icon={UserPlus} label={t('nav.clubs', 'Clubs')} />
               <NavItem href={getPlatformUrl("/lists")} icon={List} label={t('nav.curatedLists', 'Curated Lists')} />
               <NavItem href={getPlatformUrl("/news")} icon={Newspaper} label={t('nav.news', 'News & Reviews')} />
 
