@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
 import { Link } from "react-router-dom";
+import { useTenant } from "@/contexts/TenantContext";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface RatingEntry {
@@ -53,22 +54,26 @@ export function RatingsAdmin() {
   const [isClearing, setIsClearing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { library } = useTenant();
 
   const fetchRatingsData = async () => {
+    if (!library?.id) return;
     setIsLoading(true);
     try {
-      // Fetch rating entries from privacy-safe view (excludes IP/fingerprint)
+      // Fetch rating entries scoped to this library via join filtering
       const { data: ratingsData, error: ratingsError } = await supabase
         .from("game_ratings_library_view")
-        .select("*")
+        .select("*, games!inner(library_id)")
+        .eq("games.library_id", library.id)
         .order("created_at", { ascending: false });
 
       if (ratingsError) throw ratingsError;
 
-      // Fetch summary view
+      // Fetch summary view scoped to this library
       const { data: summaryData, error: summaryError } = await supabase
         .from("game_ratings_summary")
-        .select("*");
+        .select("*, games!inner(library_id)")
+        .eq("games.library_id", library.id);
 
       if (summaryError) throw summaryError;
 
@@ -121,15 +126,25 @@ export function RatingsAdmin() {
 
   useEffect(() => {
     fetchRatingsData();
-  }, []);
+  }, [library?.id]);
 
   const handleClearAllRatings = async () => {
+    if (!library?.id) return;
     setIsClearing(true);
     try {
+      // Get game IDs for this library, then delete only those ratings
+      const { data: libraryGames } = await supabase
+        .from("games")
+        .select("id")
+        .eq("library_id", library.id);
+      
+      const gameIds = libraryGames?.map(g => g.id) || [];
+      if (gameIds.length === 0) return;
+
       const { error } = await supabase
         .from("game_ratings")
         .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all rows
+        .in("game_id", gameIds);
 
       if (error) throw error;
 

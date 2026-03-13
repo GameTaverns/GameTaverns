@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
 import { Link } from "react-router-dom";
+import { useTenant } from "@/contexts/TenantContext";
 
 interface WishlistEntry {
   id: string;
@@ -50,22 +51,26 @@ export function WishlistAdmin() {
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
   const { toast } = useToast();
+  const { library } = useTenant();
 
   const fetchWishlistData = async () => {
+    if (!library?.id) return;
     setIsLoading(true);
     try {
-      // Fetch all wishlist entries
+      // Fetch wishlist entries scoped to this library via join filtering
       const { data: wishlistData, error: wishlistError } = await supabase
         .from("game_wishlist")
-        .select("*")
+        .select("*, games!inner(library_id)")
+        .eq("games.library_id", library.id)
         .order("created_at", { ascending: false });
 
       if (wishlistError) throw wishlistError;
 
-      // Fetch summary view
+      // Fetch summary view scoped to this library
       const { data: summaryData, error: summaryError } = await supabase
         .from("game_wishlist_summary")
-        .select("*");
+        .select("*, games!inner(library_id)")
+        .eq("games.library_id", library.id);
 
       if (summaryError) throw summaryError;
 
@@ -118,15 +123,25 @@ export function WishlistAdmin() {
 
   useEffect(() => {
     fetchWishlistData();
-  }, []);
+  }, [library?.id]);
 
   const handleClearAllVotes = async () => {
+    if (!library?.id) return;
     setIsClearing(true);
     try {
+      // Get game IDs for this library, then delete only those votes
+      const { data: libraryGames } = await supabase
+        .from("games")
+        .select("id")
+        .eq("library_id", library.id);
+      
+      const gameIds = libraryGames?.map(g => g.id) || [];
+      if (gameIds.length === 0) return;
+
       const { error } = await supabase
         .from("game_wishlist")
         .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all rows
+        .in("game_id", gameIds);
 
       if (error) throw error;
 
