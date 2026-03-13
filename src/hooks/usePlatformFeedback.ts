@@ -361,7 +361,7 @@ export function useSubmitFeedback() {
         return;
       }
 
-      // Save to database via SECURITY DEFINER function (bypasses SELECT RLS restriction)
+      // Save to database via SECURITY DEFINER function (preferred path)
       const { data: feedbackId, error } = await supabase
         .rpc("insert_platform_feedback", {
           _type: feedback.type,
@@ -371,17 +371,34 @@ export function useSubmitFeedback() {
           _screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : [],
         });
 
-      if (error) throw error;
+      if (!error && typeof feedbackId === "string" && feedbackId.length > 0) {
+        // Fire-and-forget: notify admins via Discord + email (pass feedback_id so thread ID is saved back)
+        void invokeBackendFunction("notify-feedback", {
+          type: feedback.type,
+          sender_name: feedback.sender_name,
+          sender_email: feedback.sender_email,
+          message: feedback.message,
+          screenshot_urls: screenshotUrls,
+          feedback_id: feedbackId,
+        });
+        return;
+      }
 
-      // Fire-and-forget: notify admins via Discord + email (pass feedback_id so thread ID is saved back)
-      void invokeBackendFunction("notify-feedback", {
+      console.warn("[Feedback] RPC insert_platform_feedback failed, falling back to notify-feedback persistence", error?.message || error);
+
+      // Fallback for self-hosted drift: persist feedback + notify from backend in one call
+      const fallbackResult = await invokeBackendFunction("notify-feedback", {
         type: feedback.type,
         sender_name: feedback.sender_name,
         sender_email: feedback.sender_email,
         message: feedback.message,
         screenshot_urls: screenshotUrls,
-        feedback_id: feedbackId,
+        create_feedback: true,
       });
+
+      if (!fallbackResult.ok) {
+        throw new Error(typeof fallbackResult.error === "string" ? fallbackResult.error : "Failed to submit feedback");
+      }
     },
   });
 }

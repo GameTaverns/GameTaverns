@@ -24,6 +24,13 @@ const FEEDBACK_FORUM_CHANNELS: Record<string, string> = {
 
 const DISCORD_API = "https://discord.com/api/v10";
 
+function createServiceRoleClient() {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) return null;
+  return createClient(supabaseUrl, serviceRoleKey);
+}
+
 const handler = async (req: Request): Promise<Response> => {
   const preflight = handleCorsPreFlight(req);
   if (preflight) return preflight;
@@ -33,8 +40,9 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
 
-    const { type, sender_name, sender_email, message, screenshot_urls, feedback_id } = await req.json();
+    const { type, sender_name, sender_email, message, screenshot_urls, feedback_id, create_feedback } = await req.json();
 
+    let resolvedFeedbackId: string | null = typeof feedback_id === "string" && feedback_id.length > 0 ? feedback_id : null;
     if (!type || !sender_name || !message) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
@@ -43,8 +51,41 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const urls: string[] = Array.isArray(screenshot_urls) ? screenshot_urls : [];
-    console.log("Received feedback:", { type, sender_name, screenshot_count: urls.length, urls, feedback_id });
+    console.log("Received feedback:", { type, sender_name, screenshot_count: urls.length, urls, feedback_id: resolvedFeedbackId, create_feedback });
     const results: Record<string, unknown> = {};
+
+    // Optional server-side persistence fallback (for self-hosted schema drift / RLS mismatches)
+    if (!resolvedFeedbackId || create_feedback === true) {
+      try {
+        const supabase = createServiceRoleClient();
+        if (!supabase) {
+          results.feedback = { saved: false, error: "service_role_not_configured" };
+        } else {
+          const { data: inserted, error: insertError } = await supabase
+            .from("platform_feedback")
+            .insert({
+              type,
+              sender_name,
+              sender_email,
+              message,
+              screenshot_urls: urls,
+            })
+            .select("id")
+            .single();
+
+          if (insertError) {
+            console.error("Server-side feedback insert failed:", insertError.message);
+            results.feedback = { saved: false, error: insertError.message };
+          } else {
+            resolvedFeedbackId = inserted?.id ?? null;
+            results.feedback = { saved: true, feedback_id: resolvedFeedbackId };
+          }
+        }
+      } catch (e) {
+        console.error("Server-side feedback insert error:", (e as Error).message);
+        results.feedback = { saved: false, error: (e as Error).message };
+      }
+    }
 
     // 1. Post to Discord forum channel
     const channelId = FEEDBACK_FORUM_CHANNELS[type];
@@ -93,18 +134,20 @@ const handler = async (req: Request): Promise<Response> => {
           results.discord = { sent: true, thread_id: thread.id };
 
           // Save the Discord thread ID back to the feedback record
-          if (feedback_id && thread.id) {
+          if (resolvedFeedbackId && thread.id) {
             try {
-              const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-              const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-              const supabase = createClient(supabaseUrl, serviceRoleKey);
+              const supabase = createServiceRoleClient();
 
-              await supabase
-                .from("platform_feedback")
-                .update({ discord_thread_id: thread.id })
-                .eq("id", feedback_id);
+              if (supabase) {
+                await supabase
+                  .from("platform_feedback")
+                  .update({ discord_thread_id: thread.id })
+                  .eq("id", resolvedFeedbackId);
 
-              console.log("Saved discord_thread_id", thread.id, "to feedback", feedback_id);
+                console.log("Saved discord_thread_id", thread.id, "to feedback", resolvedFeedbackId);
+              } else {
+                console.error("Failed to save discord_thread_id: service role not configured");
+              }
             } catch (e) {
               console.error("Failed to save discord_thread_id:", (e as Error).message);
             }
