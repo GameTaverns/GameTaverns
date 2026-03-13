@@ -362,7 +362,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
             
             <TabsContent value="basics" className="space-y-4 mt-0">
               {/* Event Scope - only show when not locked to a specific library */}
-              {!isEditMode && myLibraries && myLibraries.length > 0 && (
+              {!isEditMode && (myLibraries?.length || myClubs?.length) && (
                 <div className="space-y-2">
                   <Label>Event Scope</Label>
                   <Select value={eventScope} onValueChange={(val) => {
@@ -374,7 +374,9 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
                       <div className="flex items-center gap-2">
                         {eventScope === "general" 
                           ? <Globe className="h-4 w-4 text-primary" />
-                          : <Library className="h-4 w-4 text-muted-foreground" />
+                          : isClubScope
+                            ? <Users className="h-4 w-4 text-muted-foreground" />
+                            : <Library className="h-4 w-4 text-muted-foreground" />
                         }
                         <SelectValue />
                       </div>
@@ -383,9 +385,14 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
                       <SelectItem value="general">
                         <span className="flex items-center gap-2">General (Community Event)</span>
                       </SelectItem>
-                      {myLibraries.map((lib: any) => (
+                      {myLibraries?.map((lib: any) => (
                         <SelectItem key={lib.id} value={lib.id}>
-                          <span className="flex items-center gap-2">{lib.name}</span>
+                          <span className="flex items-center gap-2">📚 {lib.name}</span>
+                        </SelectItem>
+                      ))}
+                      {myClubs?.map((club: any) => (
+                        <SelectItem key={`club:${club.id}`} value={`club:${club.id}`}>
+                          <span className="flex items-center gap-2">👥 {club.name} (Club)</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -393,7 +400,9 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
                   <p className="text-xs text-muted-foreground">
                     {eventScope === "general" 
                       ? "A standalone community event, not tied to any library." 
-                      : "This event will appear in the selected library and create a forum discussion."}
+                      : isClubScope
+                        ? "This event will be linked to the club's library and visible to club members."
+                        : "This event will appear in the selected library and create a forum discussion."}
                   </p>
                 </div>
               )}
