@@ -929,6 +929,9 @@ const GameDetail = () => {
                     catalogId={(game as any).catalog_id ?? null}
                     canManage={!!isLibraryOwner}
                   />
+                  {(game as any).catalog_id && (
+                    <InheritedCatalogDocuments catalogId={(game as any).catalog_id} />
+                  )}
                 </TabsContent>
               )}
 
