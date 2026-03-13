@@ -22,6 +22,7 @@ import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDia
 import { SmartPickerDialog } from "@/components/games/SmartPickerDialog";
 import { QuickAddGameDialog } from "@/components/games/QuickAddGameDialog";
 import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
+import { useMyClubs } from "@/hooks/useClubs";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +97,7 @@ export function HeaderDropdownNav() {
   const { isAuthenticated } = useAuth();
   const { data: library } = useMyLibrary();
   const { data: profile } = useUserProfile();
+  const { data: myClubs } = useMyClubs();
   const navigate = useNavigate();
   const [logPlayOpen, setLogPlayOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -124,6 +126,9 @@ export function HeaderDropdownNav() {
       items: [
         { href: getPlatformUrl("/directory"), label: t('nav.libraryDirectory', 'Library Directory'), icon: Globe },
         { href: getPlatformUrl("/clubs"), label: t('nav.clubDirectory', 'Club Directory'), icon: UserPlus },
+        ...((myClubs && myClubs.length > 0)
+          ? [{ href: getPlatformUrl(`/club/${myClubs[0].slug}`), label: t('nav.myClub', 'My Club'), icon: Users }]
+          : []),
         { href: getPlatformUrl("/near-me"), label: t('nav.nearMe', 'Near Me'), icon: MapPin },
         { separator: true, label: 's2', icon: Users },
         { href: getPlatformUrl("/community"), label: t('nav.forums', 'Community Forums'), icon: MessageSquarePlus },
