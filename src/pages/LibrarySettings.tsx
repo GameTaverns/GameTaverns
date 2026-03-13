@@ -12,7 +12,7 @@ import { getLibraryUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { Layout } from "@/components/layout/Layout";
 import { LibrarySettingsGeneral } from "@/components/settings/LibrarySettingsGeneral";
-import { LibraryThemeCustomizer } from "@/components/settings/LibraryThemeCustomizer";
+
 import { RatingsAdmin } from "@/components/settings/RatingsAdmin";
 import { WishlistAdmin } from "@/components/settings/WishlistAdmin";
 import { LibraryBranding } from "@/components/settings/LibraryBranding";
