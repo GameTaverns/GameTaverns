@@ -135,7 +135,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                 </TenantLink>
                 <TenantLink
                   href={getPlatformUrl("/login")}
-                  className="text-sm font-medium text-cream/70 hover:text-cream transition-colors px-2"
+                  className="text-sm font-medium text-cream hover:text-white transition-colors px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/90"
                 >
                   {t('nav.signIn')}
                 </TenantLink>
