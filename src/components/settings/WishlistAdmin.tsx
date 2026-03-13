@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
 import { Link } from "react-router-dom";
+import { useTenant } from "@/contexts/TenantContext";
 
 interface WishlistEntry {
   id: string;
