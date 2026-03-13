@@ -107,11 +107,23 @@ export default function ConventionHub() {
 
   // Use club libraries if available, otherwise fall back to event library
   const lendingLibraryIds = clubLibraryIds?.length ? clubLibraryIds : libraryId ? [libraryId] : [];
+  const lendingLibraryKey = lendingLibraryIds.sort().join(",");
 
   // Fetch games available for lending from all relevant libraries
   const { data: libraryGames = [] } = useQuery({
-    queryKey: ["convention-library-games", lendingLibraryIds],
+    queryKey: ["convention-library-games", lendingLibraryKey],
     queryFn: async () => {
+      if (lendingLibraryIds.length === 1) {
+        // Use .eq for single library (more compatible)
+        const { data, error } = await supabase
+          .from("games")
+          .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, copies_owned, weight, library_id")
+          .eq("library_id", lendingLibraryIds[0])
+          .eq("ownership_status", "owned")
+          .order("title");
+        if (error) throw error;
+        return data || [];
+      }
       const { data, error } = await supabase
         .from("games")
         .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, copies_owned, weight, library_id")
