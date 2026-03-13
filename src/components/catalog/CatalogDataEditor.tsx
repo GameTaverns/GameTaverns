@@ -6,10 +6,27 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Settings2, Save, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+const EXPANSION_TYPES = [
+  { value: "expansion", label: "Expansion" },
+  { value: "promo", label: "Promo" },
+  { value: "accessory", label: "Accessory" },
+  { value: "scenario", label: "Scenario" },
+  { value: "mini_expansion", label: "Mini Expansion" },
+];
+
+const SCORING_TYPES = [
+  { value: "highest_wins", label: "Highest Score Wins" },
+  { value: "lowest_wins", label: "Lowest Score Wins" },
+  { value: "win_lose", label: "Win / Lose (no score)" },
+  { value: "cooperative", label: "Cooperative" },
+  { value: "no_score", label: "No Scoring" },
+];
 
 interface CatalogDataEditorProps {
   catalogId: string;
@@ -25,6 +42,8 @@ interface CatalogDataEditorProps {
     description: string | null;
     image_url: string | null;
     bgg_id: string | null;
+    expansion_type?: string;
+    scoring_type?: string;
   };
 }
 
@@ -36,6 +55,8 @@ export function CatalogDataEditor({ catalogId, currentData }: CatalogDataEditorP
 
   const [title, setTitle] = useState(currentData.title);
   const [isExpansion, setIsExpansion] = useState(currentData.is_expansion);
+  const [expansionType, setExpansionType] = useState(currentData.expansion_type ?? "expansion");
+  const [scoringType, setScoringType] = useState(currentData.scoring_type ?? "highest_wins");
   const [minPlayers, setMinPlayers] = useState(currentData.min_players?.toString() ?? "");
   const [maxPlayers, setMaxPlayers] = useState(currentData.max_players?.toString() ?? "");
   const [playTime, setPlayTime] = useState(currentData.play_time_minutes?.toString() ?? "");
@@ -53,6 +74,8 @@ export function CatalogDataEditor({ catalogId, currentData }: CatalogDataEditorP
         .update({
           title,
           is_expansion: isExpansion,
+          expansion_type: isExpansion ? expansionType : "expansion",
+          scoring_type: scoringType,
           min_players: minPlayers ? parseInt(minPlayers) : null,
           max_players: maxPlayers ? parseInt(maxPlayers) : null,
           play_time_minutes: playTime ? parseInt(playTime) : null,
@@ -99,6 +122,36 @@ export function CatalogDataEditor({ catalogId, currentData }: CatalogDataEditorP
             <div className="flex items-center gap-3">
               <Switch id="cat-expansion" checked={isExpansion} onCheckedChange={setIsExpansion} />
               <Label htmlFor="cat-expansion">Is Expansion</Label>
+            </div>
+
+            {isExpansion && (
+              <div className="space-y-1">
+                <Label>Expansion Type</Label>
+                <Select value={expansionType} onValueChange={setExpansionType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXPANSION_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <Label>Scoring Type</Label>
+              <Select value={scoringType} onValueChange={setScoringType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SCORING_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
