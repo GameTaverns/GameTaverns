@@ -361,27 +361,26 @@ export function useSubmitFeedback() {
         return;
       }
 
-      // Save to database
-      // Note: We don't use .select().single() because non-admin users lack SELECT permission
-      const { error } = await supabase
-        .from("platform_feedback")
-        .insert({
-          type: feedback.type as any,
-          sender_name: feedback.sender_name,
-          sender_email: feedback.sender_email,
-          message: feedback.message,
-          screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : [],
+      // Save to database via SECURITY DEFINER function (bypasses SELECT RLS restriction)
+      const { data: feedbackId, error } = await supabase
+        .rpc("insert_platform_feedback", {
+          _type: feedback.type,
+          _sender_name: feedback.sender_name,
+          _sender_email: feedback.sender_email,
+          _message: feedback.message,
+          _screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : [],
         });
 
       if (error) throw error;
 
-      // Fire-and-forget: notify admins via Discord + email
+      // Fire-and-forget: notify admins via Discord + email (pass feedback_id so thread ID is saved back)
       void invokeBackendFunction("notify-feedback", {
         type: feedback.type,
         sender_name: feedback.sender_name,
         sender_email: feedback.sender_email,
         message: feedback.message,
         screenshot_urls: screenshotUrls,
+        feedback_id: feedbackId,
       });
     },
   });
