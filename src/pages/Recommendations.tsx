@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Gamepad2, Users, Puzzle, LogIn } from "lucide-react";
+import { Sparkles, Gamepad2, Users, Puzzle, LogIn, Library } from "lucide-react";
 
 const ARCHETYPE_EMOJI: Record<string, string> = {
   "Grand Strategist": "♟️",
