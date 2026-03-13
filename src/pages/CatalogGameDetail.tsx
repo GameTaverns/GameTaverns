@@ -145,7 +145,7 @@ export default function CatalogGameDetail() {
       if (!data) return null;
 
       // Fetch related data in parallel
-      const [designersRes, artistsRes, mechanicsRes, publishersRes, expansionsRes, parentRes, ratingsRes] = await Promise.all([
+      const [designersRes, artistsRes, mechanicsRes, publishersRes, expansionsRes, parentRes, ratingsRes, genresRes] = await Promise.all([
         supabase.from("catalog_designers").select("designer:designers(name)").eq("catalog_id", data.id),
         supabase.from("catalog_artists").select("artist:artists(name)").eq("catalog_id", data.id),
         supabase.from("catalog_mechanics").select("mechanic:mechanics(name)").eq("catalog_id", data.id),
@@ -155,6 +155,7 @@ export default function CatalogGameDetail() {
           ? supabase.from("game_catalog").select("id, title, slug").eq("id", data.parent_catalog_id).maybeSingle()
           : Promise.resolve({ data: null }),
         supabase.from("catalog_ratings_summary").select("visitor_average, visitor_count").eq("catalog_id", data.id).maybeSingle(),
+        (supabase as any).from("catalog_genres").select("genre").eq("catalog_id", data.id).order("genre"),
       ]);
 
       const ratingRow = ratingsRes.data;
