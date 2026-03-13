@@ -236,7 +236,7 @@ export function DashboardSidebar() {
     <div className="space-y-4">
       <MyStatsWidget />
       <UpcomingEventsWidget />
-      <CommunityWidget />
+      <LatestNewsWidget />
       <HotGamesWidget />
     </div>
   );
