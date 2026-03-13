@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { ExternalLink } from "@/components/a11y/ExternalLink";
-import cbgLogo from "@/assets/cbg-logo.jpg";
+import cbgLogo from "@/assets/cbg-logo.png";
 
 const BGG_LOGO_SRC = "/bgg-logo.svg";
 
