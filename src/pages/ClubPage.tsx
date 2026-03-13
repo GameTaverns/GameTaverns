@@ -347,6 +347,7 @@ export default function ClubPage() {
                   open={createEventOpen}
                   onOpenChange={setCreateEventOpen}
                   libraryId={clubLibraries[0]?.library_id}
+                  clubId={club.id}
                 />
               </div>
             )}

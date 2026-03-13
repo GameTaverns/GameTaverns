@@ -157,10 +157,12 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
   
   // When the prop changes, sync the scope
   useEffect(() => {
-    if (propLibraryId) {
+    if (propClubId) {
+      setEventScope(`club:${propClubId}`);
+    } else if (propLibraryId) {
       setEventScope(propLibraryId);
     }
-  }, [propLibraryId]);
+  }, [propLibraryId, propClubId]);
   
   useEffect(() => {
     if (!open) return;
