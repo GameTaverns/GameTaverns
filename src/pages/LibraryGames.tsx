@@ -170,7 +170,7 @@ export default function LibraryGames() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="w-full h-auto flex-wrap gap-1 p-1">
             <TabsTrigger value="add" className="gap-2">
-              <Plus className="h-4 w-4" />
+              <Search className="h-4 w-4" />
               {t('libraryGames.quickAdd')}
             </TabsTrigger>
             <TabsTrigger value="import" className="gap-2">
