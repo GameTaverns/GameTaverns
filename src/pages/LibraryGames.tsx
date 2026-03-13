@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout/Layout";
-import { GameUrlImport } from "@/components/games/GameUrlImport";
+import { CatalogSearchAdd } from "@/components/games/CatalogSearchAdd";
 import { BulkImportDialog } from "@/components/games/BulkImportDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
