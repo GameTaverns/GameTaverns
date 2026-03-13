@@ -130,7 +130,7 @@ export function ConventionLendingDesk({ event, activeLoans, libraryGames, conven
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Search by game name, scan an attendee badge, or scan a game barcode
+            Search by game name or scan a UPC barcode
           </p>
           {filteredGames.length > 0 && !selectedGame && (
             <div className="mt-3 max-h-48 overflow-y-auto space-y-1 border rounded-lg p-2 bg-background">

@@ -89,20 +89,39 @@ export default function ConventionHub() {
     refetchInterval: 15000,
   });
 
-  // Fetch games available for lending from the library
+  // Fetch all library IDs associated with the club (if club-based), otherwise just the event's library
+  const clubId = (event as any)?.convention_event?.club_id;
+  
+  const { data: clubLibraryIds } = useQuery({
+    queryKey: ["convention-club-libraries", clubId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("club_libraries")
+        .select("library_id")
+        .eq("club_id", clubId!);
+      if (error) throw error;
+      return data?.map(cl => cl.library_id) || [];
+    },
+    enabled: !!clubId,
+  });
+
+  // Use club libraries if available, otherwise fall back to event library
+  const lendingLibraryIds = clubLibraryIds?.length ? clubLibraryIds : libraryId ? [libraryId] : [];
+
+  // Fetch games available for lending from all relevant libraries
   const { data: libraryGames = [] } = useQuery({
-    queryKey: ["convention-library-games", libraryId],
+    queryKey: ["convention-library-games", lendingLibraryIds],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, copies_owned, weight")
-        .eq("library_id", libraryId!)
+        .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, copies_owned, weight, library_id")
+        .in("library_id", lendingLibraryIds)
         .eq("ownership_status", "owned")
         .order("title");
       if (error) throw error;
       return data || [];
     },
-    enabled: !!libraryId,
+    enabled: lendingLibraryIds.length > 0,
   });
 
   if (eventLoading) {
