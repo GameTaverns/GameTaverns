@@ -16,6 +16,36 @@ import { DashboardActivityFeed } from "@/components/dashboard/DashboardActivityF
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import tavernBg from "@/assets/tavern-bg.jpg";
 
+const MOTIVATIONAL_MESSAGES = [
+  "Every game night is a memory waiting to happen. 🎲",
+  "Life's too short for boring games — play something epic today!",
+  "A good board game brings people together. What will you play next?",
+  "Your shelf of opportunity awaits. Time to roll the dice! 🎯",
+  "Great adventures start at the table. Gather your crew!",
+  "The best strategy? Making time to play. ♟️",
+  "Cardboard, dice, and good company — the recipe for a perfect evening.",
+  "Your next favorite game might already be on your shelf.",
+  "No screens needed — just friends, snacks, and a great game. 🍕",
+  "Board games: where legends are made and friendships are tested. 😄",
+  "Today's a great day to learn a new game!",
+  "Roll high, play bold, and have fun. That's the only rule that matters.",
+  "Somewhere out there, a meeple believes in you. 🫡",
+  "May your dice be ever in your favor.",
+  "Shuffle the deck. Set the board. Let the adventure begin!",
+];
+
+function MotivationalMessage() {
+  const message = useMemo(() => {
+    // Rotate daily based on the date
+    const dayIndex = Math.floor(Date.now() / 86400000) % MOTIVATIONAL_MESSAGES.length;
+    return MOTIVATIONAL_MESSAGES[dayIndex];
+  }, []);
+
+  return (
+    <p className="text-sm text-muted-foreground italic">{message}</p>
+  );
+}
+
 export default function Dashboard() {
   const { t } = useTranslation();
   const { user, isAuthenticated, loading } = useAuth();
