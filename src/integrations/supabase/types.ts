@@ -6812,6 +6812,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      insert_platform_feedback: {
+        Args: {
+          _message: string
+          _screenshot_urls?: string[]
+          _sender_email: string
+          _sender_name: string
+          _type: string
+        }
+        Returns: string
+      }
       is_account_locked: { Args: { _email: string }; Returns: boolean }
       is_admin_email_allowed: { Args: { _email: string }; Returns: boolean }
       is_club_member: {
