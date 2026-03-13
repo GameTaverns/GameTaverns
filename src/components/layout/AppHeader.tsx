@@ -20,6 +20,7 @@ import { NotificationsDropdown } from "@/components/notifications/NotificationsD
 import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { MobileNavDrawer } from "@/components/mobile/MobileNavDrawer";
+import { HeaderDropdownNav, HeaderQuickActions } from "@/components/layout/HeaderDropdownNav";
 
 interface AppHeaderProps {
   onMenuClick?: () => void;
@@ -47,6 +48,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
     <header className="border-b border-wood-medium/50 bg-wood-dark/95 sticky top-0 z-30">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
+          {/* Left: Logo + Dropdown Nav */}
           <div className="flex items-center gap-2">
             {showMenuToggle && onMenuClick && (
               <Button
@@ -58,40 +60,32 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                 <Menu className="h-5 w-5" />
               </Button>
             )}
-            {/* Logo always uses TenantLink to stay within native router */}
+            {/* Logo */}
             <TenantLink href={getPlatformUrl("/dashboard")} className="flex items-center gap-2">
               <img src={logoImage} alt="GameTaverns" className="h-7 sm:h-8 w-auto" />
               <span className="font-display text-base sm:text-lg font-bold text-cream">
                 GameTaverns
               </span>
             </TenantLink>
+
+            {/* Dropdown menus — desktop only */}
+            <div className="hidden md:flex items-center ml-2">
+              <div className="h-4 w-px bg-wood-medium/40 mr-1" />
+              <HeaderDropdownNav />
+            </div>
           </div>
 
+          {/* Right: Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Desktop nav links — hidden on small screens */}
-            {isAuthenticated && (
-              <>
-                <div className="h-4 w-px bg-wood-medium/40 hidden md:block" />
-              </>
-            )}
-
             <LanguageSwitcher />
             <ThemeToggle />
 
-            {/* Icons visible on all sizes on desktop; hidden on mobile (handled by drawer) */}
             {isAuthenticated && (
               <>
-                {/* Dashboard link — always visible for authenticated users */}
-                <TenantLink
-                  href={getPlatformUrl("/dashboard")}
-                  className="hidden md:inline-flex relative text-cream hover:text-white transition-colors"
-                >
-                  <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
-                    <LayoutDashboard className="h-5 w-5" />
-                  </Button>
-                </TenantLink>
+                {/* Quick Actions (⚡) */}
+                <HeaderQuickActions />
 
-                {/* Direct Messages icon — desktop only; drawer handles mobile */}
+                {/* Direct Messages */}
                 <TenantLink
                   href={getPlatformUrl("/dm")}
                   className="hidden md:inline-flex relative text-cream hover:text-white transition-colors"
@@ -105,7 +99,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     )}
                   </Button>
                 </TenantLink>
-
 
                 <NotificationsDropdown variant="dashboard" />
 
@@ -140,10 +133,8 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
               </>
             )}
 
-            {/* Mobile hamburger drawer */}
-            <div className="md:hidden">
-              <MobileNavDrawer />
-            </div>
+            {/* Hamburger drawer — always available */}
+            <MobileNavDrawer />
           </div>
         </div>
       </div>
