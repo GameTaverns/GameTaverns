@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { FeedbackNavItem } from "@/components/feedback/FeedbackNavItem";
 import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDialog";
 import { SmartPickerDialog } from "@/components/games/SmartPickerDialog";
+import { QuickAddGameDialog } from "@/components/games/QuickAddGameDialog";
 
 interface MobileNavDrawerProps {
   trigger?: React.ReactNode;
@@ -141,6 +142,14 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                   <span>{t('nav.randomPicker', 'Random Picker')}</span>
                 </button>
               </SmartPickerDialog>
+              <QuickAddGameDialog>
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  <PlusCircle className="h-4 w-4 shrink-0" />
+                  <span>{t('nav.addGame', 'Add Game')}</span>
+                </button>
+              </QuickAddGameDialog>
               <button
                 onClick={() => navAndClose(getPlatformUrl("/create-library"))}
                 className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"

@@ -20,6 +20,7 @@ import { TenantLink } from "@/components/TenantLink";
 import { getPlatformUrl, getLibraryUrl } from "@/hooks/useTenantUrl";
 import { StandaloneLogPlayDialog } from "@/components/games/StandaloneLogPlayDialog";
 import { SmartPickerDialog } from "@/components/games/SmartPickerDialog";
+import { QuickAddGameDialog } from "@/components/games/QuickAddGameDialog";
 import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -98,6 +99,7 @@ export function HeaderDropdownNav() {
   const navigate = useNavigate();
   const [logPlayOpen, setLogPlayOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [addGameOpen, setAddGameOpen] = useState(false);
 
   if (!isAuthenticated) return null;
 
@@ -146,6 +148,7 @@ export function HeaderDropdownNav() {
       items: [
         { onClick: () => setLogPlayOpen(true), label: t('nav.logPlay', 'Log a Play'), icon: ClipboardList },
         { onClick: () => setPickerOpen(true), label: t('nav.randomPicker', 'Random Picker'), icon: Dice5 },
+        { onClick: () => setAddGameOpen(true), label: t('nav.addGame', 'Add Game'), icon: PlusCircle },
         { href: getPlatformUrl("/create-library"), label: t('nav.createLibrary', 'Create Library'), icon: PlusCircle },
       ],
     },
@@ -174,6 +177,7 @@ export function HeaderDropdownNav() {
       </nav>
       <StandaloneLogPlayDialog open={logPlayOpen} onOpenChange={setLogPlayOpen} />
       <SmartPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} />
+      <QuickAddGameDialog open={addGameOpen} onOpenChange={setAddGameOpen} />
     </>
   );
 }
