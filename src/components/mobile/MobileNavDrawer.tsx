@@ -124,13 +124,14 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
             <>
               {/* Quick Actions */}
               <SectionHeader label={t('nav.quickActions', 'Quick Actions')} />
-              <button
-                onClick={() => navAndClose(getPlatformUrl("/dashboard/collection"))}
-                className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <ClipboardList className="h-4 w-4 shrink-0" />
-                <span>{t('nav.logPlay', 'Log a Play')}</span>
-              </button>
+              <StandaloneLogPlayDialog>
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  <ClipboardList className="h-4 w-4 shrink-0" />
+                  <span>{t('nav.logPlay', 'Log a Play')}</span>
+                </button>
+              </StandaloneLogPlayDialog>
               <button
                 onClick={() => navAndClose(getPlatformUrl("/picker"))}
                 className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
