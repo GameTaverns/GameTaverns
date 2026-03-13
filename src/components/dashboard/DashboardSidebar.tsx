@@ -220,7 +220,7 @@ function LatestNewsWidget() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("news_articles")
-        .select("id, title, slug, source_name, published_at, image_url")
+        .select("id, title, slug, published_at, image_url, source:news_sources(name)")
         .eq("status", "published")
         .order("published_at", { ascending: false })
         .limit(4);
