@@ -376,7 +376,7 @@ export function useGame(slugOrId: string | undefined) {
 
       if (mechanicsError) throw mechanicsError;
 
-      const mechanics =
+      let mechanics: Mechanic[] =
         gameMechanics?.map((gm: { mechanic: Mechanic | null }) => gm.mechanic).filter((m): m is Mechanic => m !== null) || [];
 
       // Fetch designers
