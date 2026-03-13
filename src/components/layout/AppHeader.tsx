@@ -20,7 +20,7 @@ import { NotificationsDropdown } from "@/components/notifications/NotificationsD
 import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { MobileNavDrawer } from "@/components/mobile/MobileNavDrawer";
-import { HeaderDropdownNav, HeaderQuickActions } from "@/components/layout/HeaderDropdownNav";
+import { HeaderDropdownNav } from "@/components/layout/HeaderDropdownNav";
 
 interface AppHeaderProps {
   onMenuClick?: () => void;
