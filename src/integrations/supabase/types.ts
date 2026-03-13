@@ -1312,6 +1312,47 @@ export type Database = {
           },
         ]
       }
+      convention_staff: {
+        Row: {
+          assigned_by: string | null
+          convention_event_id: string
+          created_at: string
+          display_name: string | null
+          id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          convention_event_id: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          convention_event_id?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convention_staff_convention_event_id_fkey"
+            columns: ["convention_event_id"]
+            isOneToOne: false
+            referencedRelation: "convention_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       curated_list_items: {
         Row: {
           created_at: string
@@ -6965,6 +7006,14 @@ export type Database = {
       }
       is_club_owner: {
         Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_convention_staff: {
+        Args: { _convention_event_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_convention_staff_by_event: {
+        Args: { _event_id: string; _user_id: string }
         Returns: boolean
       }
       is_library_co_owner: {
