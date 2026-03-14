@@ -1112,10 +1112,13 @@ const handler = async (req: Request): Promise<Response> => {
 
         const classifyPrompt = `Classify each board game into exactly ONE genre from this list: ${VALID_GENRES.join(", ")}.
 
+IMPORTANT: Use "Other" ONLY if the game truly does not fit any other genre. Prefer a specific genre whenever possible.
+
 Games to classify:
 ${gamesPayload.map(g => `[${g.idx}] "${g.title}": ${g.desc}`).join("\n\n")}
 
-Return ONLY a JSON array of objects with "idx" and "genre" fields. Example: [{"idx":0,"genre":"Fantasy"},{"idx":1,"genre":"Economic"}]
+Return ONLY a JSON array of objects with "idx" and "genre" fields. The genre MUST be exactly one from the list above.
+Example: [{"idx":0,"genre":"Fantasy"},{"idx":1,"genre":"Economic"}]
 Do NOT include any other text.`;
 
         try {
