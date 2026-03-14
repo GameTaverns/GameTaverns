@@ -260,7 +260,7 @@ export default function CatalogGameDetail() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 min-w-0">
           {/* Image Gallery */}
           {(() => {
             // Build gallery: primary image + additional, sanitized and deduplicated
@@ -353,8 +353,8 @@ export default function CatalogGameDetail() {
           })()}
 
           {/* Details */}
-          <div>
-            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
+          <div className="min-w-0 overflow-x-hidden">
+            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2 break-words">
               {game.title}
             </h1>
 
@@ -495,7 +495,7 @@ export default function CatalogGameDetail() {
             </div>
 
             {/* Tabs */}
-            <Tabs value={catalogTab} onValueChange={setCatalogTab} className="w-full">
+            <Tabs value={catalogTab} onValueChange={setCatalogTab} className="w-full overflow-x-hidden">
               <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4">
                  <TabsTrigger value="description">{t('catalog.description')}</TabsTrigger>
                  <TabsTrigger value="info">{t('catalog.info')}</TabsTrigger>
