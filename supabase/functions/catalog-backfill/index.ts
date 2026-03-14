@@ -1126,7 +1126,12 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const hasMore = expansions.length === batchSize;
-      const nextOffset = dryRun ? offset + batchSize : undefined;
+      const noProgress = !dryRun && linked === 0;
+      // In live mode we normally keep offset=0 so linked rows "fall out" of the first page.
+      // But if a full batch links nothing, we'd keep re-reading the same 1000 rows forever.
+      // In that case, advance offset to continue scanning.
+      const nextOffset = (dryRun || noProgress) && hasMore ? offset + batchSize : undefined;
+
       return new Response(JSON.stringify({
         success: true,
         mode: "link-expansions",
