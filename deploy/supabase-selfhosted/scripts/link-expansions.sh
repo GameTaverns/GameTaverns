@@ -93,10 +93,6 @@ for s in d.get('sample_no_match', [])[:3]:
 " 2>/dev/null || true
 
   if [ "$HAS_MORE" != "True" ]; then
-    # Advance offset for dry-run pagination
-    if [ -n "$NEXT_OFFSET" ]; then
-      OFFSET=$NEXT_OFFSET
-    fi
     echo ""
     echo "============================================"
     echo "🎉 COMPLETE!"
@@ -105,6 +101,11 @@ for s in d.get('sample_no_match', [])[:3]:
     echo "Finished: $(date)"
     echo "============================================"
     break
+  fi
+
+  # Advance offset for dry-run pagination (live mode auto-advances via DB updates)
+  if [ -n "$NEXT_OFFSET" ]; then
+    OFFSET=$NEXT_OFFSET
   fi
 
   sleep 1
