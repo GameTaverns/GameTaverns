@@ -80,16 +80,35 @@ export function useConventionRealtime(libraryId: string | undefined, conventionE
 
 /**
  * Fetch ALL loans for a library (active + returned) for historical analytics.
+ * Optionally scoped to a date range (e.g. convention start/end) so loans
+ * from other events on the same library are excluded.
  */
-export function useConventionAllLoans(libraryId: string | undefined) {
+export function useConventionAllLoans(
+  libraryId: string | undefined,
+  eventStartDate?: string | null,
+  eventEndDate?: string | null,
+) {
   return useQuery({
-    queryKey: ["convention-all-loans", libraryId],
+    queryKey: ["convention-all-loans", libraryId, eventStartDate, eventEndDate],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("club_loans")
         .select("*, game:games(id, title, slug, image_url, copies_owned)")
         .eq("library_id", libraryId!)
         .order("checked_out_at", { ascending: false });
+
+      // Scope to the convention's date range when available
+      if (eventStartDate) {
+        query = query.gte("checked_out_at", eventStartDate);
+      }
+      if (eventEndDate) {
+        // Add a day buffer to include checkouts on the last day
+        const endBuffer = new Date(eventEndDate);
+        endBuffer.setDate(endBuffer.getDate() + 1);
+        query = query.lt("checked_out_at", endBuffer.toISOString());
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },

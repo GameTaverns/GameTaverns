@@ -17,8 +17,12 @@ interface Props {
 }
 
 export function ConventionAnalytics({ event, activeLoans, libraryGames }: Props) {
-  // Fetch ALL loans (active + returned) for lifetime stats
-  const { data: allLoans = [] } = useConventionAllLoans(event?.library_id);
+  // Fetch ALL loans (active + returned) scoped to this convention's date range
+  const { data: allLoans = [] } = useConventionAllLoans(
+    event?.library_id,
+    event?.event_date,
+    event?.end_date,
+  );
 
   const totalGames = libraryGames.length;
   const totalCopies = libraryGames.reduce((sum: number, g: any) => sum + (g.copies_owned || 1), 0);
