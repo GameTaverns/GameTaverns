@@ -1145,11 +1145,15 @@ Do NOT include any other text.`;
           for (const result of genreResults) {
             const entry = subBatch[result.idx];
             if (!entry) continue;
-            // Try exact match first, then alias lookup
+            // Try exact match first, then normalized alias lookup
             const rawGenre = (result.genre || "").trim();
-            let matchedGenre = VALID_GENRES.find(g => g.toLowerCase() === rawGenre.toLowerCase());
+            const normalizedRawGenre = normalizeGenreKey(rawGenre);
+            let matchedGenre = VALID_GENRES.find((g) => normalizeGenreKey(g) === normalizedRawGenre);
             if (!matchedGenre) {
-              matchedGenre = GENRE_ALIASES[rawGenre.toLowerCase()] || null;
+              matchedGenre = GENRE_ALIASES[normalizedRawGenre] || null;
+            }
+            if (!matchedGenre && normalizedRawGenre.includes("'")) {
+              matchedGenre = GENRE_ALIASES[normalizedRawGenre.replace(/'/g, "")] || null;
             }
             if (!matchedGenre) {
               genreErrors.push(`Invalid genre "${result.genre}" for "${entry.title}"`);
