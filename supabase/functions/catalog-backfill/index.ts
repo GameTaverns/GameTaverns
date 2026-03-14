@@ -1079,14 +1079,20 @@ const handler = async (req: Request): Promise<Response> => {
       };
 
       // Fetch unclassified catalog entries
-      const { data: entries, error: gFetchErr } = await admin
+      const includeExpansions = body.include_expansions === true;
+      let genreQuery = admin
         .from("game_catalog")
         .select("id, title, description")
         .is("genre", null)
-        .eq("is_expansion", false)
         .not("description", "is", null)
         .order("created_at", { ascending: true })
         .limit(genreBatchSize);
+
+      if (!includeExpansions) {
+        genreQuery = genreQuery.eq("is_expansion", false);
+      }
+
+      const { data: entries, error: gFetchErr } = await genreQuery;
 
       if (gFetchErr) throw gFetchErr;
       if (!entries || entries.length === 0) {
