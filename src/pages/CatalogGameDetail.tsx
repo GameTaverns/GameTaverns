@@ -260,7 +260,7 @@ export default function CatalogGameDetail() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 min-w-0">
           {/* Image Gallery */}
           {(() => {
             // Build gallery: primary image + additional, sanitized and deduplicated
