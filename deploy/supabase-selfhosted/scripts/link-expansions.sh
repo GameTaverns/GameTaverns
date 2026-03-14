@@ -40,6 +40,7 @@ echo ""
 TOTAL_LINKED=0
 TOTAL_NO_MATCH=0
 BATCH_NUM=0
+OFFSET=0
 
 while true; do
   BATCH_NUM=$((BATCH_NUM + 1))
@@ -52,7 +53,7 @@ while true; do
     -H "Content-Type: application/json" \
     -H "apikey: $SERVICE_ROLE_KEY" \
     -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-    -d "{\"mode\": \"link-expansions\", \"batch_size\": $BATCH_SIZE, \"dry_run\": $DRY_RUN}" 2>&1)
+    -d "{\"mode\": \"link-expansions\", \"batch_size\": $BATCH_SIZE, \"dry_run\": $DRY_RUN, \"offset\": $OFFSET}" 2>&1)
 
   CURL_EXIT=$?
   if [ $CURL_EXIT -ne 0 ]; then
@@ -73,6 +74,7 @@ while true; do
   NO_MATCH=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('no_match', 0))" 2>/dev/null || echo "0")
   HAS_MORE=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('hasMore', False))" 2>/dev/null || echo "False")
   IS_DRY=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('dry_run', False))" 2>/dev/null || echo "False")
+  NEXT_OFFSET=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); v=d.get('next_offset'); print(v if v is not None else '')" 2>/dev/null || echo "")
 
   TOTAL_LINKED=$((TOTAL_LINKED + LINKED))
   TOTAL_NO_MATCH=$((TOTAL_NO_MATCH + NO_MATCH))
@@ -99,6 +101,11 @@ for s in d.get('sample_no_match', [])[:3]:
     echo "Finished: $(date)"
     echo "============================================"
     break
+  fi
+
+  # Advance offset for dry-run pagination (live mode auto-advances via DB updates)
+  if [ -n "$NEXT_OFFSET" ]; then
+    OFFSET=$NEXT_OFFSET
   fi
 
   sleep 1
