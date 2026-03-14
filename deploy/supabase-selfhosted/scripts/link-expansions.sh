@@ -74,6 +74,7 @@ while true; do
   NO_MATCH=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('no_match', 0))" 2>/dev/null || echo "0")
   HAS_MORE=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('hasMore', False))" 2>/dev/null || echo "False")
   IS_DRY=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('dry_run', False))" 2>/dev/null || echo "False")
+  NEXT_OFFSET=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); v=d.get('next_offset'); print(v if v is not None else '')" 2>/dev/null || echo "")
 
   TOTAL_LINKED=$((TOTAL_LINKED + LINKED))
   TOTAL_NO_MATCH=$((TOTAL_NO_MATCH + NO_MATCH))
