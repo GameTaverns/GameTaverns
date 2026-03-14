@@ -40,6 +40,7 @@ echo ""
 TOTAL_LINKED=0
 TOTAL_NO_MATCH=0
 BATCH_NUM=0
+OFFSET=0
 
 while true; do
   BATCH_NUM=$((BATCH_NUM + 1))
@@ -52,7 +53,7 @@ while true; do
     -H "Content-Type: application/json" \
     -H "apikey: $SERVICE_ROLE_KEY" \
     -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-    -d "{\"mode\": \"link-expansions\", \"batch_size\": $BATCH_SIZE, \"dry_run\": $DRY_RUN}" 2>&1)
+    -d "{\"mode\": \"link-expansions\", \"batch_size\": $BATCH_SIZE, \"dry_run\": $DRY_RUN, \"offset\": $OFFSET}" 2>&1)
 
   CURL_EXIT=$?
   if [ $CURL_EXIT -ne 0 ]; then
