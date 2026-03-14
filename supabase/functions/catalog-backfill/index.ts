@@ -1002,67 +1002,80 @@ const handler = async (req: Request): Promise<Response> => {
       const VALID_GENRES = [
         "Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure",
         "Economic", "Abstract", "Humor", "Nature", "War", "Political",
-        "Exploration", "Civilization", "Party", "Trivia", "Word", "Puzzle",
-        "Racing", "Sports", "Crime", "Mythology", "Pirates", "Western",
-        "Medieval", "Ancient", "Modern", "Religious", "Educational",
-        "City Building", "Farming", "Animals", "Space", "Nautical",
-        "Steampunk", "Post-Apocalyptic", "Espionage", "Zombies",
-        "Miniatures", "Card Game", "Dice", "Cooperative", "Deduction",
-        "Bluffing", "Fighting", "Train", "Aviation", "Industry",
+        "Party", "Trivia", "Sports", "Educational", "Cooperative", "Other",
       ];
 
       const normalizeGenreKey = (value: string) =>
         value
           .toLowerCase()
           .trim()
-          .replace(/[’]/g, "'")
+          .replace(/['\u2019]/g, "'")
           .replace(/[^a-z0-9\s'-]/g, " ")
           .replace(/\s+/g, " ");
 
-      // Aliases for common AI mismatches
+      // Aliases: everything funnels into the 18 valid genres
       const GENRE_ALIASES: Record<string, string> = {
-        "science fiction": "Sci-Fi", "scifi": "Sci-Fi", "sci fi": "Sci-Fi",
-        "strategy": "Economic", "euro": "Economic", "resource management": "Economic",
-        "comedy": "Humor", "comedic": "Humor", "funny": "Humor", "humorous": "Humor",
-        "wargame": "War", "military": "War", "warfare": "War", "combat": "War",
-        "detective": "Mystery", "investigation": "Mystery",
-        "negotiation": "Political", "diplomacy": "Political",
-        "survival": "Adventure", "dungeon": "Fantasy", "magic": "Fantasy",
+        // Sci-Fi bucket
+        "science fiction": "Sci-Fi", "scifi": "Sci-Fi", "sci fi": "Sci-Fi", "sci-fi": "Sci-Fi",
+        "space": "Sci-Fi", "steampunk": "Sci-Fi", "cyberpunk": "Sci-Fi",
+        "post-apocalyptic": "Sci-Fi", "apocalyptic": "Sci-Fi",
+        // Fantasy bucket
+        "mythology": "Fantasy", "myth": "Fantasy", "mythological": "Fantasy",
+        "fairy tale": "Fantasy", "dungeon": "Fantasy", "magic": "Fantasy",
+        "medieval": "Fantasy", "middle ages": "Fantasy", "dungeon crawler": "Fantasy",
+        // Historical bucket
+        "ancient": "Historical", "antiquity": "Historical", "modern": "Historical",
+        "western": "Historical", "wild west": "Historical", "religious": "Historical",
+        "civilization": "Historical", "civ": "Historical",
+        // Horror bucket
+        "zombies": "Horror", "zombie": "Horror", "undead": "Horror",
         "cthulhu": "Horror", "lovecraft": "Horror", "gothic": "Horror",
-        "nautical": "Nautical", "sailing": "Nautical", "pirate": "Pirates",
-        "farming": "Farming", "agriculture": "Farming",
-        "animal": "Animals", "wildlife": "Animals", "dinosaur": "Animals",
-        "city building": "City Building", "urban": "City Building",
-        "train": "Train", "railroad": "Train", "railway": "Train",
-        "racing": "Racing", "race": "Racing",
-        "sports": "Sports", "sport": "Sports",
-        "educational": "Educational", "learning": "Educational",
-        "cooperative": "Cooperative", "co-op": "Cooperative", "coop": "Cooperative",
-        "deduction": "Deduction", "social deduction": "Deduction",
-        "bluffing": "Bluffing", "bluff": "Bluffing",
-        "fighting": "Fighting", "martial arts": "Fighting",
-        "puzzle": "Puzzle", "brain teaser": "Puzzle",
-        "trivia": "Trivia", "quiz": "Trivia",
-        "word game": "Word", "word": "Word", "vocabulary": "Word",
+        // Mystery bucket
+        "crime": "Mystery", "criminal": "Mystery", "heist": "Mystery",
+        "espionage": "Mystery", "spy": "Mystery", "spies": "Mystery",
+        "deduction": "Mystery", "social deduction": "Mystery",
+        "detective": "Mystery", "investigation": "Mystery",
+        // Adventure bucket
+        "exploration": "Adventure", "explore": "Adventure", "travel": "Adventure",
+        "survival": "Adventure", "pirates": "Adventure", "pirate": "Adventure",
+        "nautical": "Adventure", "sailing": "Adventure",
+        // Economic bucket
+        "strategy": "Economic", "euro": "Economic", "resource management": "Economic",
+        "industry": "Economic", "industrial": "Economic", "manufacturing": "Economic",
+        "city building": "Economic", "urban": "Economic",
+        "farming": "Economic", "agriculture": "Economic",
+        "train": "Economic", "railroad": "Economic", "railway": "Economic",
+        // Abstract bucket
+        "puzzle": "Abstract", "brain teaser": "Abstract",
+        "memory": "Abstract", "set collection": "Abstract",
+        "word game": "Abstract", "word": "Abstract", "vocabulary": "Abstract",
+        // Humor bucket
+        "comedy": "Humor", "comedic": "Humor", "funny": "Humor", "humorous": "Humor",
+        // Nature bucket
+        "animals": "Nature", "animal": "Nature", "wildlife": "Nature",
+        "dinosaur": "Nature", "fishing": "Nature",
+        // War bucket
+        "wargame": "War", "military": "War", "warfare": "War", "combat": "War",
+        "fighting": "War", "martial arts": "War",
+        "aviation": "War", "flying": "War", "aircraft": "War",
+        "miniatures": "War", "minis": "War", "miniature": "War",
+        // Political bucket
+        "negotiation": "Political", "diplomacy": "Political",
+        // Party bucket
         "party game": "Party", "party": "Party",
-        "civilization": "Civilization", "civ": "Civilization",
-        "exploration": "Exploration", "explore": "Exploration", "travel": "Exploration",
-        "miniatures": "Miniatures", "minis": "Miniatures", "miniature": "Miniatures",
-        "dice game": "Dice", "dice": "Dice", "dexterity": "Party",
-        "card game": "Card Game", "cards": "Card Game",
-        "space": "Space", "sci-fi": "Sci-Fi",
-        "post-apocalyptic": "Post-Apocalyptic", "apocalyptic": "Post-Apocalyptic",
-        "steampunk": "Steampunk",
-        "western": "Western", "wild west": "Western",
-        "medieval": "Medieval", "middle ages": "Medieval",
-        "ancient": "Ancient", "antiquity": "Ancient",
-        "mythology": "Mythology", "myth": "Mythology", "mythological": "Mythology",
-        "industry": "Industry", "industrial": "Industry", "manufacturing": "Industry",
-        "espionage": "Espionage", "spy": "Espionage", "spies": "Espionage",
-        "crime": "Crime", "criminal": "Crime", "heist": "Crime",
-        "zombies": "Zombies", "zombie": "Zombies", "undead": "Zombies",
-        "aviation": "Aviation", "flying": "Aviation", "aircraft": "Aviation",
+        "dexterity": "Party", "bluffing": "Party", "bluff": "Party", "social": "Party",
+        // Trivia bucket
+        "quiz": "Trivia",
+        // Sports bucket
+        "racing": "Sports", "race": "Sports", "sport": "Sports", "sports": "Sports",
+        // Educational bucket
         "children's": "Educational", "childrens": "Educational", "children": "Educational", "kids": "Educational",
+        "learning": "Educational", "educational": "Educational",
+        // Cooperative bucket
+        "co-op": "Cooperative", "coop": "Cooperative", "cooperative": "Cooperative",
+        // Other bucket (catch-alls)
+        "card game": "Other", "cards": "Other", "dice game": "Other", "dice": "Other",
+        "miscellaneous": "Other", "misc": "Other", "other": "Other", "none": "Other",
       };
 
       // Fetch unclassified catalog entries
@@ -1099,10 +1112,13 @@ const handler = async (req: Request): Promise<Response> => {
 
         const classifyPrompt = `Classify each board game into exactly ONE genre from this list: ${VALID_GENRES.join(", ")}.
 
+IMPORTANT: Use "Other" ONLY if the game truly does not fit any other genre. Prefer a specific genre whenever possible.
+
 Games to classify:
 ${gamesPayload.map(g => `[${g.idx}] "${g.title}": ${g.desc}`).join("\n\n")}
 
-Return ONLY a JSON array of objects with "idx" and "genre" fields. Example: [{"idx":0,"genre":"Fantasy"},{"idx":1,"genre":"Economic"}]
+Return ONLY a JSON array of objects with "idx" and "genre" fields. The genre MUST be exactly one from the list above.
+Example: [{"idx":0,"genre":"Fantasy"},{"idx":1,"genre":"Economic"}]
 Do NOT include any other text.`;
 
         try {
