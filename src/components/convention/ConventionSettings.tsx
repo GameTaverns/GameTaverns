@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { ConventionStaffPanel } from "./ConventionStaffPanel";
 
 interface Props {
   open: boolean;
