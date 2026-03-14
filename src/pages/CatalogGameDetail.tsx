@@ -226,7 +226,7 @@ export default function CatalogGameDetail() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto overflow-x-hidden">
+      <div className="max-w-6xl mx-auto w-full min-w-0 overflow-x-clip overscroll-x-none">
         {/* Breadcrumb nav */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground mb-4 flex-wrap">
            <Link to="/" className="hover:text-foreground">{t('catalog.home')}</Link>
@@ -275,7 +275,7 @@ export default function CatalogGameDetail() {
             const safeIndex = Math.min(selectedImageIndex, Math.max(0, allImages.length - 1));
 
             return (
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0 overflow-x-hidden">
                 {/* Main image */}
                 <div className="aspect-[3/2] max-h-[40vh] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated w-full max-w-md mx-auto lg:max-w-none relative group">
                   {allImages.length > 0 ? (
@@ -495,8 +495,8 @@ export default function CatalogGameDetail() {
             </div>
 
             {/* Tabs */}
-            <Tabs value={catalogTab} onValueChange={setCatalogTab} className="w-full overflow-x-hidden">
-              <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4">
+            <Tabs value={catalogTab} onValueChange={setCatalogTab} className="w-full min-w-0 overflow-x-hidden">
+              <TabsList className="flex w-full max-w-full h-auto flex-wrap justify-start gap-1 p-1 mb-4">
                  <TabsTrigger value="description">{t('catalog.description')}</TabsTrigger>
                  <TabsTrigger value="info">{t('catalog.info')}</TabsTrigger>
                  <TabsTrigger value="documents" className="gap-1"><FileText className="h-3.5 w-3.5" />Documents</TabsTrigger>
