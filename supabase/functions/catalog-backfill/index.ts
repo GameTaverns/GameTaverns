@@ -1092,7 +1092,8 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      const hasMore = expansions.length === batchSize && linked > 0;
+      const hasMore = expansions.length === batchSize;
+      const nextOffset = dryRun ? offset + batchSize : undefined;
       return new Response(JSON.stringify({
         success: true,
         mode: "link-expansions",
@@ -1101,6 +1102,7 @@ const handler = async (req: Request): Promise<Response> => {
         no_match: noMatch,
         total: expansions.length,
         hasMore,
+        next_offset: nextOffset,
         sample_links: samples,
         sample_no_match: noMatchSamples,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
