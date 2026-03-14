@@ -134,5 +134,13 @@ export const GENRE_OPTIONS: Genre[] = [
   'Economic',
   'Abstract',
   'Humor',
-  'Nature'
+  'Nature',
+  'War',
+  'Political',
+  'Party',
+  'Trivia',
+  'Sports',
+  'Educational',
+  'Cooperative',
+  'Other'
 ];
