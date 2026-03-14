@@ -1021,7 +1021,16 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`[link-expansions] Processing ${expansions.length} orphaned expansions`);
 
       // Load all base game titles into memory for matching
+      // Index by full title AND by every prefix (split on delimiters)
+      // so "Caverna: The Cave Farmers" is findable via "caverna" too
       const baseGameMap = new Map<string, { id: string; title: string }[]>();
+      const addToMap = (key: string, bg: { id: string; title: string }) => {
+        if (!baseGameMap.has(key)) baseGameMap.set(key, []);
+        // Avoid duplicates
+        const arr = baseGameMap.get(key)!;
+        if (!arr.some(e => e.id === bg.id)) arr.push(bg);
+      };
+      const BG_DELIMITERS = [": ", " – ", " — ", " - "];
       let bgOffset = 0;
       const BG_PAGE = 1000;
       while (true) {
@@ -1032,15 +1041,25 @@ const handler = async (req: Request): Promise<Response> => {
           .range(bgOffset, bgOffset + BG_PAGE - 1);
         if (!bgPage || bgPage.length === 0) break;
         for (const bg of bgPage) {
-          const key = bg.title.toLowerCase().trim();
-          if (!baseGameMap.has(key)) baseGameMap.set(key, []);
-          baseGameMap.get(key)!.push(bg);
+          const fullKey = bg.title.toLowerCase().trim();
+          addToMap(fullKey, bg);
+          // Also index by every prefix of the base game title
+          for (const delim of BG_DELIMITERS) {
+            let searchFrom = 0;
+            while (true) {
+              const idx = bg.title.indexOf(delim, searchFrom);
+              if (idx <= 0) break;
+              const prefix = bg.title.substring(0, idx).toLowerCase().trim();
+              addToMap(prefix, bg);
+              searchFrom = idx + delim.length;
+            }
+          }
         }
         if (bgPage.length < BG_PAGE) break;
         bgOffset += BG_PAGE;
       }
 
-      console.log(`[link-expansions] Loaded ${baseGameMap.size} unique base game titles`);
+      console.log(`[link-expansions] Loaded ${baseGameMap.size} unique base game keys`);
 
       const DELIMITERS = [": ", " – ", " — ", " - "];
 
