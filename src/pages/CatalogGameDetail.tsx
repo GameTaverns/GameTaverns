@@ -353,8 +353,8 @@ export default function CatalogGameDetail() {
           })()}
 
           {/* Details */}
-          <div>
-            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
+          <div className="min-w-0 overflow-x-hidden">
+            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2 break-words">
               {game.title}
             </h1>
 
