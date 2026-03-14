@@ -143,6 +143,9 @@ export default function ConventionHub() {
     enabled: lendingLibraryIds.length > 0,
   });
 
+  // Must be called before any conditional returns (Rules of Hooks)
+  const { role: conventionRole, isOwner, isStaffOrOwner } = useConventionAccess(eventId, event);
+
   if (eventLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -162,7 +165,6 @@ export default function ConventionHub() {
     );
   }
 
-  const { role: conventionRole, isOwner, isStaffOrOwner } = useConventionAccess(eventId, event);
   const clubName = (event as any).convention_event?.club?.name;
   const contextName = clubName || (event as any).library?.name;
 
