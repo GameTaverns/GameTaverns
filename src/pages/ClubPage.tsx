@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen, RefreshCw, Plus } from "lucide-react";
+import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen, RefreshCw, Plus, Settings } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
