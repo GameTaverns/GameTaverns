@@ -122,6 +122,13 @@ export default function ClubPage() {
                 {club.is_public && (
                   <Badge variant="outline" className="text-cream/70">{t('common.public')}</Badge>
                 )}
+                {isOwner && (
+                  <Link to={`/club/${slug}/manage`}>
+                    <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs">
+                      <Settings className="h-3 w-3" /> Manage Club
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
           </div>
