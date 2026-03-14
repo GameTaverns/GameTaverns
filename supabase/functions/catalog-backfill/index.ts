@@ -1011,6 +1011,14 @@ const handler = async (req: Request): Promise<Response> => {
         "Bluffing", "Fighting", "Train", "Aviation", "Industry",
       ];
 
+      const normalizeGenreKey = (value: string) =>
+        value
+          .toLowerCase()
+          .trim()
+          .replace(/[’]/g, "'")
+          .replace(/[^a-z0-9\s'-]/g, " ")
+          .replace(/\s+/g, " ");
+
       // Aliases for common AI mismatches
       const GENRE_ALIASES: Record<string, string> = {
         "science fiction": "Sci-Fi", "scifi": "Sci-Fi", "sci fi": "Sci-Fi",
@@ -1038,9 +1046,9 @@ const handler = async (req: Request): Promise<Response> => {
         "word game": "Word", "word": "Word", "vocabulary": "Word",
         "party game": "Party", "party": "Party",
         "civilization": "Civilization", "civ": "Civilization",
-        "exploration": "Exploration", "explore": "Exploration",
+        "exploration": "Exploration", "explore": "Exploration", "travel": "Exploration",
         "miniatures": "Miniatures", "minis": "Miniatures", "miniature": "Miniatures",
-        "dice game": "Dice", "dice": "Dice",
+        "dice game": "Dice", "dice": "Dice", "dexterity": "Party",
         "card game": "Card Game", "cards": "Card Game",
         "space": "Space", "sci-fi": "Sci-Fi",
         "post-apocalyptic": "Post-Apocalyptic", "apocalyptic": "Post-Apocalyptic",
@@ -1054,6 +1062,7 @@ const handler = async (req: Request): Promise<Response> => {
         "crime": "Crime", "criminal": "Crime", "heist": "Crime",
         "zombies": "Zombies", "zombie": "Zombies", "undead": "Zombies",
         "aviation": "Aviation", "flying": "Aviation", "aircraft": "Aviation",
+        "children's": "Educational", "childrens": "Educational", "children": "Educational", "kids": "Educational",
       };
 
       // Fetch unclassified catalog entries
@@ -1136,11 +1145,15 @@ Do NOT include any other text.`;
           for (const result of genreResults) {
             const entry = subBatch[result.idx];
             if (!entry) continue;
-            // Try exact match first, then alias lookup
+            // Try exact match first, then normalized alias lookup
             const rawGenre = (result.genre || "").trim();
-            let matchedGenre = VALID_GENRES.find(g => g.toLowerCase() === rawGenre.toLowerCase());
+            const normalizedRawGenre = normalizeGenreKey(rawGenre);
+            let matchedGenre = VALID_GENRES.find((g) => normalizeGenreKey(g) === normalizedRawGenre);
             if (!matchedGenre) {
-              matchedGenre = GENRE_ALIASES[rawGenre.toLowerCase()] || null;
+              matchedGenre = GENRE_ALIASES[normalizedRawGenre] || null;
+            }
+            if (!matchedGenre && normalizedRawGenre.includes("'")) {
+              matchedGenre = GENRE_ALIASES[normalizedRawGenre.replace(/'/g, "")] || null;
             }
             if (!matchedGenre) {
               genreErrors.push(`Invalid genre "${result.genre}" for "${entry.title}"`);
