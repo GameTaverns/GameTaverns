@@ -56,9 +56,11 @@ export function ConventionSettings({ open, onOpenChange, conventionSettings, eve
     onError: (e: any) => toast.error(e.message),
   });
 
+  const clubId = conventionSettings?.club_id;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display">Convention Settings</DialogTitle>
           <DialogDescription>{event?.title}</DialogDescription>
@@ -114,6 +116,22 @@ export function ConventionSettings({ open, onOpenChange, conventionSettings, eve
               />
             </div>
           </div>
+
+          {clubId && conventionSettings?.id && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Volunteer Staff</h4>
+                <p className="text-xs text-muted-foreground">
+                  Assign club members as convention staff — they'll get access to the Command Center and Lending Desk
+                </p>
+                <ConventionStaffPanel
+                  conventionEventId={conventionSettings.id}
+                  clubId={clubId}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
