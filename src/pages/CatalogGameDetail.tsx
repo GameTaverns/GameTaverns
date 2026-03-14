@@ -275,7 +275,7 @@ export default function CatalogGameDetail() {
             const safeIndex = Math.min(selectedImageIndex, Math.max(0, allImages.length - 1));
 
             return (
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0 overflow-x-hidden">
                 {/* Main image */}
                 <div className="aspect-[3/2] max-h-[40vh] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated w-full max-w-md mx-auto lg:max-w-none relative group">
                   {allImages.length > 0 ? (
