@@ -993,8 +993,9 @@ const handler = async (req: Request): Promise<Response> => {
     if (mode === "link-expansions") {
       const batchSize = Math.min(body.batch_size || 500, 2000);
       const dryRun = body.dry_run === true;
+      const offset = body.offset || 0;
 
-      console.log(`[link-expansions] Starting (batch_size=${batchSize}, dry_run=${dryRun})`);
+      console.log(`[link-expansions] Starting (batch_size=${batchSize}, dry_run=${dryRun}, offset=${offset})`);
 
       const { data: expansions, error: expErr } = await admin
         .from("game_catalog")
@@ -1002,7 +1003,7 @@ const handler = async (req: Request): Promise<Response> => {
         .eq("is_expansion", true)
         .is("parent_catalog_id", null)
         .order("title", { ascending: true })
-        .limit(batchSize);
+        .range(offset, offset + batchSize - 1);
 
       if (expErr) {
         return new Response(JSON.stringify({ error: expErr.message }), {
