@@ -1053,14 +1053,28 @@ const handler = async (req: Request): Promise<Response> => {
       for (const exp of expansions) {
         let matched = false;
 
+        // Collect ALL possible split points across all delimiters,
+        // then try from longest prefix to shortest
+        const splitPoints: number[] = [];
         for (const delim of DELIMITERS) {
-          const delimIdx = exp.title.indexOf(delim);
-          if (delimIdx <= 0) continue;
+          let searchFrom = 0;
+          while (true) {
+            const idx = exp.title.indexOf(delim, searchFrom);
+            if (idx <= 0) break;
+            splitPoints.push(idx);
+            searchFrom = idx + delim.length;
+          }
+        }
 
-          const prefix = exp.title.substring(0, delimIdx).toLowerCase().trim();
+        // Sort descending — try longest prefix first
+        splitPoints.sort((a, b) => b - a);
+
+        for (const splitIdx of splitPoints) {
+          const prefix = exp.title.substring(0, splitIdx).toLowerCase().trim();
           const candidates = baseGameMap.get(prefix);
 
           if (candidates && candidates.length > 0) {
+            // Prefer the best match — shortest title (most specific base game)
             const best = candidates.reduce((a, b) =>
               a.title.length <= b.title.length ? a : b
             );
