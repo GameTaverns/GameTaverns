@@ -987,6 +987,125 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // =====================================================================
+    // MODE: link-expansions — Link orphaned expansions to parent games
+    // via title prefix matching (no BGG API calls)
+    // =====================================================================
+    if (mode === "link-expansions") {
+      const batchSize = Math.min(body.batch_size || 500, 2000);
+      const dryRun = body.dry_run === true;
+
+      console.log(`[link-expansions] Starting (batch_size=${batchSize}, dry_run=${dryRun})`);
+
+      const { data: expansions, error: expErr } = await admin
+        .from("game_catalog")
+        .select("id, title")
+        .eq("is_expansion", true)
+        .is("parent_catalog_id", null)
+        .order("title", { ascending: true })
+        .limit(batchSize);
+
+      if (expErr) {
+        return new Response(JSON.stringify({ error: expErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!expansions || expansions.length === 0) {
+        return new Response(JSON.stringify({
+          success: true, mode: "link-expansions", linked: 0,
+          message: "No more orphaned expansions", hasMore: false,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      console.log(`[link-expansions] Processing ${expansions.length} orphaned expansions`);
+
+      // Load all base game titles into memory for matching
+      const baseGameMap = new Map<string, { id: string; title: string }[]>();
+      let bgOffset = 0;
+      const BG_PAGE = 1000;
+      while (true) {
+        const { data: bgPage } = await admin
+          .from("game_catalog")
+          .select("id, title")
+          .eq("is_expansion", false)
+          .range(bgOffset, bgOffset + BG_PAGE - 1);
+        if (!bgPage || bgPage.length === 0) break;
+        for (const bg of bgPage) {
+          const key = bg.title.toLowerCase().trim();
+          if (!baseGameMap.has(key)) baseGameMap.set(key, []);
+          baseGameMap.get(key)!.push(bg);
+        }
+        if (bgPage.length < BG_PAGE) break;
+        bgOffset += BG_PAGE;
+      }
+
+      console.log(`[link-expansions] Loaded ${baseGameMap.size} unique base game titles`);
+
+      const DELIMITERS = [": ", " – ", " — ", " - "];
+
+      let linked = 0;
+      let noMatch = 0;
+      const samples: { expansion: string; parent: string }[] = [];
+      const noMatchSamples: string[] = [];
+      const updates: { id: string; parent_catalog_id: string }[] = [];
+
+      for (const exp of expansions) {
+        let matched = false;
+
+        for (const delim of DELIMITERS) {
+          const delimIdx = exp.title.indexOf(delim);
+          if (delimIdx <= 0) continue;
+
+          const prefix = exp.title.substring(0, delimIdx).toLowerCase().trim();
+          const candidates = baseGameMap.get(prefix);
+
+          if (candidates && candidates.length > 0) {
+            const best = candidates.reduce((a, b) =>
+              a.title.length <= b.title.length ? a : b
+            );
+            updates.push({ id: exp.id, parent_catalog_id: best.id });
+            if (samples.length < 20) {
+              samples.push({ expansion: exp.title, parent: best.title });
+            }
+            linked++;
+            matched = true;
+            break;
+          }
+        }
+
+        if (!matched) {
+          noMatch++;
+          if (noMatchSamples.length < 10) noMatchSamples.push(exp.title);
+        }
+      }
+
+      if (!dryRun && updates.length > 0) {
+        for (let i = 0; i < updates.length; i += 200) {
+          const batch = updates.slice(i, i + 200);
+          const promises = batch.map(u =>
+            admin.from("game_catalog")
+              .update({ parent_catalog_id: u.parent_catalog_id })
+              .eq("id", u.id)
+          );
+          await Promise.all(promises);
+        }
+      }
+
+      const hasMore = expansions.length === batchSize && linked > 0;
+      return new Response(JSON.stringify({
+        success: true,
+        mode: "link-expansions",
+        dry_run: dryRun,
+        linked,
+        no_match: noMatch,
+        total: expansions.length,
+        hasMore,
+        sample_links: samples,
+        sample_no_match: noMatchSamples,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // =====================================================================
     // MODE: classify-genres — AI-classify catalog entries into genres
     // Uses Google Gemini Flash Lite via direct API call for cost efficiency
     // =====================================================================
