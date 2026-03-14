@@ -1147,6 +1147,172 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // =====================================================================
+    // MODE: link-expansions-bgg — Link orphaned expansions to parents
+    // via BGG API parent lookup (for expansions title-matching missed)
+    // =====================================================================
+    if (mode === "link-expansions-bgg") {
+      const batchSize = Math.min(body.batch_size || 20, 50);
+      const dryRun = body.dry_run === true;
+      const offset = body.offset || 0;
+
+      console.log(`[link-expansions-bgg] Starting (batch_size=${batchSize}, dry_run=${dryRun}, offset=${offset})`);
+
+      // Fetch orphaned expansions that have a bgg_id
+      const { data: expansions, error: expErr } = await admin
+        .from("game_catalog")
+        .select("id, title, bgg_id")
+        .eq("is_expansion", true)
+        .is("parent_catalog_id", null)
+        .not("bgg_id", "is", null)
+        .order("title", { ascending: true })
+        .range(offset, offset + batchSize - 1);
+
+      if (expErr) {
+        return new Response(JSON.stringify({ error: expErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!expansions || expansions.length === 0) {
+        return new Response(JSON.stringify({
+          success: true, mode: "link-expansions-bgg", linked: 0,
+          message: "No more orphaned expansions with BGG IDs", hasMore: false,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      console.log(`[link-expansions-bgg] Processing ${expansions.length} orphaned expansions via BGG API`);
+
+      // Batch BGG IDs for API call (BGG supports comma-separated)
+      const bggIds = expansions.map(e => e.bgg_id).join(",");
+      let linked = 0;
+      let noMatch = 0;
+      let apiErrors = 0;
+      const samples: { expansion: string; parent: string }[] = [];
+      const noMatchSamples: string[] = [];
+
+      try {
+        const res = await fetch(
+          `https://boardgamegeek.com/xmlapi2/thing?id=${bggIds}&type=boardgameexpansion`,
+          {
+            headers: {
+              "User-Agent": "GameTaverns/1.0 (catalog-parent-linker)",
+              Accept: "application/xml, text/xml, */*",
+            },
+          }
+        );
+
+        if (!res.ok) {
+          return new Response(JSON.stringify({
+            error: `BGG API returned ${res.status}`,
+            mode: "link-expansions-bgg",
+          }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const xml = await res.text();
+
+        if (xml.includes("Please try again later") || xml.includes("<message>")) {
+          return new Response(JSON.stringify({
+            error: "BGG API rate limited",
+            mode: "link-expansions-bgg",
+            retry: true,
+          }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // Parse each <item> from the response
+        const itemRegex = /<item[^>]*id="(\d+)"[^>]*type="([^"]+)"[^>]*>[\s\S]*?<\/item>/g;
+        const itemMap = new Map<string, string>();
+        let match;
+        while ((match = itemRegex.exec(xml)) !== null) {
+          itemMap.set(match[1], match[0]);
+        }
+
+        // Extract parent BGG IDs from inbound links
+        for (const exp of expansions) {
+          const itemXml = itemMap.get(exp.bgg_id!);
+          if (!itemXml) {
+            apiErrors++;
+            continue;
+          }
+
+          // Find all inbound expansion links (these point to parent games)
+          const parentBggIds: string[] = [];
+          const linkRegex = /<link[^>]*type="boardgameexpansion"[^>]*id="(\d+)"[^>]*inbound="true"[^>]*\/?>/g;
+          const linkRegex2 = /<link[^>]*inbound="true"[^>]*type="boardgameexpansion"[^>]*id="(\d+)"[^>]*\/?>/g;
+          let linkMatch;
+          while ((linkMatch = linkRegex.exec(itemXml)) !== null) {
+            parentBggIds.push(linkMatch[1]);
+          }
+          if (parentBggIds.length === 0) {
+            while ((linkMatch = linkRegex2.exec(itemXml)) !== null) {
+              parentBggIds.push(linkMatch[1]);
+            }
+          }
+
+          if (parentBggIds.length === 0) {
+            noMatch++;
+            if (noMatchSamples.length < 10) noMatchSamples.push(exp.title);
+            continue;
+          }
+
+          // Find parent in catalog by bgg_id
+          let parentFound = false;
+          for (const parentBggId of parentBggIds) {
+            const { data: parentCatalog } = await admin
+              .from("game_catalog")
+              .select("id, title")
+              .eq("bgg_id", parentBggId)
+              .eq("is_expansion", false)
+              .maybeSingle();
+
+            if (parentCatalog) {
+              if (!dryRun) {
+                await admin
+                  .from("game_catalog")
+                  .update({ parent_catalog_id: parentCatalog.id })
+                  .eq("id", exp.id);
+              }
+              linked++;
+              if (samples.length < 20) {
+                samples.push({ expansion: exp.title, parent: parentCatalog.title });
+              }
+              parentFound = true;
+              break;
+            }
+          }
+
+          if (!parentFound) {
+            noMatch++;
+            if (noMatchSamples.length < 10) noMatchSamples.push(exp.title);
+          }
+        }
+      } catch (err) {
+        console.error(`[link-expansions-bgg] BGG fetch error:`, err);
+        return new Response(JSON.stringify({
+          error: String(err),
+          mode: "link-expansions-bgg",
+        }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const hasMore = expansions.length === batchSize;
+      const noProgress = !dryRun && linked === 0;
+      const nextOffset = (dryRun || noProgress) && hasMore ? offset + batchSize : undefined;
+
+      return new Response(JSON.stringify({
+        success: true,
+        mode: "link-expansions-bgg",
+        dry_run: dryRun,
+        linked,
+        no_match: noMatch,
+        api_errors: apiErrors,
+        total: expansions.length,
+        hasMore,
+        next_offset: nextOffset,
+        sample_links: samples,
+        sample_no_match: noMatchSamples,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // =====================================================================
     // MODE: classify-genres — AI-classify catalog entries into genres
     // Uses Google Gemini Flash Lite via direct API call for cost efficiency
     // =====================================================================
