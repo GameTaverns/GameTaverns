@@ -1191,24 +1191,44 @@ const handler = async (req: Request): Promise<Response> => {
       const noMatchSamples: string[] = [];
 
       try {
-        const res = await fetch(
-          `https://boardgamegeek.com/xmlapi2/thing?id=${bggIds}&type=boardgameexpansion`,
-          {
-            headers: {
-              "User-Agent": "GameTaverns/1.0 (catalog-parent-linker)",
-              Accept: "application/xml, text/xml, */*",
-            },
-          }
+        const url = `https://boardgamegeek.com/xmlapi2/thing?id=${bggIds}&stats=1`;
+        const bggHeadersNoAuth = Object.fromEntries(
+          Object.entries(bggHeaders).filter(([k]) => k.toLowerCase() !== "authorization" && k.toLowerCase() !== "cookie")
         );
 
-        if (!res.ok) {
-          return new Response(JSON.stringify({
-            error: `BGG API returned ${res.status}`,
-            mode: "link-expansions-bgg",
-          }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        let xml: string | null = null;
+        let lastStatus = 0;
+
+        // Try up to 3 times with configured headers, then 1 fallback without auth/cookie.
+        for (let attempt = 1; attempt <= 4 && !xml; attempt++) {
+          const headersToUse = attempt <= 3 ? bggHeaders : bggHeadersNoAuth;
+          const res = await fetch(url, { headers: headersToUse });
+          lastStatus = res.status;
+
+          if (res.status === 429 || res.status === 202) {
+            await sleep(attempt * 3000);
+            continue;
+          }
+
+          if (res.ok) {
+            xml = await res.text();
+            break;
+          }
+
+          // If BGG returns unauthorized, try once without auth/cookie headers.
+          if (res.status === 401 && attempt < 4) {
+            continue;
+          }
+
+          break;
         }
 
-        const xml = await res.text();
+        if (!xml) {
+          return new Response(JSON.stringify({
+            error: `BGG API returned ${lastStatus}`,
+            mode: "link-expansions-bgg",
+          }), { status: lastStatus === 429 ? 429 : 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
         if (xml.includes("Please try again later") || xml.includes("<message>")) {
           return new Response(JSON.stringify({
