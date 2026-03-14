@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen, RefreshCw, Plus } from "lucide-react";
+import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen, RefreshCw, Plus, Settings } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -121,6 +121,13 @@ export default function ClubPage() {
                 </Badge>
                 {club.is_public && (
                   <Badge variant="outline" className="text-cream/70">{t('common.public')}</Badge>
+                )}
+                {isOwner && (
+                  <Link to={`/club/${slug}/manage`}>
+                    <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs">
+                      <Settings className="h-3 w-3" /> Manage Club
+                    </Button>
+                  </Link>
                 )}
               </div>
             </div>
