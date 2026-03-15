@@ -411,7 +411,7 @@ export default function CatalogBrowse() {
 
   const handlePickerSelect = (libraryId: string) => {
     if (pendingCatalogId) {
-      addFromCatalog.mutate({ catalogId: pendingCatalogId, libraryId }, {
+      addFromCatalog.mutate({ catalogId: pendingCatalogId, libraryId, isComingSoon: pendingComingSoon }, {
         onSettled: () => {
           setPickerOpen(false);
           setPendingCatalogId(null);
