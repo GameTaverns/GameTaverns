@@ -694,18 +694,36 @@ export default function CatalogGameDetail() {
         </div>
       </div>
       {game && (
-        <LibraryPickerDialog
-          open={pickerOpen}
-          onOpenChange={setPickerOpen}
-          libraries={myLibraries}
-          onSelect={(libraryId) => {
-            addFromCatalog.mutate({ catalogId: game.id, libraryId }, {
-              onSettled: () => setPickerOpen(false),
-            });
-          }}
-          isPending={addFromCatalog.isPending}
-          gameTitle={game.title}
-        />
+        <>
+          <AddGameStatusDialog
+            open={statusDialogOpen}
+            onOpenChange={setStatusDialogOpen}
+            onSelect={(status) => {
+              const isComingSoon = status === "coming_soon";
+              setPendingComingSoon(isComingSoon);
+              setStatusDialogOpen(false);
+              if (myLibraries.length > 1) {
+                setPickerOpen(true);
+              } else {
+                addFromCatalog.mutate({ catalogId: game.id, libraryId: myLibrary?.id, isComingSoon });
+              }
+            }}
+            isPending={addFromCatalog.isPending}
+            gameTitle={game.title}
+          />
+          <LibraryPickerDialog
+            open={pickerOpen}
+            onOpenChange={setPickerOpen}
+            libraries={myLibraries}
+            onSelect={(libraryId) => {
+              addFromCatalog.mutate({ catalogId: game.id, libraryId, isComingSoon: pendingComingSoon }, {
+                onSettled: () => setPickerOpen(false),
+              });
+            }}
+            isPending={addFromCatalog.isPending}
+            gameTitle={game.title}
+          />
+        </>
       )}
     </Layout>
   );
