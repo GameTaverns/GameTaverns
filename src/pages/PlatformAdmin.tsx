@@ -438,6 +438,14 @@ export default function PlatformAdmin() {
               </Suspense>
             </TabErrorBoundary>
           </TabsContent>
+
+          <TabsContent value="image-submissions" className="mt-6">
+            <TabErrorBoundary>
+              <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading image submissions…</div>}>
+                <ImageSubmissionReview />
+              </Suspense>
+            </TabErrorBoundary>
+          </TabsContent>
           
           {isAdmin && (
             <>
