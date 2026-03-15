@@ -177,6 +177,13 @@ export function CatalogSearchAdd({ libraryId }: CatalogSearchAddProps) {
           </div>
         )}
       </CardContent>
+      <AddGameStatusDialog
+        open={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
+        onSelect={handleStatusSelect}
+        isPending={addFromCatalog.isPending}
+        gameTitle={pendingGame?.title}
+      />
     </Card>
   );
 }
