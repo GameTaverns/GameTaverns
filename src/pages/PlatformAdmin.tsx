@@ -303,6 +303,13 @@ export default function PlatformAdmin() {
               <Star className="h-4 w-4 mr-1 sm:mr-2" />
               Reviews
             </TabsTrigger>
+            <TabsTrigger 
+              value="image-submissions"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+            >
+              <ImagePlus className="h-4 w-4 mr-1 sm:mr-2" />
+              Images
+            </TabsTrigger>
             {isAdmin && (
               <>
                 <TabsTrigger 
