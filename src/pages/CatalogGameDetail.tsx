@@ -30,6 +30,7 @@ import { GameReviews } from "@/components/catalog/GameReviews";
 import { LogPlayDialog } from "@/components/games/LogPlayDialog";
 import { CatalogDocuments } from "@/components/catalog/CatalogDocuments";
 import { SuggestImageButton } from "@/components/catalog/SuggestImageButton";
+import { AddGameStatusDialog } from "@/components/catalog/AddGameStatusDialog";
 import { useCatalogGenres } from "@/hooks/useCatalogGenres";
 
 interface CatalogGameFull {
