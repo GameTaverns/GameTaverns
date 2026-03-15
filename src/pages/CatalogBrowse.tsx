@@ -22,6 +22,7 @@ import { CatalogGameGrid, type CatalogGameItem } from "@/components/catalog/Cata
 import { CatalogGameList } from "@/components/catalog/CatalogGameList";
 import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
 import { useAddWant } from "@/hooks/useTrades";
+import { AddGameStatusDialog } from "@/components/catalog/AddGameStatusDialog";
 import { useToast } from "@/hooks/use-toast";
 import { BackLink } from "@/components/navigation/BackLink";
 
