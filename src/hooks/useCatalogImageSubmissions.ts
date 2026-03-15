@@ -145,7 +145,7 @@ export function usePendingImageSubmissions() {
       if (!data?.length) return [];
 
       // Fetch catalog titles
-      const catalogIds = [...new Set(data.map((d: any) => d.catalog_id))];
+      const catalogIds = [...new Set(data.map((d: any) => d.catalog_id))] as string[];
       const { data: catalogs } = await supabase
         .from("game_catalog")
         .select("id, title, slug")
