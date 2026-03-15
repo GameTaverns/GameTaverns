@@ -410,13 +410,7 @@ export default function CatalogGameDetail() {
               {/* Add to Library */}
               {isAuthenticated && (myLibrary || myLibraries.length > 0) && (
                 <Button
-                  onClick={() => {
-                    if (myLibraries.length > 1) {
-                      setPickerOpen(true);
-                    } else {
-                      addFromCatalog.mutate({ catalogId: game.id, libraryId: myLibrary?.id });
-                    }
-                  }}
+                  onClick={() => setStatusDialogOpen(true)}
                   disabled={addFromCatalog.isPending}
                   className="gap-2"
                 >
