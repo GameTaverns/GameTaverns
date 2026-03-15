@@ -89,9 +89,10 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    const { catalog_id, library_id, ownership_status } = await req.json();
+    const { catalog_id, library_id, ownership_status, is_coming_soon } = await req.json();
     const targetLibraryId = library_id || libraryId;
     const targetOwnershipStatus = ownership_status || "owned";
+    const targetComingSoon = is_coming_soon === true;
 
     if (!catalog_id) {
       return new Response(JSON.stringify({ error: "catalog_id is required" }), {
