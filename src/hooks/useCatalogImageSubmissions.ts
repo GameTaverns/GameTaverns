@@ -219,17 +219,16 @@ export function useReviewImageSubmission() {
 
       if (error) throw error;
 
-      // If approved, update the catalog image
+      // If approved, update the catalog image via RPC
       if (action === "approved") {
-        const { data: urlData } = supabase.storage
-          .from("catalog-image-submissions")
-          .getPublicUrl(submission.file_path);
+        const { data: newUrl, error: applyError } = await (supabase as any).rpc(
+          "apply_catalog_image",
+          { _catalog_id: submission.catalog_id, _file_path: submission.file_path }
+        );
 
-        if (urlData?.publicUrl) {
-          await (supabase as any)
-            .from("game_catalog")
-            .update({ image_url: urlData.publicUrl })
-            .eq("id", submission.catalog_id);
+        if (applyError) {
+          console.error("Failed to apply catalog image:", applyError);
+          throw new Error("Approved but failed to apply image: " + applyError.message);
         }
       }
     },
