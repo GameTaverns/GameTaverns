@@ -107,17 +107,16 @@ export function useSubmitCatalogImage() {
         throw error;
       }
 
-      // If auto-approved, update the catalog image
+      // If auto-approved, update the catalog image via RPC
       if (autoApprove) {
-        const { data: urlData } = supabase.storage
-          .from("catalog-image-submissions")
-          .getPublicUrl(filePath);
+        const { data: newUrl, error: applyError } = await (supabase as any).rpc(
+          "apply_catalog_image",
+          { _catalog_id: catalogId, _file_path: filePath }
+        );
 
-        if (urlData?.publicUrl) {
-          await (supabase as any)
-            .from("game_catalog")
-            .update({ image_url: urlData.publicUrl })
-            .eq("id", catalogId);
+        if (applyError) {
+          console.error("Failed to apply catalog image:", applyError);
+          throw new Error("Image uploaded but failed to apply to catalog: " + applyError.message);
         }
       }
 
