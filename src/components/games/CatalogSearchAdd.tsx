@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
+import { AddGameStatusDialog } from "@/components/catalog/AddGameStatusDialog";
 import { useTranslation } from "react-i18next";
 
 interface CatalogSearchAddProps {
