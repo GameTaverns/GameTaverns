@@ -57,12 +57,21 @@ export function CatalogSearchAdd({ libraryId }: CatalogSearchAddProps) {
     staleTime: 30_000,
   });
 
-  const handleAdd = async (game: CatalogResult) => {
+  const handleAdd = (game: CatalogResult) => {
+    setPendingGame(game);
+    setStatusDialogOpen(true);
+  };
+
+  const handleStatusSelect = async (status: "owned" | "coming_soon") => {
+    if (!pendingGame) return;
+    setStatusDialogOpen(false);
     await addFromCatalog.mutateAsync({
-      catalogId: game.id,
+      catalogId: pendingGame.id,
       libraryId,
+      isComingSoon: status === "coming_soon",
     });
-    setAddedIds((prev) => new Set(prev).add(game.id));
+    setAddedIds((prev) => new Set(prev).add(pendingGame.id));
+    setPendingGame(null);
   };
 
   return (
