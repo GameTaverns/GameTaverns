@@ -218,6 +218,7 @@ export default async function handler(req: Request): Promise<Response> {
       library_id: targetLibraryId,
       slug: catalog.slug,
       ownership_status: targetOwnershipStatus,
+      is_coming_soon: targetComingSoon,
     };
 
     const { data: game, error: gameError } = await supabaseAdmin
