@@ -614,6 +614,13 @@ export default function CatalogBrowse() {
           )}
         </div>
       </div>
+      <AddGameStatusDialog
+        open={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
+        onSelect={handleStatusSelect}
+        isPending={addFromCatalog.isPending}
+        gameTitle={catalogGames.find(g => g.id === pendingCatalogId)?.title}
+      />
       <LibraryPickerDialog
         open={pickerOpen}
         onOpenChange={setPickerOpen}
