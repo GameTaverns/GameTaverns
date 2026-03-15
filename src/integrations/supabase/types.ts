@@ -7002,6 +7002,14 @@ export type Database = {
       }
     }
     Functions: {
+      apply_catalog_image: {
+        Args: {
+          _catalog_id: string
+          _file_path: string
+          _storage_bucket?: string
+        }
+        Returns: string
+      }
       calculate_elo_k_factor: {
         Args: { games_played: number }
         Returns: number
