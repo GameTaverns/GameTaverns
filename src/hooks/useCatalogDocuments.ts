@@ -54,6 +54,10 @@ export function useUploadCatalogDocument() {
     }) => {
       if (!user) throw new Error("Must be logged in");
 
+      // Validate file type and magic bytes
+      const validation = await validateDocumentFile(file);
+      if (!validation.valid) throw new Error(validation.error);
+
       const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
       const filePath = `${catalogId}/${Date.now()}.${ext}`;
 
