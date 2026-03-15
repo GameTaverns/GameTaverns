@@ -369,11 +369,20 @@ export default function CatalogBrowse() {
   const handleSearchChange = (val: string) => { setSearchTerm(val); };
 
   const handleAddGame = (gameId: string) => {
+    setPendingCatalogId(gameId);
+    setStatusDialogOpen(true);
+  };
+
+  const handleStatusSelect = (status: "owned" | "coming_soon") => {
+    const isComingSoon = status === "coming_soon";
+    setPendingComingSoon(isComingSoon);
+    setStatusDialogOpen(false);
     if (myLibraries.length > 1) {
-      setPendingCatalogId(gameId);
       setPickerOpen(true);
-    } else {
-      addFromCatalog.mutate({ catalogId: gameId, libraryId: myLibrary?.id });
+    } else if (pendingCatalogId) {
+      addFromCatalog.mutate({ catalogId: pendingCatalogId, libraryId: myLibrary?.id, isComingSoon }, {
+        onSettled: () => setPendingCatalogId(null),
+      });
     }
   };
 
