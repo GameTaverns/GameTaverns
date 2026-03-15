@@ -29,6 +29,8 @@ export function CatalogSearchAdd({ libraryId }: CatalogSearchAddProps) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [pendingGame, setPendingGame] = useState<CatalogResult | null>(null);
   const addFromCatalog = useAddFromCatalog();
 
   const handleSearchChange = useCallback((value: string) => {
