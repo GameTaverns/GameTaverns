@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "./useAuth";
+import { validateDocumentFile } from "@/lib/fileValidation";
 
 export interface GameDocument {
   id: string;
@@ -80,6 +81,10 @@ export function useUploadGameDocument() {
       language: string;
     }) => {
       if (!user) throw new Error("Must be logged in");
+
+      // Validate file type and magic bytes
+      const validation = await validateDocumentFile(file);
+      if (!validation.valid) throw new Error(validation.error);
 
       // Upload file to storage
       const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
