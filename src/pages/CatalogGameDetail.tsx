@@ -30,6 +30,7 @@ import { GameReviews } from "@/components/catalog/GameReviews";
 import { LogPlayDialog } from "@/components/games/LogPlayDialog";
 import { CatalogDocuments } from "@/components/catalog/CatalogDocuments";
 import { SuggestImageButton } from "@/components/catalog/SuggestImageButton";
+import { AddGameStatusDialog } from "@/components/catalog/AddGameStatusDialog";
 import { useCatalogGenres } from "@/hooks/useCatalogGenres";
 
 interface CatalogGameFull {
@@ -92,6 +93,8 @@ export default function CatalogGameDetail() {
   const addWant = useAddWant();
   const { toast } = useToast();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [pendingComingSoon, setPendingComingSoon] = useState(false);
   const [playedOnlyGameId, setPlayedOnlyGameId] = useState<string | null>(null);
   const [creatingPlayedOnly, setCreatingPlayedOnly] = useState(false);
 
@@ -407,13 +410,7 @@ export default function CatalogGameDetail() {
               {/* Add to Library */}
               {isAuthenticated && (myLibrary || myLibraries.length > 0) && (
                 <Button
-                  onClick={() => {
-                    if (myLibraries.length > 1) {
-                      setPickerOpen(true);
-                    } else {
-                      addFromCatalog.mutate({ catalogId: game.id, libraryId: myLibrary?.id });
-                    }
-                  }}
+                  onClick={() => setStatusDialogOpen(true)}
                   disabled={addFromCatalog.isPending}
                   className="gap-2"
                 >
@@ -697,18 +694,36 @@ export default function CatalogGameDetail() {
         </div>
       </div>
       {game && (
-        <LibraryPickerDialog
-          open={pickerOpen}
-          onOpenChange={setPickerOpen}
-          libraries={myLibraries}
-          onSelect={(libraryId) => {
-            addFromCatalog.mutate({ catalogId: game.id, libraryId }, {
-              onSettled: () => setPickerOpen(false),
-            });
-          }}
-          isPending={addFromCatalog.isPending}
-          gameTitle={game.title}
-        />
+        <>
+          <AddGameStatusDialog
+            open={statusDialogOpen}
+            onOpenChange={setStatusDialogOpen}
+            onSelect={(status) => {
+              const isComingSoon = status === "coming_soon";
+              setPendingComingSoon(isComingSoon);
+              setStatusDialogOpen(false);
+              if (myLibraries.length > 1) {
+                setPickerOpen(true);
+              } else {
+                addFromCatalog.mutate({ catalogId: game.id, libraryId: myLibrary?.id, isComingSoon });
+              }
+            }}
+            isPending={addFromCatalog.isPending}
+            gameTitle={game.title}
+          />
+          <LibraryPickerDialog
+            open={pickerOpen}
+            onOpenChange={setPickerOpen}
+            libraries={myLibraries}
+            onSelect={(libraryId) => {
+              addFromCatalog.mutate({ catalogId: game.id, libraryId, isComingSoon: pendingComingSoon }, {
+                onSettled: () => setPickerOpen(false),
+              });
+            }}
+            isPending={addFromCatalog.isPending}
+            gameTitle={game.title}
+          />
+        </>
       )}
     </Layout>
   );

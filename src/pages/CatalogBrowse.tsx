@@ -22,6 +22,7 @@ import { CatalogGameGrid, type CatalogGameItem } from "@/components/catalog/Cata
 import { CatalogGameList } from "@/components/catalog/CatalogGameList";
 import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
 import { useAddWant } from "@/hooks/useTrades";
+import { AddGameStatusDialog } from "@/components/catalog/AddGameStatusDialog";
 import { useToast } from "@/hooks/use-toast";
 import { BackLink } from "@/components/navigation/BackLink";
 
@@ -60,6 +61,8 @@ export default function CatalogBrowse() {
   const { toast } = useToast();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingCatalogId, setPendingCatalogId] = useState<string | null>(null);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [pendingComingSoon, setPendingComingSoon] = useState(false);
   const [wantingGameId, setWantingGameId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
@@ -366,11 +369,20 @@ export default function CatalogBrowse() {
   const handleSearchChange = (val: string) => { setSearchTerm(val); };
 
   const handleAddGame = (gameId: string) => {
+    setPendingCatalogId(gameId);
+    setStatusDialogOpen(true);
+  };
+
+  const handleStatusSelect = (status: "owned" | "coming_soon") => {
+    const isComingSoon = status === "coming_soon";
+    setPendingComingSoon(isComingSoon);
+    setStatusDialogOpen(false);
     if (myLibraries.length > 1) {
-      setPendingCatalogId(gameId);
       setPickerOpen(true);
-    } else {
-      addFromCatalog.mutate({ catalogId: gameId, libraryId: myLibrary?.id });
+    } else if (pendingCatalogId) {
+      addFromCatalog.mutate({ catalogId: pendingCatalogId, libraryId: myLibrary?.id, isComingSoon }, {
+        onSettled: () => setPendingCatalogId(null),
+      });
     }
   };
 
@@ -399,7 +411,7 @@ export default function CatalogBrowse() {
 
   const handlePickerSelect = (libraryId: string) => {
     if (pendingCatalogId) {
-      addFromCatalog.mutate({ catalogId: pendingCatalogId, libraryId }, {
+      addFromCatalog.mutate({ catalogId: pendingCatalogId, libraryId, isComingSoon: pendingComingSoon }, {
         onSettled: () => {
           setPickerOpen(false);
           setPendingCatalogId(null);
@@ -602,6 +614,13 @@ export default function CatalogBrowse() {
           )}
         </div>
       </div>
+      <AddGameStatusDialog
+        open={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
+        onSelect={handleStatusSelect}
+        isPending={addFromCatalog.isPending}
+        gameTitle={catalogGames.find(g => g.id === pendingCatalogId)?.title}
+      />
       <LibraryPickerDialog
         open={pickerOpen}
         onOpenChange={setPickerOpen}

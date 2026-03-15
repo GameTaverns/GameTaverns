@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
+import { AddGameStatusDialog } from "@/components/catalog/AddGameStatusDialog";
 import { useTranslation } from "react-i18next";
 
 interface CatalogSearchAddProps {
@@ -28,6 +29,8 @@ export function CatalogSearchAdd({ libraryId }: CatalogSearchAddProps) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [pendingGame, setPendingGame] = useState<CatalogResult | null>(null);
   const addFromCatalog = useAddFromCatalog();
 
   const handleSearchChange = useCallback((value: string) => {
@@ -54,12 +57,21 @@ export function CatalogSearchAdd({ libraryId }: CatalogSearchAddProps) {
     staleTime: 30_000,
   });
 
-  const handleAdd = async (game: CatalogResult) => {
+  const handleAdd = (game: CatalogResult) => {
+    setPendingGame(game);
+    setStatusDialogOpen(true);
+  };
+
+  const handleStatusSelect = async (status: "owned" | "coming_soon") => {
+    if (!pendingGame) return;
+    setStatusDialogOpen(false);
     await addFromCatalog.mutateAsync({
-      catalogId: game.id,
+      catalogId: pendingGame.id,
       libraryId,
+      isComingSoon: status === "coming_soon",
     });
-    setAddedIds((prev) => new Set(prev).add(game.id));
+    setAddedIds((prev) => new Set(prev).add(pendingGame.id));
+    setPendingGame(null);
   };
 
   return (
@@ -165,6 +177,13 @@ export function CatalogSearchAdd({ libraryId }: CatalogSearchAddProps) {
           </div>
         )}
       </CardContent>
+      <AddGameStatusDialog
+        open={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
+        onSelect={handleStatusSelect}
+        isPending={addFromCatalog.isPending}
+        gameTitle={pendingGame?.title}
+      />
     </Card>
   );
 }
