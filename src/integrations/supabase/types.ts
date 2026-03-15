@@ -556,6 +556,60 @@ export type Database = {
           },
         ]
       }
+      catalog_image_submissions: {
+        Row: {
+          catalog_id: string
+          created_at: string
+          file_path: string
+          file_size_bytes: number | null
+          id: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_by: string
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string
+          file_path: string
+          file_size_bytes?: number | null
+          id?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by: string
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string
+          file_path?: string
+          file_size_bytes?: number | null
+          id?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_image_submissions_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_image_submissions_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_mechanics: {
         Row: {
           catalog_id: string
@@ -7116,6 +7170,10 @@ export type Database = {
         Returns: boolean
       }
       is_slug_available: { Args: { check_slug: string }; Returns: boolean }
+      is_trusted_image_submitter: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       resolve_admin_email: { Args: { _admin_email: string }; Returns: string }
       set_timezone: { Args: never; Returns: undefined }
       slugify: { Args: { input: string }; Returns: string }
