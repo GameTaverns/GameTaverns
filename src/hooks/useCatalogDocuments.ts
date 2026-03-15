@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "./useAuth";
+import { validateDocumentFile } from "@/lib/fileValidation";
 
 export interface CatalogDocument {
   id: string;
