@@ -411,6 +411,10 @@ const GameDetail = () => {
                   <span className="text-8xl text-muted-foreground/50">🎲</span>
                 </div>
               )}
+              {/* Suggest image button overlay */}
+              {catalogId && (
+                <SuggestImageButton catalogId={catalogId} gameTitle={game.title} variant="overlay" />
+              )}
             </div>
 
             {/* Thumbnail Gallery - larger on mobile for easier tapping */}
