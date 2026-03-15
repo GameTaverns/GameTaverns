@@ -1,5 +1,6 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight, Calendar, BookOpen } from "lucide-react";
+import { SuggestImageButton } from "@/components/catalog/SuggestImageButton";
 import { useGameAvailability } from "@/hooks/useGameAvailability";
 import { useEffect, useState, useMemo } from "react";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
