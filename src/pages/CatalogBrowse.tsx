@@ -61,6 +61,8 @@ export default function CatalogBrowse() {
   const { toast } = useToast();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingCatalogId, setPendingCatalogId] = useState<string | null>(null);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [pendingComingSoon, setPendingComingSoon] = useState(false);
   const [wantingGameId, setWantingGameId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
