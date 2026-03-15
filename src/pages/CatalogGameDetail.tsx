@@ -93,6 +93,8 @@ export default function CatalogGameDetail() {
   const addWant = useAddWant();
   const { toast } = useToast();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [pendingComingSoon, setPendingComingSoon] = useState(false);
   const [playedOnlyGameId, setPlayedOnlyGameId] = useState<string | null>(null);
   const [creatingPlayedOnly, setCreatingPlayedOnly] = useState(false);
 
