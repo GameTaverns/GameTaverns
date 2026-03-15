@@ -318,8 +318,12 @@ export default function CatalogGameDetail() {
                     <div className="flex h-full items-center justify-center bg-muted">
                       <span className="text-8xl text-muted-foreground/50">🎲</span>
                     </div>
-                  )}
-                </div>
+                   )}
+                 </div>
+                 {/* Suggest image button - overlay on image */}
+                 {isAuthenticated && (
+                   <SuggestImageButton catalogId={game.id} gameTitle={game.title} variant="overlay" />
+                 )}
 
                 {/* Thumbnail strip */}
                 {allImages.length > 1 && (
