@@ -156,7 +156,7 @@ export function usePendingImageSubmissions() {
       );
 
       // Fetch submitter names
-      const userIds = [...new Set(data.map((d: any) => d.submitted_by))];
+      const userIds = [...new Set(data.map((d: any) => d.submitted_by))] as string[];
       const { data: profiles } = await supabase
         .from("user_profiles")
         .select("user_id, display_name, username")
