@@ -493,9 +493,9 @@ const GameDetail = () => {
 
             {/* For Sale Banner */}
             {forSale && game.is_for_sale && (
-              <Card className="mb-6 border-primary/30 bg-primary/10">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
+              <Card className="mb-3 sm:mb-6 border-primary/30 bg-primary/10">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-full bg-primary/20">
                         <DollarSign className="h-5 w-5 text-primary" />
