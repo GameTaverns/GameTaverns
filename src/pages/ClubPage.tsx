@@ -99,7 +99,7 @@ export default function ClubPage() {
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
           <BackLink fallback="/dashboard" className="text-cream/70 hover:text-cream" />
-          <div className="flex items-center gap-4">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4">
             {club.logo_url && (
               <img
                 src={club.logo_url}
