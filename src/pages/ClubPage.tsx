@@ -108,7 +108,7 @@ export default function ClubPage() {
               />
             )}
             <div>
-              <h1 className="font-display text-3xl font-bold text-cream">
+              <h1 className="font-display text-xl sm:text-3xl font-bold text-cream">
                 {club.name}
               </h1>
               {club.description && (
