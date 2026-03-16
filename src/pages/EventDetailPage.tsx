@@ -130,7 +130,7 @@ export default function EventDetailPage() {
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold">{event.title}</h1>
+            <h1 className="text-lg sm:text-2xl font-bold">{event.title}</h1>
             <Badge variant={EVENT_STATUS_VARIANT[event.status] || "outline"}>
               {event.status}
             </Badge>
