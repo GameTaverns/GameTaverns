@@ -261,7 +261,7 @@ export default function UserProfile() {
                 )}
               </div>
 
-              <div className="flex gap-6 text-center text-sm">
+              <div className="flex gap-4 sm:gap-6 text-center text-sm">
                 <div>
                   <div className="font-bold" style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}>{followCounts?.followers ?? 0}</div>
                   <div className="text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>{t('profile.followers')}</div>
