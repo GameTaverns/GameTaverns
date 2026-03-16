@@ -11,6 +11,7 @@ import { useMyLibrary } from "@/hooks/useLibrary";
 import { useUnreadDMCount } from "@/hooks/useDirectMessages";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileNavDrawer } from "./MobileNavDrawer";
+import { MobileV2BottomNav } from "./v2/MobileV2BottomNav";
 import { cn } from "@/lib/utils";
 
 interface TabItem {
@@ -37,6 +38,12 @@ export function MobileBottomTabs() {
 
   if (!isAuthenticated || !isMounted) return null;
 
+  // Native apps use the new v2 bottom nav
+  if (nativeRuntime) {
+    return createPortal(<MobileV2BottomNav />, document.body);
+  }
+
+  // Web uses the existing bottom nav
   const libraryHref = library ? getLibraryUrl(library.slug, "/") : getPlatformUrl("/dashboard?tab=library");
 
   const tabs: TabItem[] = [
@@ -70,7 +77,7 @@ export function MobileBottomTabs() {
   const currentPath = getNativeEffectivePath(location.pathname);
 
   const tabsNav = (
-    <nav className={cn("mobile-bottom-tabs", !nativeRuntime && "md:hidden", nativeRuntime && "native-mobile-tabs")} aria-label="Main navigation">
+    <nav className={cn("mobile-bottom-tabs", "md:hidden")} aria-label="Main navigation">
       <ul className="contents">
         {tabs.map((tab) => {
           const isActive = tab.match(currentPath);
