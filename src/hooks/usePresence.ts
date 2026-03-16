@@ -124,16 +124,17 @@ async function upsertPresence(userId: string, status: PresenceStatus, keepalive 
 // Track own presence with heartbeat + activity listeners
 export function useOwnPresence() {
   const { user } = useAuth();
+  const userId = user?.id;
 
   const sendHeartbeat = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
     const now = Date.now();
     const idle = now - lastActivity > IDLE_THRESHOLD;
-    await upsertPresence(user.id, idle ? "idle" : "online");
-  }, [user]);
+    await upsertPresence(userId, idle ? "idle" : "online");
+  }, [userId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     const onActivity = () => { lastActivity = Date.now(); };
     window.addEventListener("mousemove", onActivity, { passive: true });
@@ -142,19 +143,13 @@ export function useOwnPresence() {
     window.addEventListener("touchstart", onActivity, { passive: true });
 
     // Set online immediately
-    upsertPresence(user.id, "online");
+    upsertPresence(userId, "online");
 
     heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
 
-    // Set offline on unload
+    // Set offline on unload — use fetch with keepalive (sendBeacon can't set auth headers)
     const onUnload = () => {
-      const { url } = getPresenceConfig();
-      if (url) {
-        navigator.sendBeacon?.(
-          `${url}/rest/v1/user_presence`,
-          JSON.stringify({ user_id: user.id, status: "offline", last_seen: new Date().toISOString() })
-        );
-      }
+      upsertPresence(userId, "offline", true);
     };
     window.addEventListener("beforeunload", onUnload);
 
@@ -166,9 +161,9 @@ export function useOwnPresence() {
       window.removeEventListener("beforeunload", onUnload);
       if (heartbeatTimer) clearInterval(heartbeatTimer);
       // Mark offline on cleanup
-      upsertPresence(user.id, "offline");
+      upsertPresence(userId, "offline");
     };
-  }, [user, sendHeartbeat]);
+  }, [userId, sendHeartbeat]);
 }
 
 // Get presence for a specific user
