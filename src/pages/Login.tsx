@@ -272,7 +272,7 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden">
       {/* Licensed tavern background photo */}
       <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" />
       <div className="absolute inset-0 bg-background/50" />
