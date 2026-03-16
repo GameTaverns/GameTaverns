@@ -87,7 +87,7 @@ export default function GameCalendar() {
         description={t('gameCalendar.seoDesc', { library: library ? t('gameCalendar.atLibrary', { name: library.name }) : '' })}
       />
 
-      <div className="container mx-auto px-4 py-6 max-w-5xl">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 max-w-5xl">
         <h1 className="text-2xl font-display font-bold text-foreground flex items-center gap-2 mb-6">
           <CalIcon className="h-6 w-6 text-primary" />
           {t('gameCalendar.title')}
