@@ -187,11 +187,11 @@ export default function UserProfile() {
       <AppHeader />
 
       {isAuthenticated && (
-        <div className="container mx-auto px-4 pt-4 max-w-4xl">
+        <div className="container mx-auto px-2 sm:px-4 pt-3 sm:pt-4 max-w-4xl">
           <BackLink fallback="/dashboard" />
         </div>
       )}
-      <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-4xl space-y-4 sm:space-y-6">
         {/* Profile Card with Banner */}
         <Card className="backdrop-blur-sm border-border" style={{ ...(hasTheme ? { backgroundColor: profileBgColor! } : { backgroundColor: 'hsl(var(--card) / 0.9)' }), ...profileThemeVars }}>
           {/* Banner area — overflow-hidden only on the banner, not the card */}
