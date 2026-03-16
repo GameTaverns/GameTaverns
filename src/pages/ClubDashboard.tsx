@@ -227,7 +227,7 @@ export default function ClubDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-4">
             <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-cream/70 hover:text-cream transition-colors">
               <ArrowLeft className="h-4 w-4" />
@@ -236,7 +236,7 @@ export default function ClubDashboard() {
             {club.logo_url && (
               <img src={club.logo_url} alt={club.name} className="h-10 w-10 rounded-lg object-cover" />
             )}
-            <h1 className="font-display text-2xl font-bold text-cream">
+            <h1 className="font-display text-lg sm:text-2xl font-bold text-cream truncate">
               {club.name} — Management
             </h1>
             <Badge variant={club.status === "approved" ? "secondary" : "outline"}>
@@ -258,9 +258,9 @@ export default function ClubDashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <Tabs value={dashTab} onValueChange={setDashTab} className="w-full">
-          <TabsList className="mb-6 bg-wood-dark/60 border border-wood-medium/40">
+          <TabsList className="mb-4 sm:mb-6 bg-wood-dark/60 border border-wood-medium/40 w-full overflow-x-auto no-scrollbar">
             <TabsTrigger value="analytics" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <BarChart3 className="h-4 w-4" /> Analytics
             </TabsTrigger>

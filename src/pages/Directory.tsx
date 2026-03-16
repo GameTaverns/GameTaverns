@@ -378,7 +378,7 @@ export default function Directory() {
          description={t('directory.description')}
         canonical="https://hobby-shelf-spark.lovable.app/directory"
       />
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Header */}
         <div className="mb-8">
           {user && (
@@ -386,18 +386,18 @@ export default function Directory() {
           )}
           <div className="flex items-start justify-between gap-4">
             <div>
-               <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+               <h1 className="font-display text-xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2">
                  {t('directory.title')}
                </h1>
-               <p className="text-muted-foreground">
+               <p className="text-muted-foreground text-sm sm:text-base">
                  {t('directory.description')}
                </p>
             </div>
             <Link to="/near-me">
-              <Button variant="outline" className="gap-2 flex-shrink-0">
+              <Button variant="outline" className="gap-2 flex-shrink-0" size="sm">
                  <MapPin className="h-4 w-4" />
                  <Map className="h-4 w-4" />
-                 {t('directory.mapView')}
+                 <span className="hidden sm:inline">{t('directory.mapView')}</span>
               </Button>
             </Link>
           </div>

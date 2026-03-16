@@ -97,9 +97,9 @@ export default function ClubPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
           <BackLink fallback="/dashboard" className="text-cream/70 hover:text-cream" />
-          <div className="flex items-center gap-4">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4">
             {club.logo_url && (
               <img
                 src={club.logo_url}
@@ -108,7 +108,7 @@ export default function ClubPage() {
               />
             )}
             <div>
-              <h1 className="font-display text-3xl font-bold text-cream">
+              <h1 className="font-display text-xl sm:text-3xl font-bold text-cream">
                 {club.name}
               </h1>
               {club.description && (
@@ -135,9 +135,9 @@ export default function ClubPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-6 bg-wood-dark/60 border border-wood-medium/40">
+          <TabsList className="mb-4 sm:mb-6 bg-wood-dark/60 border border-wood-medium/40 w-full overflow-x-auto no-scrollbar">
             <TabsTrigger value="catalog" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <Search className="h-4 w-4" />
               {t('clubPage.gameCatalog')}

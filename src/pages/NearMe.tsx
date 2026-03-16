@@ -92,7 +92,7 @@ export default function NearMe() {
         canonical="https://gametaverns.com/near-me"
       />
 
-      <div className="container max-w-6xl mx-auto py-6 px-4 space-y-5">
+      <div className="container max-w-6xl mx-auto py-4 sm:py-6 px-2 sm:px-4 space-y-4 sm:space-y-5">
         {/* Header */}
         <div className="space-y-1">
           <Button variant="ghost" size="sm" className="gap-1.5 -ml-2 mb-1" onClick={() => navigate("/dashboard")}>

@@ -175,10 +175,10 @@ export default function ShareCard() {
     <Layout hideSidebar>
       <SEO title="Share Your Collection Stats" description="Generate a shareable stats card for your board game collection." />
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="font-display text-3xl font-bold mb-2">Your Collection Stats Card</h1>
-          <p className="text-muted-foreground">Download and share your board gaming stats on social media, Discord, or anywhere.</p>
+      <div className="max-w-3xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="font-display text-xl sm:text-3xl font-bold mb-2">Your Collection Stats Card</h1>
+          <p className="text-muted-foreground text-sm">Download and share your board gaming stats on social media, Discord, or anywhere.</p>
         </div>
 
         {/* Theme selector */}

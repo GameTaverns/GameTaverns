@@ -85,15 +85,15 @@ export default function ClubsDirectory() {
         title={t('clubDirectory.title')}
         description={t('clubDirectory.description')}
       />
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Header */}
         <div className="mb-8">
           {user && (
             <BackLink fallback="/dashboard" />
           )}
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
             <div>
-              <h1 className="font-display text-3xl font-bold text-foreground flex items-center gap-3 mb-2">
+              <h1 className="font-display text-xl sm:text-3xl font-bold text-foreground flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
                 <Building2 className="h-7 w-7 text-secondary" />
                 {t('clubDirectory.title')}
               </h1>

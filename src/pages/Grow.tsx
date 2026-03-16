@@ -18,7 +18,7 @@ export default function Grow() {
     <Layout hideSidebar>
       <SEO title={t('grow.title')} description={t('grow.seoDesc')} />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Back to dashboard */}
         {isAuthenticated && (
           <BackLink fallback="/dashboard" />
@@ -30,7 +30,7 @@ export default function Grow() {
             <Gift className="h-3.5 w-3.5" />
              {t('grow.growthHub')}
            </div>
-           <h1 className="font-display text-4xl sm:text-5xl font-bold mb-3">
+           <h1 className="font-display text-2xl sm:text-4xl md:text-5xl font-bold mb-3">
              {t('grow.heading')}
            </h1>
            <p className="text-muted-foreground text-lg max-w-xl mx-auto">

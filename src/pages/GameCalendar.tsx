@@ -87,13 +87,13 @@ export default function GameCalendar() {
         description={t('gameCalendar.seoDesc', { library: library ? t('gameCalendar.atLibrary', { name: library.name }) : '' })}
       />
 
-      <div className="container mx-auto px-4 py-6 max-w-5xl">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 max-w-5xl">
         <h1 className="text-2xl font-display font-bold text-foreground flex items-center gap-2 mb-6">
           <CalIcon className="h-6 w-6 text-primary" />
           {t('gameCalendar.title')}
         </h1>
 
-        <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+        <div className="grid lg:grid-cols-[1fr_320px] gap-4 sm:gap-6">
           {/* Calendar grid */}
           <Card>
             <CardHeader className="flex-row items-center justify-between pb-4">

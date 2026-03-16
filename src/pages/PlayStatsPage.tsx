@@ -171,8 +171,8 @@ export default function PlayStatsPage() {
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold font-display text-foreground">{t('playStats.title')}</h1>
-            <p className="text-muted-foreground">{t('playStats.subtitle')}</p>
+            <h1 className="text-xl sm:text-3xl font-bold font-display text-foreground">{t('playStats.title')}</h1>
+            <p className="text-muted-foreground text-sm">{t('playStats.subtitle')}</p>
           </div>
           
           <div className="flex items-center gap-4 flex-wrap">

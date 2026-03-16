@@ -122,7 +122,7 @@ export default function EventDetailPage() {
   };
 
   return (
-    <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+    <div className="container max-w-4xl mx-auto py-4 sm:py-6 px-2 sm:px-4 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
@@ -130,7 +130,7 @@ export default function EventDetailPage() {
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold">{event.title}</h1>
+            <h1 className="text-lg sm:text-2xl font-bold">{event.title}</h1>
             <Badge variant={EVENT_STATUS_VARIANT[event.status] || "outline"}>
               {event.status}
             </Badge>
@@ -238,7 +238,7 @@ export default function EventDetailPage() {
 
       {/* Dynamic Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full flex overflow-x-auto">
+        <TabsList className="w-full flex overflow-x-auto no-scrollbar">
           {tabs.map(tab => (
             <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 flex-1 min-w-0">
               {tab.icon}

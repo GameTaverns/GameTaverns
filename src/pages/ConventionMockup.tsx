@@ -48,7 +48,7 @@ const MOCK_INVENTORY = [
 
 function StatBar() {
   return (
-    <div className="grid grid-cols-4 gap-3 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
       {[
         { label: "Active Loans", value: "47", icon: BookOpen, color: "text-primary" },
         { label: "Reservations", value: "12", icon: CalendarClock, color: "text-secondary" },

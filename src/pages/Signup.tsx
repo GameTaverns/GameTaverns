@@ -146,7 +146,7 @@ export default function Signup() {
   };
   
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden">
       {/* Licensed tavern background photo */}
       <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" />
       <div className="absolute inset-0 bg-background/50" />
@@ -168,7 +168,7 @@ export default function Signup() {
         </div>
       </div>
 
-      <Card className="w-full max-w-md relative z-10 card-handcrafted bg-card/95 dark:bg-sidebar/95 border-gold/20 backdrop-blur-md shadow-[0_8px_32px_-8px_hsl(25_30%_8%/0.5)]">
+      <Card className="w-full max-w-md relative z-10 card-handcrafted bg-card/95 dark:bg-sidebar/95 border-gold/20 backdrop-blur-md shadow-[0_8px_32px_-8px_hsl(25_30%_8%/0.5)] mx-1">
         <CardHeader className="text-center pb-4">
           <Link to="/" className="flex flex-col items-center justify-center mb-3 group">
             <img src={logoImage} alt="GameTaverns" className="h-16 w-auto drop-shadow-[0_2px_8px_hsl(28_50%_48%/0.3)] transition-transform group-hover:scale-105 mx-auto" />

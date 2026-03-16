@@ -233,13 +233,13 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
             Back to Forums
           </Button>
         </Link>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className={`p-2 rounded-lg border flex-shrink-0 ${colorClass}`}>
               <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold truncate">{category.name}</h1>
+              <h1 className="text-lg sm:text-2xl font-bold truncate">{category.name}</h1>
               {category.description && (
                 <p className="text-muted-foreground text-sm line-clamp-2">{category.description}</p>
               )}
