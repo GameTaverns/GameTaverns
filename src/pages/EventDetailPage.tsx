@@ -238,7 +238,7 @@ export default function EventDetailPage() {
 
       {/* Dynamic Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full flex overflow-x-auto">
+        <TabsList className="w-full flex overflow-x-auto no-scrollbar">
           {tabs.map(tab => (
             <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 flex-1 min-w-0">
               {tab.icon}

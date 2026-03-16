@@ -55,7 +55,7 @@ export default function Recommendations() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Sparkles className="h-7 w-7 text-primary" />
-            <h1 className="font-display text-3xl font-bold text-foreground">
+            <h1 className="font-display text-xl sm:text-3xl font-bold text-foreground">
               Discover People
             </h1>
           </div>

@@ -93,7 +93,7 @@ export default function GameCalendar() {
           {t('gameCalendar.title')}
         </h1>
 
-        <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+        <div className="grid lg:grid-cols-[1fr_320px] gap-4 sm:gap-6">
           {/* Calendar grid */}
           <Card>
             <CardHeader className="flex-row items-center justify-between pb-4">

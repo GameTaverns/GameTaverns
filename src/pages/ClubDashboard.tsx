@@ -258,9 +258,9 @@ export default function ClubDashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <Tabs value={dashTab} onValueChange={setDashTab} className="w-full">
-          <TabsList className="mb-6 bg-wood-dark/60 border border-wood-medium/40">
+          <TabsList className="mb-4 sm:mb-6 bg-wood-dark/60 border border-wood-medium/40 w-full overflow-x-auto no-scrollbar">
             <TabsTrigger value="analytics" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <BarChart3 className="h-4 w-4" /> Analytics
             </TabsTrigger>

@@ -29,10 +29,10 @@ export default function Achievements() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <div className="max-w-4xl mx-auto">
           <BackLink fallback="/dashboard" className="text-cream/70 hover:text-cream" />
-          <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-border p-6 md:p-8">
+          <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-6 md:p-8">
             <AchievementsDisplay compact={false} />
           </div>
         </div>

@@ -140,7 +140,7 @@ export default function ConventionIndex() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <AppHeader />
-      <main className="container mx-auto px-4 py-8 max-w-3xl flex-1">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-3xl flex-1">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="font-display text-2xl font-bold text-foreground">

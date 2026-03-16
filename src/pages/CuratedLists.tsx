@@ -66,7 +66,7 @@ export default function CuratedListsPage() {
         <BackLink fallback="/dashboard" />
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display text-3xl font-bold text-foreground flex items-center gap-2">
+            <h1 className="font-display text-xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
               <ListOrdered className="h-7 w-7 text-primary" />
               {t('lists.title')}
             </h1>

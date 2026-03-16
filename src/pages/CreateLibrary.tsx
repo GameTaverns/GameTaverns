@@ -137,7 +137,7 @@ export default function CreateLibrary() {
               <Label htmlFor="slug" className="text-cream/80">
                 Library URL
               </Label>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <div className="flex-1 relative">
                   <Input
                     id="slug"

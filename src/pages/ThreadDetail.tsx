@@ -84,7 +84,7 @@ function ReplyCard({ reply }: { reply: ForumReply }) {
     : "??";
 
   return (
-    <div className="flex gap-4 py-4 border-b last:border-0">
+    <div className="flex gap-2 sm:gap-4 py-3 sm:py-4 border-b last:border-0">
       <Avatar className="h-10 w-10 flex-shrink-0">
         {reply.author?.avatar_url && <AvatarImage src={reply.author.avatar_url} alt={reply.author?.display_name || ""} />}
         <AvatarFallback>{initials}</AvatarFallback>

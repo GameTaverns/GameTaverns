@@ -180,9 +180,9 @@ export default function SmartPicker() {
         <div className="mb-4">
           <BackLink fallback="/dashboard" />
         </div>
-        <div className="text-center mb-8">
-          <h1 className="font-display text-4xl font-bold mb-2">Smart Game Picker</h1>
-          <p className="text-muted-foreground text-lg">
+        <div className="text-center mb-4 sm:mb-8">
+          <h1 className="font-display text-2xl sm:text-4xl font-bold mb-2">Smart Game Picker</h1>
+          <p className="text-muted-foreground text-sm sm:text-lg">
             Tell us about your group and we'll find the perfect game
           </p>
         </div>

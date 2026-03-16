@@ -425,7 +425,7 @@ export default function CatalogBrowse() {
       {/* Mobile sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="lg:hidden fixed top-20 left-4 z-50 p-2 rounded-lg bg-sidebar-accent border border-sidebar-border"
+        className="lg:hidden fixed top-20 left-2 sm:left-4 z-50 p-2 rounded-lg bg-sidebar-accent border border-sidebar-border"
       >
         <Menu className="h-5 w-5" />
       </button>

@@ -30,7 +30,7 @@ export default function Grow() {
             <Gift className="h-3.5 w-3.5" />
              {t('grow.growthHub')}
            </div>
-           <h1 className="font-display text-4xl sm:text-5xl font-bold mb-3">
+           <h1 className="font-display text-2xl sm:text-4xl md:text-5xl font-bold mb-3">
              {t('grow.heading')}
            </h1>
            <p className="text-muted-foreground text-lg max-w-xl mx-auto">

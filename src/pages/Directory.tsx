@@ -386,18 +386,18 @@ export default function Directory() {
           )}
           <div className="flex items-start justify-between gap-4">
             <div>
-               <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+               <h1 className="font-display text-xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2">
                  {t('directory.title')}
                </h1>
-               <p className="text-muted-foreground">
+               <p className="text-muted-foreground text-sm sm:text-base">
                  {t('directory.description')}
                </p>
             </div>
             <Link to="/near-me">
-              <Button variant="outline" className="gap-2 flex-shrink-0">
+              <Button variant="outline" className="gap-2 flex-shrink-0" size="sm">
                  <MapPin className="h-4 w-4" />
                  <Map className="h-4 w-4" />
-                 {t('directory.mapView')}
+                 <span className="hidden sm:inline">{t('directory.mapView')}</span>
               </Button>
             </Link>
           </div>

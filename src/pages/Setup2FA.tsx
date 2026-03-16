@@ -72,7 +72,7 @@ export default function Setup2FA() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-2 sm:p-4">
       <TotpSetup onComplete={handleComplete} isRequired={true} />
       <Link
         to="/dashboard"

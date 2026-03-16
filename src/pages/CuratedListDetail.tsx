@@ -177,7 +177,7 @@ function StandardListDetail({ listId }: { listId: string | undefined }) {
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-2xl font-bold text-foreground">{list.title}</h1>
+            <h1 className="font-display text-lg sm:text-2xl font-bold text-foreground">{list.title}</h1>
             {list.description && <p className="text-muted-foreground mt-1 text-sm">{list.description}</p>}
             <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
               <Avatar className="h-5 w-5">
