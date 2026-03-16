@@ -86,7 +86,7 @@ export default function NewsFeed() {
         </div>
 
         {/* Category filters */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
+        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 mb-3 sm:mb-6 no-scrollbar -mx-1 px-1">
           <Button
             variant={!activeCategory ? "default" : "outline"}
             size="sm"

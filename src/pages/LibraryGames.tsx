@@ -160,9 +160,9 @@ export default function LibraryGames() {
     <Layout hideSidebar>
       <div className="max-w-5xl mx-auto">
         <BackLink fallback="/dashboard" />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold">{t('libraryGames.addGames')}</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold">{t('libraryGames.addGames')}</h1>
             <p className="text-muted-foreground text-sm">{t('libraryGames.addGamesDesc')}</p>
           </div>
         </div>

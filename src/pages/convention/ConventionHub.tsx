@@ -171,32 +171,32 @@ export default function ConventionHub() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <AppHeader />
-      <div className="max-w-7xl mx-auto px-4 py-6 w-full flex-1">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-6 w-full flex-1">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex items-start sm:items-center justify-between mb-3 sm:mb-6 gap-2">
+          <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="h-7 px-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="h-7 px-2 shrink-0">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <h1 className="text-2xl font-display text-primary flex items-center gap-2">
-                <LayoutDashboard className="h-6 w-6" />
-                Convention Hub
+              <h1 className="text-lg sm:text-2xl font-display text-primary flex items-center gap-2 truncate">
+                <LayoutDashboard className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+                <span className="truncate">Convention Hub</span>
               </h1>
             </div>
-            <p className="text-sm text-muted-foreground ml-9">
+            <p className="text-xs sm:text-sm text-muted-foreground ml-9 truncate">
               {event.title} — {contextName}
               {event.venue_name && ` · ${event.venue_name}`}
               {libraryGames.length > 0 && ` · ${libraryGames.length} games`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
               <Wifi className="h-3 w-3 mr-1" /> Live
             </Badge>
             {isOwner && (
               <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setSettingsOpen(true)}>
-                <Settings className="h-3.5 w-3.5" /> Settings
+                <Settings className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Settings</span>
               </Button>
             )}
           </div>
