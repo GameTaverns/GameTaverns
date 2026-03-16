@@ -1003,7 +1003,7 @@ const GameDetail = () => {
                           </Badge>
                         )}
                       </div>
-                      <div className="p-3">
+                      <div className="p-2 sm:p-3">
                         <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors">
                           {expansion.title}
                         </h3>
