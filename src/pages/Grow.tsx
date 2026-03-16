@@ -18,7 +18,7 @@ export default function Grow() {
     <Layout hideSidebar>
       <SEO title={t('grow.title')} description={t('grow.seoDesc')} />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Back to dashboard */}
         {isAuthenticated && (
           <BackLink fallback="/dashboard" />
