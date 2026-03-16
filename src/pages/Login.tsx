@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
@@ -22,8 +22,22 @@ import { Capacitor } from "@capacitor/core";
 import { Sparkles } from "lucide-react";
 
 const isNative = Capacitor.isNativePlatform();
+const MobileV2Login = lazy(() => import("@/components/mobile/v2/MobileV2Login"));
 
+// Wrapper that routes native apps to the v2 mobile login
 const Login = () => {
+  if (isNative) {
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-pulse text-muted-foreground">Loading...</div></div>}>
+        <MobileV2Login />
+      </Suspense>
+    );
+  }
+  return <WebLogin />;
+};
+
+const WebLogin = () => {
+
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
