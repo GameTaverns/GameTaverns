@@ -211,18 +211,18 @@ export default function NotificationsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="container mx-auto px-4 py-6 max-w-3xl">
+      <main className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 max-w-3xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-cream hover:text-white gap-1.5">
-              <ArrowLeft className="h-4 w-4" /> Back
+        <div className="flex items-center justify-between mb-3 sm:mb-6 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-cream hover:text-white gap-1.5 shrink-0 px-2">
+              <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Back</span>
             </Button>
-            <h1 className="font-display text-xl font-bold text-cream flex items-center gap-2">
-              <Bell className="h-5 w-5 text-secondary" />
-              {t('notifications.title')}
+            <h1 className="font-display text-lg sm:text-xl font-bold text-cream flex items-center gap-2 truncate">
+              <Bell className="h-5 w-5 text-secondary shrink-0" />
+              <span className="truncate">{t('notifications.title')}</span>
               {unreadCount > 0 && (
-                <Badge variant="destructive" className="text-xs">{unreadCount}</Badge>
+                <Badge variant="destructive" className="text-xs shrink-0">{unreadCount}</Badge>
               )}
             </h1>
           </div>
@@ -231,16 +231,16 @@ export default function NotificationsPage() {
               size="sm"
               variant="outline"
               onClick={() => markAllAsRead.mutate()}
-              className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5 text-xs"
+              className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5 text-xs shrink-0"
             >
-              <CheckCheck className="h-3.5 w-3.5" /> {t('notifications.markAllRead')}
+              <CheckCheck className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('notifications.markAllRead')}</span>
             </Button>
           )}
         </div>
 
         {/* Category filters */}
-        <Tabs value={filter} onValueChange={v => setFilter(v as NotifCategory)} className="mb-6">
-          <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1">
+        <Tabs value={filter} onValueChange={v => setFilter(v as NotifCategory)} className="mb-3 sm:mb-6">
+          <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-0.5 sm:gap-1 p-1 overflow-x-auto no-scrollbar">
             {(["all", "activity", "social", "lending", "system"] as NotifCategory[]).map(cat => (
               <TabsTrigger
                 key={cat}

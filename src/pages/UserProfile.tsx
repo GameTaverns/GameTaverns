@@ -187,17 +187,17 @@ export default function UserProfile() {
       <AppHeader />
 
       {isAuthenticated && (
-        <div className="container mx-auto px-4 pt-4 max-w-4xl">
+        <div className="container mx-auto px-2 sm:px-4 pt-3 sm:pt-4 max-w-4xl">
           <BackLink fallback="/dashboard" />
         </div>
       )}
-      <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-4xl space-y-4 sm:space-y-6">
         {/* Profile Card with Banner */}
         <Card className="backdrop-blur-sm border-border" style={{ ...(hasTheme ? { backgroundColor: profileBgColor! } : { backgroundColor: 'hsl(var(--card) / 0.9)' }), ...profileThemeVars }}>
           {/* Banner area — overflow-hidden only on the banner, not the card */}
           <div className="relative overflow-hidden rounded-t-lg">
             <div
-              className={`h-64 ${!profile.banner_url && !profileBgImageUrl && !profile.profile_primary_h ? 'bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10' : ''}`}
+              className={`h-36 sm:h-64 ${!profile.banner_url && !profileBgImageUrl && !profile.profile_primary_h ? 'bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10' : ''}`}
               style={profileHeaderStyle}
             >
               {profileBgImageUrl && !profileIsGradient && (
@@ -206,25 +206,25 @@ export default function UserProfile() {
             </div>
             {/* Banner overlay (if set separately) */}
             {profile.banner_url && (
-              <div className="absolute inset-0 h-64" style={bannerStyle} />
+              <div className="absolute inset-0 h-36 sm:h-64" style={bannerStyle} />
             )}
           </div>
-          <CardContent className="relative pt-0 pb-6 px-6">
+          <CardContent className="relative pt-0 pb-4 px-3 sm:pb-6 sm:px-6">
             {/* Avatar row — only avatar overlaps the banner */}
-            <div className="flex items-end gap-4 -mt-14">
-              <Avatar className="h-28 w-28 border-4 border-card shadow-lg flex-shrink-0 relative z-10">
+            <div className="flex items-end gap-3 sm:gap-4 -mt-10 sm:-mt-14">
+              <Avatar className="h-20 w-20 sm:h-28 sm:w-28 border-4 border-card shadow-lg flex-shrink-0 relative z-10">
                 <AvatarImage src={profile.avatar_url || undefined} alt={profile.display_name || profile.username} className="object-cover" />
-                <AvatarFallback className="text-2xl font-display bg-primary/20 text-primary">
+                <AvatarFallback className="text-xl sm:text-2xl font-display bg-primary/20 text-primary">
                   {initials}
                 </AvatarFallback>
               </Avatar>
             </div>
 
             {/* Name, badges, actions — fully in card body, never overlapping banner */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mt-2 sm:mt-3">
               <div className="flex-1 min-w-0">
                 <h1
-                  className="font-display text-2xl font-bold truncate flex items-center gap-2"
+                  className="font-display text-xl sm:text-2xl font-bold truncate flex items-center gap-2"
                   style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}
                 >
                   {profile.display_name || profile.username}
@@ -261,7 +261,7 @@ export default function UserProfile() {
                 )}
               </div>
 
-              <div className="flex gap-6 text-center text-sm">
+              <div className="flex gap-4 sm:gap-6 text-center text-sm">
                 <div>
                   <div className="font-bold" style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}>{followCounts?.followers ?? 0}</div>
                   <div className="text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>{t('profile.followers')}</div>
@@ -314,7 +314,7 @@ export default function UserProfile() {
 
         {/* Tabbed content: Activity + Achievements + Communities + Feedback */}
         <Tabs value={profileTab} onValueChange={setProfileTab}>
-          <TabsList className="w-full justify-start overflow-x-auto flex-nowrap" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : {}}>
+          <TabsList className="w-full justify-start overflow-x-auto flex-nowrap no-scrollbar" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : {}}>
             <TabsTrigger value="activity" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Activity className="h-3.5 w-3.5" />{t('profile.activity')}
             </TabsTrigger>

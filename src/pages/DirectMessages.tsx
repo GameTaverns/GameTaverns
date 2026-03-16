@@ -52,10 +52,10 @@ export default function DirectMessages() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-6 max-w-5xl">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
-            <MessageSquare className="h-6 w-6 text-secondary" />
+      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 max-w-5xl">
+        <div className="flex items-center justify-between mb-3 sm:mb-6 gap-2">
+          <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-secondary" />
             {t('messages.title')}
           </h1>
           <Link
@@ -63,11 +63,11 @@ export default function DirectMessages() {
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <LayoutDashboard className="h-4 w-4" />
-            {t('messages.backToDashboard')}
+            <span className="hidden sm:inline">{t('messages.backToDashboard')}</span>
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 h-[calc(100dvh-200px)] md:h-[calc(100vh-200px)] min-h-[500px]">
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-3 sm:gap-4 h-[calc(100dvh-160px)] sm:h-[calc(100dvh-200px)] md:h-[calc(100vh-200px)] min-h-[400px] sm:min-h-[500px]">
           {/* Sidebar */}
           <Card className="bg-card border-border/60 overflow-hidden flex flex-col">
             <DMInbox

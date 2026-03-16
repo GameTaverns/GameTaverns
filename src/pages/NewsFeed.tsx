@@ -77,16 +77,16 @@ export default function NewsFeed() {
     <Layout>
       <div className="max-w-4xl mx-auto">
         <BackLink fallback="/dashboard" label="Dashboard" />
-        <div className="mb-6">
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
-            <Newspaper className="h-7 w-7 text-primary" />
+        <div className="mb-3 sm:mb-6">
+          <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+            <Newspaper className="h-5 w-5 sm:h-7 sm:w-7 text-primary shrink-0" />
             Board Game News
           </h1>
-          <p className="text-muted-foreground mt-1">Stay up to date with the latest from the tabletop world</p>
+          <p className="text-muted-foreground mt-1 text-sm">Stay up to date with the latest from the tabletop world</p>
         </div>
 
         {/* Category filters */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
+        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 mb-3 sm:mb-6 no-scrollbar -mx-1 px-1">
           <Button
             variant={!activeCategory ? "default" : "outline"}
             size="sm"
