@@ -206,7 +206,7 @@ export default function UserProfile() {
             </div>
             {/* Banner overlay (if set separately) */}
             {profile.banner_url && (
-              <div className="absolute inset-0 h-64" style={bannerStyle} />
+              <div className="absolute inset-0 h-36 sm:h-64" style={bannerStyle} />
             )}
           </div>
           <CardContent className="relative pt-0 pb-6 px-6">
