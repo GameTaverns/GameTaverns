@@ -78,63 +78,63 @@ async function fetchPresenceRowsDirect(filter: { userId?: string; userIds?: stri
   }
 }
 
-// Update presence in DB
-async function upsertPresence(userId: string, status: PresenceStatus) {
+// Update presence in DB — tries multiple approaches for maximum compatibility
+async function upsertPresence(userId: string, status: PresenceStatus, keepalive = false) {
   const now = new Date().toISOString();
   const payload = { user_id: userId, status, last_seen: now, updated_at: now };
 
-  // Always try Supabase client first — it has the right credentials in all modes
+  // Approach 1: Direct PostgREST fetch — most reliable for self-hosted Kong gateway
+  const { url, anonKey } = getPresenceConfig();
+  if (url && anonKey) {
+    const token = await getAuthToken();
+    try {
+      const res = await fetch(
+        `${url}/rest/v1/user_presence`,
+        {
+          method: 'POST',
+          keepalive,
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${token || anonKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=merge-duplicates,return=minimal',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+      if (res.ok) return;
+      console.warn('[Presence] PostgREST upsert failed:', res.status, await res.text().catch(() => ''));
+    } catch (e) {
+      console.warn('[Presence] PostgREST upsert threw:', e);
+    }
+  }
+
+  // Approach 2: Supabase client (works in cloud mode)
   try {
     const { error } = await (supabase as any)
       .from("user_presence")
       .upsert(payload, { onConflict: "user_id" });
     if (!error) return;
-    console.warn('[Presence] Supabase client upsert failed, trying PostgREST direct:', error.message);
+    console.warn('[Presence] Supabase client upsert failed:', error.message);
   } catch (e) {
-    console.warn('[Presence] Supabase client upsert threw, trying PostgREST direct:', e);
-  }
-
-  // Fallback: direct PostgREST fetch (self-hosted where client stub may not work)
-  const { url, anonKey } = getPresenceConfig();
-  if (!url || !anonKey) return;
-
-  const token = await getAuthToken();
-  try {
-    const res = await fetch(
-      `${url}/rest/v1/user_presence?on_conflict=user_id`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: anonKey,
-          Authorization: `Bearer ${token || anonKey}`,
-          'Content-Type': 'application/json',
-          Prefer: 'resolution=merge-duplicates,return=minimal',
-        },
-        body: JSON.stringify(payload),
-      }
-    );
-    if (!res.ok) {
-      const text = await res.text();
-      console.error('[Presence] PostgREST upsert failed:', res.status, text);
-    }
-  } catch (e) {
-    console.error('[Presence] PostgREST upsert threw:', e);
+    console.warn('[Presence] Supabase client upsert threw:', e);
   }
 }
 
 // Track own presence with heartbeat + activity listeners
 export function useOwnPresence() {
   const { user } = useAuth();
+  const userId = user?.id;
 
   const sendHeartbeat = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
     const now = Date.now();
     const idle = now - lastActivity > IDLE_THRESHOLD;
-    await upsertPresence(user.id, idle ? "idle" : "online");
-  }, [user]);
+    await upsertPresence(userId, idle ? "idle" : "online");
+  }, [userId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     const onActivity = () => { lastActivity = Date.now(); };
     window.addEventListener("mousemove", onActivity, { passive: true });
@@ -143,19 +143,13 @@ export function useOwnPresence() {
     window.addEventListener("touchstart", onActivity, { passive: true });
 
     // Set online immediately
-    upsertPresence(user.id, "online");
+    upsertPresence(userId, "online");
 
     heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
 
-    // Set offline on unload
+    // Set offline on unload — use fetch with keepalive (sendBeacon can't set auth headers)
     const onUnload = () => {
-      const { url } = getPresenceConfig();
-      if (url) {
-        navigator.sendBeacon?.(
-          `${url}/rest/v1/user_presence`,
-          JSON.stringify({ user_id: user.id, status: "offline", last_seen: new Date().toISOString() })
-        );
-      }
+      upsertPresence(userId, "offline", true);
     };
     window.addEventListener("beforeunload", onUnload);
 
@@ -167,9 +161,9 @@ export function useOwnPresence() {
       window.removeEventListener("beforeunload", onUnload);
       if (heartbeatTimer) clearInterval(heartbeatTimer);
       // Mark offline on cleanup
-      upsertPresence(user.id, "offline");
+      upsertPresence(userId, "offline");
     };
-  }, [user, sendHeartbeat]);
+  }, [userId, sendHeartbeat]);
 }
 
 // Get presence for a specific user
