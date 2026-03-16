@@ -76,9 +76,11 @@ export default async function handler(req: Request): Promise<Response> {
       return user?.id || null;
     })();
 
+    // Self-hosted compatibility: avoid embedded relationship syntax here because
+    // older PostgREST builds can return 400 for nested selects in edge functions.
     const gamePromise = supabaseAdmin
       .from("games")
-      .select("id, is_for_sale, title, library_id, libraries!inner(owner_id)")
+      .select("id, is_for_sale, title, library_id")
       .eq("id", game_id)
       .single();
 
@@ -92,6 +94,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (gameError || !game) {
+      console.error("Game lookup error:", gameError);
       return new Response(
         JSON.stringify({ success: false, error: "Game not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -105,13 +108,28 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const libraryOwnerId = (game.libraries as any)?.owner_id;
-    if (!libraryOwnerId) {
+    if (!game.library_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Could not determine game library" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: library, error: libraryError } = await supabaseAdmin
+      .from("libraries")
+      .select("owner_id")
+      .eq("id", game.library_id)
+      .single();
+
+    if (libraryError || !library?.owner_id) {
+      console.error("Library lookup error:", libraryError);
       return new Response(
         JSON.stringify({ success: false, error: "Could not determine game owner" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const libraryOwnerId = library.owner_id;
 
     // Don't allow messaging yourself
     if (senderUserId === libraryOwnerId) {
