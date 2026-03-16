@@ -561,7 +561,7 @@ const GameDetail = () => {
             })()}
 
             {/* Catalog Link + Purchase Links */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-6">
+            <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5 mb-3 sm:mb-6">
               {(game as any).catalog_id && (
                 <Link
                   to={`/catalog/${(game as any).catalog_slug || (game as any).catalog_id}`}
