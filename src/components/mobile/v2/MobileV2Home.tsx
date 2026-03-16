@@ -23,7 +23,8 @@ export function MobileV2Home() {
 
   const greeting = profile?.display_name || profile?.username || "Adventurer";
   const hasLibrary = !!library;
-  const gameCount = library?.game_count || 0;
+  // game_count isn't on the Library type; we'll use a placeholder for now
+  const gameCount = 0; // TODO: fetch from games query
 
   return (
     <div className="min-h-screen bg-background pb-24">
