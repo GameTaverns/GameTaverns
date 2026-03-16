@@ -1314,8 +1314,14 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const hasMore = expansions.length === batchSize;
-      const noProgress = !dryRun && linked === 0;
-      const nextOffset = (dryRun || noProgress) && hasMore ? offset + batchSize : undefined;
+      const unresolvedCount = noMatch + apiErrors;
+      // In live mode, linked rows disappear from the query result set, so only
+      // advance past unresolved rows to avoid reprocessing the same no-match items.
+      const nextOffset = hasMore
+        ? dryRun
+          ? offset + batchSize
+          : offset + unresolvedCount
+        : undefined;
 
       return new Response(JSON.stringify({
         success: true,
