@@ -197,7 +197,7 @@ export default function UserProfile() {
           {/* Banner area — overflow-hidden only on the banner, not the card */}
           <div className="relative overflow-hidden rounded-t-lg">
             <div
-              className={`h-64 ${!profile.banner_url && !profileBgImageUrl && !profile.profile_primary_h ? 'bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10' : ''}`}
+              className={`h-36 sm:h-64 ${!profile.banner_url && !profileBgImageUrl && !profile.profile_primary_h ? 'bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10' : ''}`}
               style={profileHeaderStyle}
             >
               {profileBgImageUrl && !profileIsGradient && (
