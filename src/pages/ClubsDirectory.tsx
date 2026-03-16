@@ -93,7 +93,7 @@ export default function ClubsDirectory() {
           )}
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="font-display text-3xl font-bold text-foreground flex items-center gap-3 mb-2">
+              <h1 className="font-display text-xl sm:text-3xl font-bold text-foreground flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
                 <Building2 className="h-7 w-7 text-secondary" />
                 {t('clubDirectory.title')}
               </h1>
