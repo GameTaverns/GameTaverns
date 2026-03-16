@@ -378,7 +378,7 @@ export default function Directory() {
          description={t('directory.description')}
         canonical="https://hobby-shelf-spark.lovable.app/directory"
       />
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Header */}
         <div className="mb-8">
           {user && (
