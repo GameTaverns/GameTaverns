@@ -210,6 +210,14 @@ function getCurrentValue(requirementType: string, progress: AchievementProgress)
       return progress.unique_game_types;
     case 'tour_complete':
       return progress.tour_complete;
+    case 'photos_uploaded':
+      return progress.photos_uploaded;
+    case 'docs_uploaded':
+      return progress.docs_uploaded;
+    case 'catalog_images_submitted':
+      return progress.catalog_images_submitted;
+    case 'referrals_completed':
+      return progress.referrals_completed;
     default:
       return 0;
   }
