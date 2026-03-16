@@ -70,7 +70,7 @@ export function ActivityFilterBar({
   if (availableFilters.length <= 1) return null;
 
   return (
-    <div className="flex flex-wrap gap-1 mb-3">
+    <div className="flex flex-wrap gap-1 mb-2 sm:mb-3 overflow-x-auto no-scrollbar -mx-1 px-1">
       {availableFilters.map(({ key, label, icon: Icon }) => {
         const active = !hiddenTypes.has(key);
         return (
@@ -79,10 +79,11 @@ export function ActivityFilterBar({
             size="sm"
             pressed={active}
             onPressedChange={() => toggle(key)}
-            className="h-7 px-2.5 gap-1 text-xs data-[state=on]:bg-primary/15 data-[state=on]:text-primary"
+            className="h-7 px-2 sm:px-2.5 gap-1 text-[11px] sm:text-xs shrink-0 data-[state=on]:bg-primary/15 data-[state=on]:text-primary"
           >
             <Icon className="h-3 w-3" />
-            {label}
+            <span className="hidden xs:inline">{label}</span>
+            <span className="xs:hidden">{label.slice(0, 4)}</span>
           </Toggle>
         );
       })}

@@ -71,10 +71,10 @@ export function ActivityFeedBatchItem({
         : "grid-cols-3";
 
   return (
-    <div className="flex gap-3 items-start">
+    <div className="flex gap-2 sm:gap-3 items-start">
       {showUser && (
         <Link to={batch.user_username ? `/u/${batch.user_username}` : "#"} className="shrink-0">
-          <Avatar className="h-8 w-8">
+          <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
             <AvatarImage src={batch.user_avatar_url || undefined} />
             <AvatarFallback className="text-xs bg-primary/10 text-primary">{initials}</AvatarFallback>
           </Avatar>
@@ -131,7 +131,7 @@ export function ActivityFeedBatchItem({
         </p>
 
         {/* Thumbnail grid */}
-        <div className={`grid ${gridCols} gap-1 mt-2 max-w-[280px]`}>
+        <div className={`grid ${gridCols} gap-1 mt-2 max-w-full sm:max-w-[280px]`}>
           {thumbnails.map((t, i) => (
             <div
               key={i}

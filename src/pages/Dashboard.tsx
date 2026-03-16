@@ -81,17 +81,17 @@ export default function Dashboard() {
         </div>
         <AppHeader />
 
-        <main className="container mx-auto px-4 py-6 max-w-6xl flex-1">
+        <main className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 max-w-6xl flex-1">
           {/* Greeting + motivational message */}
-          <div className="mb-6">
-            <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">
+          <div className="mb-3 sm:mb-6">
+            <h1 className="font-display text-lg sm:text-2xl font-bold text-foreground leading-tight">
               {t('dashboard.welcomeBack', { name: displayName })}
             </h1>
             <MotivationalMessage />
           </div>
 
           {/* Two-column layout: Feed + Sidebar — tops aligned */}
-          <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
+          <div className="flex flex-col lg:flex-row gap-3 sm:gap-6 lg:items-start">
             {/* Main feed column */}
             <div className="flex-1 min-w-0">
               <DashboardActivityFeed />
