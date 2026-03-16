@@ -48,7 +48,7 @@ export default function Recommendations() {
         description="Find gamers with similar tastes based on your collection and play style."
         canonical="https://hobby-shelf-spark.lovable.app/recommendations"
       />
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {user && <BackLink fallback="/dashboard" />}
 
         {/* Header */}
