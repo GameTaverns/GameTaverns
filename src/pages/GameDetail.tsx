@@ -487,7 +487,7 @@ const GameDetail = () => {
             </div>
 
             {/* GT Score */}
-            <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap">
               <GTScoreBadge catalogId={(game as any).catalog_id} size="lg" />
             </div>
 
