@@ -578,7 +578,7 @@ const GameDetail = () => {
 
             {/* Tabs for Description and Additional Info */}
             <Tabs value={gameDetailTab} onValueChange={setGameDetailTab} className="w-full">
-              <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4 max-w-[calc(100vw-2rem)] overflow-x-auto">
+              <TabsList className="w-full h-auto flex-wrap gap-0.5 sm:gap-1 p-1 mb-3 sm:mb-4 max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-2rem)] overflow-x-auto">
                 <TabsTrigger value="description">{t('game.description')}</TabsTrigger>
                 <TabsTrigger value="info">{t('game.info')}</TabsTrigger>
                 <TabsTrigger value="location">{t('game.location')}</TabsTrigger>
