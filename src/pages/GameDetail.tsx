@@ -449,11 +449,11 @@ const GameDetail = () => {
           </div>
 
           {/* Details Section */}
-          <div className="min-w-0 max-w-[calc(100vw-2rem)]">
+          <div className="min-w-0 max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-2rem)]">
             {/* Title with Actions */}
-            <div className="flex flex-col gap-3 mb-2">
-              <div className="flex items-start justify-between gap-3">
-                <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground break-words min-w-0">
+            <div className="flex flex-col gap-2 sm:gap-3 mb-2">
+              <div className="flex items-start justify-between gap-2 sm:gap-3">
+                <h1 className="font-display text-xl sm:text-2xl lg:text-4xl font-bold text-foreground break-words min-w-0 leading-tight">
                   {game.title}
                 </h1>
                 <FavoriteButton gameId={game.id} />
