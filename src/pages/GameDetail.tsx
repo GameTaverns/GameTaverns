@@ -522,7 +522,7 @@ const GameDetail = () => {
               const nonMechanicCategories = allCategories.filter(c => c.type !== "mechanic");
               const difficultyInfo = getDifficultyDisplay(game.difficulty);
               return nonMechanicCategories.length > 0 || yearPublished != null ? (
-                <div className="flex flex-wrap gap-2 max-w-[calc(100vw-2rem)] overflow-hidden mb-6">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2 max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-2rem)] overflow-hidden mb-3 sm:mb-6">
                   {yearPublished != null && (
                     <Badge variant="outline" className="text-sm">
                       <Calendar className="h-3.5 w-3.5 mr-1" />
