@@ -221,10 +221,10 @@ export default function UserProfile() {
             </div>
 
             {/* Name, badges, actions — fully in card body, never overlapping banner */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mt-2 sm:mt-3">
               <div className="flex-1 min-w-0">
                 <h1
-                  className="font-display text-2xl font-bold truncate flex items-center gap-2"
+                  className="font-display text-xl sm:text-2xl font-bold truncate flex items-center gap-2"
                   style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}
                 >
                   {profile.display_name || profile.username}
