@@ -23,7 +23,18 @@ import { Sparkles } from "lucide-react";
 
 const isNative = Capacitor.isNativePlatform();
 
+// On native, use the mobile v2 login screen
+const MobileV2Login = lazy(() => import("@/components/mobile/v2/MobileV2Login"));
+
 const Login = () => {
+  if (isNative) {
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-pulse text-muted-foreground">Loading...</div></div>}>
+        <MobileV2Login />
+      </Suspense>
+    );
+  }
+
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
