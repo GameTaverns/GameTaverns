@@ -131,7 +131,7 @@ export function ActivityFeedBatchItem({
         </p>
 
         {/* Thumbnail grid */}
-        <div className={`grid ${gridCols} gap-1 mt-2 max-w-[280px]`}>
+        <div className={`grid ${gridCols} gap-1 mt-2 max-w-full sm:max-w-[280px]`}>
           {thumbnails.map((t, i) => (
             <div
               key={i}
