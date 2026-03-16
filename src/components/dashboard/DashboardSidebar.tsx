@@ -116,7 +116,7 @@ function FollowingWidget() {
 
   return (
     <WidgetCard title="Following" icon={Users}>
-      <div className="flex items-center gap-4 mb-3 text-xs text-muted-foreground">
+      <div className="flex items-center gap-3 sm:gap-4 mb-3 text-xs text-muted-foreground">
         <span><strong className="text-foreground">{counts?.followers ?? 0}</strong> followers</span>
         <span><strong className="text-foreground">{counts?.following ?? 0}</strong> following</span>
       </div>
@@ -125,23 +125,23 @@ function FollowingWidget() {
           You're not following anyone yet.
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           {following.map((person: any) => (
             <Link
               key={person.user_id}
               to={`/u/${person.username}`}
-              className="flex flex-col items-center gap-1 group"
+              className="flex flex-col items-center gap-0.5 sm:gap-1 group min-w-0"
             >
-              <div className="h-14 w-14 rounded-md bg-muted border border-border overflow-hidden shadow-sm group-hover:ring-2 group-hover:ring-primary/50 transition-all">
+              <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-md bg-muted border border-border overflow-hidden shadow-sm group-hover:ring-2 group-hover:ring-primary/50 transition-all shrink-0">
                 {person.avatar_url ? (
                   <img src={person.avatar_url} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center">
-                    <Users className="h-5 w-5 text-muted-foreground" />
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                   </div>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground group-hover:text-primary transition-colors truncate w-full text-center leading-tight">
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground group-hover:text-primary transition-colors truncate w-full text-center leading-tight">
                 {person.display_name || person.username || 'User'}
               </p>
             </Link>

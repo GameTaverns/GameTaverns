@@ -66,11 +66,11 @@ export function DashboardActivityFeed() {
       <div className="space-y-3">
         {filtered.map((item, idx) =>
           item.type === "batch" ? (
-            <div key={`batch-${idx}`} className="card-handcrafted p-4">
+          <div key={`batch-${idx}`} className="card-handcrafted p-2.5 sm:p-4">
               <ActivityFeedBatchItem batch={item} showUser />
             </div>
           ) : (
-            <div key={item.event.id} className="card-handcrafted p-4">
+            <div key={item.event.id} className="card-handcrafted p-2.5 sm:p-4">
               <ActivityFeedItem event={item.event} showUser />
             </div>
           )

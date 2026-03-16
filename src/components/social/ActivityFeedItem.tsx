@@ -35,10 +35,10 @@ export function ActivityFeedItem({ event, showUser = false, canDelete = false }:
     .slice(0, 2);
 
   return (
-    <div className="flex gap-3 items-start">
+    <div className="flex gap-2 sm:gap-3 items-start">
       {showUser && (
         <Link to={event.user_username ? `/u/${event.user_username}` : "#"} className="shrink-0">
-          <Avatar className="h-8 w-8">
+          <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
             <AvatarImage src={event.user_avatar_url || undefined} />
             <AvatarFallback className="text-xs bg-primary/10 text-primary">{initials}</AvatarFallback>
           </Avatar>
