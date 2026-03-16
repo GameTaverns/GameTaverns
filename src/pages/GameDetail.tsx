@@ -315,14 +315,14 @@ const GameDetail = () => {
         {/* Back Button */}
         <Button
           variant="ghost"
-          className="mb-6 -ml-2"
+          className="mb-3 sm:mb-6 -ml-2"
           onClick={() => navigate(-1)}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           {t('common.back')}
         </Button>
 
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+        <div className="grid lg:grid-cols-2 gap-4 sm:gap-8 lg:gap-12">
           {/* Image Gallery Section */}
           <div className="space-y-4">
             {/* Main Image - swipeable gallery with touch support */}
@@ -449,11 +449,11 @@ const GameDetail = () => {
           </div>
 
           {/* Details Section */}
-          <div className="min-w-0 max-w-[calc(100vw-2rem)]">
+          <div className="min-w-0 max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-2rem)]">
             {/* Title with Actions */}
-            <div className="flex flex-col gap-3 mb-2">
-              <div className="flex items-start justify-between gap-3">
-                <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground break-words min-w-0">
+            <div className="flex flex-col gap-2 sm:gap-3 mb-2">
+              <div className="flex items-start justify-between gap-2 sm:gap-3">
+                <h1 className="font-display text-xl sm:text-2xl lg:text-4xl font-bold text-foreground break-words min-w-0 leading-tight">
                   {game.title}
                 </h1>
                 <FavoriteButton gameId={game.id} />
@@ -487,15 +487,15 @@ const GameDetail = () => {
             </div>
 
             {/* GT Score */}
-            <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap">
               <GTScoreBadge catalogId={(game as any).catalog_id} size="lg" />
             </div>
 
             {/* For Sale Banner */}
             {forSale && game.is_for_sale && (
-              <Card className="mb-6 border-primary/30 bg-primary/10">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
+              <Card className="mb-3 sm:mb-6 border-primary/30 bg-primary/10">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-full bg-primary/20">
                         <DollarSign className="h-5 w-5 text-primary" />
@@ -522,7 +522,7 @@ const GameDetail = () => {
               const nonMechanicCategories = allCategories.filter(c => c.type !== "mechanic");
               const difficultyInfo = getDifficultyDisplay(game.difficulty);
               return nonMechanicCategories.length > 0 || yearPublished != null ? (
-                <div className="flex flex-wrap gap-2 max-w-[calc(100vw-2rem)] overflow-hidden mb-6">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2 max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-2rem)] overflow-hidden mb-3 sm:mb-6">
                   {yearPublished != null && (
                     <Badge variant="outline" className="text-sm">
                       <Calendar className="h-3.5 w-3.5 mr-1" />
@@ -561,7 +561,7 @@ const GameDetail = () => {
             })()}
 
             {/* Catalog Link + Purchase Links */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-6">
+            <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5 mb-3 sm:mb-6">
               {(game as any).catalog_id && (
                 <Link
                   to={`/catalog/${(game as any).catalog_slug || (game as any).catalog_id}`}
@@ -578,7 +578,7 @@ const GameDetail = () => {
 
             {/* Tabs for Description and Additional Info */}
             <Tabs value={gameDetailTab} onValueChange={setGameDetailTab} className="w-full">
-              <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4 max-w-[calc(100vw-2rem)] overflow-x-auto">
+              <TabsList className="w-full h-auto flex-wrap gap-0.5 sm:gap-1 p-1 mb-3 sm:mb-4 max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-2rem)] overflow-x-auto">
                 <TabsTrigger value="description">{t('game.description')}</TabsTrigger>
                 <TabsTrigger value="info">{t('game.info')}</TabsTrigger>
                 <TabsTrigger value="location">{t('game.location')}</TabsTrigger>
@@ -964,14 +964,14 @@ const GameDetail = () => {
 
         {/* Expansions Section */}
         {expansions.length > 0 && (
-          <div className="mt-16">
-            <div className="flex items-center gap-2 mb-6">
-              <Package className="h-6 w-6 text-primary" />
-              <h2 className="font-display text-2xl font-semibold text-foreground">
+          <div className="mt-8 sm:mt-16">
+            <div className="flex items-center gap-2 mb-3 sm:mb-6">
+              <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground">
                 {t('game.expansions')} ({expansions.length})
               </h2>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4">
               {expansions.map((expansion) => (
                 <Link
                   key={expansion.id}
@@ -1003,7 +1003,7 @@ const GameDetail = () => {
                           </Badge>
                         )}
                       </div>
-                      <div className="p-3">
+                      <div className="p-2 sm:p-3">
                         <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors">
                           {expansion.title}
                         </h3>
