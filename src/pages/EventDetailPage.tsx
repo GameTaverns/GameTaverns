@@ -122,7 +122,7 @@ export default function EventDetailPage() {
   };
 
   return (
-    <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+    <div className="container max-w-4xl mx-auto py-4 sm:py-6 px-2 sm:px-4 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
