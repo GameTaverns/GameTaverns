@@ -315,14 +315,14 @@ const GameDetail = () => {
         {/* Back Button */}
         <Button
           variant="ghost"
-          className="mb-6 -ml-2"
+          className="mb-3 sm:mb-6 -ml-2"
           onClick={() => navigate(-1)}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           {t('common.back')}
         </Button>
 
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+        <div className="grid lg:grid-cols-2 gap-4 sm:gap-8 lg:gap-12">
           {/* Image Gallery Section */}
           <div className="space-y-4">
             {/* Main Image - swipeable gallery with touch support */}
