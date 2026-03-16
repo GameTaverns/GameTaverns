@@ -85,7 +85,7 @@ export default function ClubsDirectory() {
         title={t('clubDirectory.title')}
         description={t('clubDirectory.description')}
       />
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Header */}
         <div className="mb-8">
           {user && (
