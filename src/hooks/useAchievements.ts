@@ -39,6 +39,10 @@ export interface AchievementProgress {
   ratings_given: number;
   unique_game_types: number;
   tour_complete: number;
+  photos_uploaded: number;
+  docs_uploaded: number;
+  catalog_images_submitted: number;
+  referrals_completed: number;
 }
 
 const TIER_NAMES: Record<number, string> = {
