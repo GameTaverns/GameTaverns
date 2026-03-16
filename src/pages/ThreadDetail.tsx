@@ -403,7 +403,7 @@ export default function ThreadDetail() {
               </DropdownMenu>
             )}
           </div>
-          <h1 className="text-3xl font-bold">{thread.title}</h1>
+          <h1 className="text-xl sm:text-3xl font-bold">{thread.title}</h1>
           <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
             <div className="flex items-center gap-2">
               <Avatar className="h-6 w-6">
