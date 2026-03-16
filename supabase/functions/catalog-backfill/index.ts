@@ -1239,7 +1239,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         // Parse each <item> from the response
-        const itemRegex = /<item[^>]*id="(\d+)"[^>]*type="([^"]+)"[^>]*>[\s\S]*?<\/item>/g;
+        const itemRegex = /<item[^>]*?id="(\d+)"[^>]*>[\s\S]*?<\/item>/g;
         const itemMap = new Map<string, string>();
         let match;
         while ((match = itemRegex.exec(xml)) !== null) {
