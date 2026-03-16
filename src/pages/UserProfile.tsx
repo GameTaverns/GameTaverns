@@ -209,12 +209,12 @@ export default function UserProfile() {
               <div className="absolute inset-0 h-36 sm:h-64" style={bannerStyle} />
             )}
           </div>
-          <CardContent className="relative pt-0 pb-6 px-6">
+          <CardContent className="relative pt-0 pb-4 px-3 sm:pb-6 sm:px-6">
             {/* Avatar row — only avatar overlaps the banner */}
-            <div className="flex items-end gap-4 -mt-14">
-              <Avatar className="h-28 w-28 border-4 border-card shadow-lg flex-shrink-0 relative z-10">
+            <div className="flex items-end gap-3 sm:gap-4 -mt-10 sm:-mt-14">
+              <Avatar className="h-20 w-20 sm:h-28 sm:w-28 border-4 border-card shadow-lg flex-shrink-0 relative z-10">
                 <AvatarImage src={profile.avatar_url || undefined} alt={profile.display_name || profile.username} className="object-cover" />
-                <AvatarFallback className="text-2xl font-display bg-primary/20 text-primary">
+                <AvatarFallback className="text-xl sm:text-2xl font-display bg-primary/20 text-primary">
                   {initials}
                 </AvatarFallback>
               </Avatar>
