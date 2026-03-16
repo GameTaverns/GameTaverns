@@ -227,7 +227,7 @@ export default function ClubDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-4">
             <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-cream/70 hover:text-cream transition-colors">
               <ArrowLeft className="h-4 w-4" />
