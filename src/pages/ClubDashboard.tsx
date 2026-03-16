@@ -236,7 +236,7 @@ export default function ClubDashboard() {
             {club.logo_url && (
               <img src={club.logo_url} alt={club.name} className="h-10 w-10 rounded-lg object-cover" />
             )}
-            <h1 className="font-display text-2xl font-bold text-cream">
+            <h1 className="font-display text-lg sm:text-2xl font-bold text-cream truncate">
               {club.name} — Management
             </h1>
             <Badge variant={club.status === "approved" ? "secondary" : "outline"}>
