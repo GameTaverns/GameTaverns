@@ -964,14 +964,14 @@ const GameDetail = () => {
 
         {/* Expansions Section */}
         {expansions.length > 0 && (
-          <div className="mt-16">
-            <div className="flex items-center gap-2 mb-6">
-              <Package className="h-6 w-6 text-primary" />
-              <h2 className="font-display text-2xl font-semibold text-foreground">
+          <div className="mt-8 sm:mt-16">
+            <div className="flex items-center gap-2 mb-3 sm:mb-6">
+              <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground">
                 {t('game.expansions')} ({expansions.length})
               </h2>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4">
               {expansions.map((expansion) => (
                 <Link
                   key={expansion.id}
