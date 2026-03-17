@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, UserPlus, UserMinus, Users, Clock, AlertCircle, Trash2, Mail } from "lucide-react";
+import { Plus, UserPlus, UserMinus, Users, Clock, AlertCircle, Trash2, Mail, Crown } from "lucide-react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,14 +21,41 @@ import {
   useRemoveRegistration,
   type EventRegistration,
 } from "@/hooks/useEventRegistrations";
+import { useEventDetail } from "@/hooks/useEventPlanning";
+import { supabase } from "@/integrations/backend/client";
+import { useQuery } from "@tanstack/react-query";
+
+const db = supabase as any;
 
 interface EventRegistrationTabProps {
   eventId: string;
   maxAttendees: number | null;
 }
 
+// Fetch the event creator's profile to show them as "Host"
+function useEventCreatorProfile(creatorUserId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["event-creator-profile", creatorUserId],
+    queryFn: async () => {
+      if (!creatorUserId) return null;
+      const { data, error } = await db
+        .from("user_profiles")
+        .select("user_id, display_name, username")
+        .eq("user_id", creatorUserId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { user_id: string; display_name: string | null; username: string | null } | null;
+    },
+    enabled: !!creatorUserId,
+    staleTime: 60_000,
+  });
+}
+
 export function EventRegistrationTab({ eventId, maxAttendees }: EventRegistrationTabProps) {
   const { data: registrations = [], isLoading } = useEventRegistrations(eventId);
+  const { data: event } = useEventDetail(eventId);
+  const creatorId = event?.created_by_user_id || event?.created_by;
+  const { data: creatorProfile } = useEventCreatorProfile(creatorId);
   const register = useRegisterForEvent();
   const cancelReg = useCancelRegistration();
   const removeReg = useRemoveRegistration();
@@ -41,6 +68,9 @@ export function EventRegistrationTab({ eventId, maxAttendees }: EventRegistratio
   const registered = registrations.filter(r => r.status === "registered");
   const waitlisted = registrations.filter(r => r.status === "waitlisted");
   const cancelled = registrations.filter(r => r.status === "cancelled");
+
+  // Check if creator is already in the registrations list
+  const creatorIsRegistered = creatorId && registrations.some(r => r.attendee_user_id === creatorId);
 
   const handleRegister = async () => {
     if (!name.trim()) return;
@@ -55,7 +85,8 @@ export function EventRegistrationTab({ eventId, maxAttendees }: EventRegistratio
     setShowRegDialog(false);
   };
 
-  const capacityPercent = maxAttendees ? Math.min(100, (registered.length / maxAttendees) * 100) : 0;
+  const totalRegistered = registered.length + (creatorId && !creatorIsRegistered ? 1 : 0);
+  const capacityPercent = maxAttendees ? Math.min(100, (totalRegistered / maxAttendees) * 100) : 0;
 
   return (
     <div className="space-y-4">
@@ -68,7 +99,7 @@ export function EventRegistrationTab({ eventId, maxAttendees }: EventRegistratio
                 Registration
               </CardTitle>
               <CardDescription>
-                {registered.length} registered
+                {totalRegistered} registered
                 {maxAttendees ? ` / ${maxAttendees} spots` : ""}
                 {waitlisted.length > 0 ? ` • ${waitlisted.length} waitlisted` : ""}
               </CardDescription>
@@ -82,9 +113,9 @@ export function EventRegistrationTab({ eventId, maxAttendees }: EventRegistratio
             <div className="mt-3 space-y-1">
               <Progress value={capacityPercent} className="h-2" />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{registered.length} of {maxAttendees}</span>
-                {maxAttendees - registered.length > 0 ? (
-                  <span className="text-primary">{maxAttendees - registered.length} spots left</span>
+                <span>{totalRegistered} of {maxAttendees}</span>
+                {maxAttendees - totalRegistered > 0 ? (
+                  <span className="text-primary">{maxAttendees - totalRegistered} spots left</span>
                 ) : (
                   <span className="text-destructive flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" /> Full — waitlist active
@@ -98,7 +129,7 @@ export function EventRegistrationTab({ eventId, maxAttendees }: EventRegistratio
         <CardContent>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : registrations.length === 0 ? (
+          ) : totalRegistered === 0 && waitlisted.length === 0 && cancelled.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No registrations yet</p>
@@ -106,24 +137,39 @@ export function EventRegistrationTab({ eventId, maxAttendees }: EventRegistratio
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Registered */}
-              {registered.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                    Registered ({registered.length})
-                  </h4>
-                  <div className="space-y-1">
-                    {registered.map(reg => (
-                      <RegistrationRow
-                        key={reg.id}
-                        reg={reg}
-                        onCancel={() => cancelReg.mutate({ registrationId: reg.id, eventId })}
-                        onRemove={() => removeReg.mutate({ registrationId: reg.id, eventId })}
-                      />
-                    ))}
-                  </div>
+              {/* Registered (including host) */}
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                  Registered ({totalRegistered})
+                </h4>
+                <div className="space-y-1">
+                  {/* Show event creator as Host if not already registered */}
+                  {creatorId && !creatorIsRegistered && (
+                    <div className="flex items-center gap-3 p-2 rounded-md border bg-card">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {creatorProfile?.display_name || creatorProfile?.username || "Event Creator"}
+                          </span>
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <Crown className="h-3 w-3" /> Host
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">Event organizer</p>
+                      </div>
+                    </div>
+                  )}
+                  {registered.map(reg => (
+                    <RegistrationRow
+                      key={reg.id}
+                      reg={reg}
+                      isCreator={reg.attendee_user_id === creatorId}
+                      onCancel={() => cancelReg.mutate({ registrationId: reg.id, eventId })}
+                      onRemove={() => removeReg.mutate({ registrationId: reg.id, eventId })}
+                    />
+                  ))}
                 </div>
-              )}
+              </div>
 
               {/* Waitlisted */}
               {waitlisted.length > 0 && (
@@ -184,7 +230,7 @@ export function EventRegistrationTab({ eventId, maxAttendees }: EventRegistratio
               <Label>Notes</Label>
               <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Arriving late, bringing +1" />
             </div>
-            {maxAttendees && registered.length >= maxAttendees && (
+            {maxAttendees && totalRegistered >= maxAttendees && (
               <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
                 <Clock className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>This event is full. You'll be added to the waitlist.</span>
@@ -194,7 +240,7 @@ export function EventRegistrationTab({ eventId, maxAttendees }: EventRegistratio
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowRegDialog(false)}>Cancel</Button>
             <Button onClick={handleRegister} disabled={!name.trim() || register.isPending}>
-              {register.isPending ? "Registering..." : maxAttendees && registered.length >= maxAttendees ? "Join Waitlist" : "Register"}
+              {register.isPending ? "Registering..." : maxAttendees && totalRegistered >= maxAttendees ? "Join Waitlist" : "Register"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -205,10 +251,12 @@ export function EventRegistrationTab({ eventId, maxAttendees }: EventRegistratio
 
 function RegistrationRow({
   reg,
+  isCreator,
   onCancel,
   onRemove,
 }: {
   reg: EventRegistration;
+  isCreator?: boolean;
   onCancel?: () => void;
   onRemove?: () => void;
 }) {
@@ -219,6 +267,11 @@ function RegistrationRow({
           <span className={`text-sm font-medium ${reg.status === "cancelled" ? "line-through text-muted-foreground" : ""}`}>
             {reg.attendee_name}
           </span>
+          {isCreator && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Crown className="h-3 w-3" /> Host
+            </Badge>
+          )}
           {reg.status === "waitlisted" && reg.waitlist_position && (
             <Badge variant="outline" className="text-xs text-amber-600">#{reg.waitlist_position}</Badge>
           )}

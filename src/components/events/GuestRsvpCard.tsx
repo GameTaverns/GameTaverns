@@ -11,6 +11,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/backend/client";
 import { RecaptchaWidget } from "@/components/games/RecaptchaWidget";
 import { Link } from "react-router-dom";
+import { CatalogGamePicker } from "@/components/events/CatalogGamePicker";
+import type { CatalogSearchResult } from "@/hooks/useCatalogGameSearch";
 
 const db = supabase as any;
 
@@ -32,6 +34,7 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [resultStatus, setResultStatus] = useState<"registered" | "waitlisted" | null>(null);
+  const [gamePreferences, setGamePreferences] = useState<CatalogSearchResult[]>([]);
 
   if (!isPublic) return null;
 
@@ -83,6 +86,9 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
           attendee_user_id: isAuthenticated ? user?.id : null,
           status,
           waitlist_position: waitlistPosition,
+          notes: gamePreferences.length > 0
+            ? `Wants to play: ${gamePreferences.map(g => g.title).join(", ")}`
+            : null,
         });
 
       if (error) {
@@ -208,6 +214,18 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
               placeholder="For event updates and reminders"
               required
               maxLength={255}
+            />
+          </div>
+
+          {/* Game Preferences */}
+          <div className="space-y-1.5">
+            <Label className="text-sm">Games You Want to Play (optional)</Label>
+            <CatalogGamePicker
+              selected={gamePreferences}
+              onSelect={(game) => setGamePreferences(prev => [...prev, game])}
+              onRemove={(id) => setGamePreferences(prev => prev.filter(g => g.id !== id))}
+              maxSelections={2}
+              placeholder="Search for a game..."
             />
           </div>
 
