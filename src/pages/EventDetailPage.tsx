@@ -6,7 +6,7 @@ import {
   ArrowLeft, Calendar, MapPin, Clock, Users, Gamepad2, 
   Package, LayoutGrid, Settings, Globe, Lock, Pencil,
   CheckCircle2, XCircle, Send, MoreVertical, Trophy,
-  UserPlus, CalendarDays
+  CalendarDays
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,7 @@ import { EventSuppliesTab } from "@/components/events/planning/EventSuppliesTab"
 import { EventTablesTab } from "@/components/events/planning/EventTablesTab";
 import { EventLogisticsTab } from "@/components/events/planning/EventLogisticsTab";
 import { EventAttendeesTab } from "@/components/events/planning/EventAttendeesTab";
-import { EventRegistrationTab } from "@/components/events/planning/EventRegistrationTab";
+
 import { EventScheduleTab } from "@/components/events/planning/EventScheduleTab";
 import { EventTournamentTab } from "@/components/events/planning/EventTournamentTab";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -81,9 +81,6 @@ export default function EventDetailPage() {
       { value: "games", label: "Games", icon: <Gamepad2 className="h-3.5 w-3.5" /> },
       { value: "attendees", label: "Attendees", icon: <Users className="h-3.5 w-3.5" /> },
     ];
-    if (event?.max_attendees || event?.is_public) {
-      base.push({ value: "registration", label: "Registration", icon: <UserPlus className="h-3.5 w-3.5" /> });
-    }
     if (isConventionOrMultiDay) {
       base.push({ value: "schedule", label: "Schedule", icon: <CalendarDays className="h-3.5 w-3.5" /> });
     }
@@ -95,7 +92,7 @@ export default function EventDetailPage() {
       { value: "tables", label: "Tables", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
     );
     return base;
-  }, [event?.max_attendees, event?.is_public, isConventionOrMultiDay, isTournament]);
+  }, [isConventionOrMultiDay, isTournament]);
 
   if (isLoading) {
     return (
@@ -254,13 +251,8 @@ export default function EventDetailPage() {
           <EventGamesTab eventId={event.id} libraryId={event.library_id} />
         </TabsContent>
         <TabsContent value="attendees">
-          <EventAttendeesTab eventId={event.id} />
+          <EventAttendeesTab eventId={event.id} maxAttendees={event.max_attendees} />
         </TabsContent>
-        {(event.max_attendees || event.is_public) && (
-          <TabsContent value="registration">
-            <EventRegistrationTab eventId={event.id} maxAttendees={event.max_attendees} />
-          </TabsContent>
-        )}
         {isConventionOrMultiDay && (
           <TabsContent value="schedule">
             <EventScheduleTab eventId={event.id} eventDate={event.event_date} endDate={event.end_date} />

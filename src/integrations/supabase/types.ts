@@ -1936,8 +1936,10 @@ export type Database = {
           attendee_email: string | null
           attendee_name: string
           attendee_user_id: string | null
+          bringing_text: string | null
           cancelled_at: string | null
           event_id: string
+          guest_count: number
           id: string
           notes: string | null
           registered_at: string
@@ -1948,8 +1950,10 @@ export type Database = {
           attendee_email?: string | null
           attendee_name: string
           attendee_user_id?: string | null
+          bringing_text?: string | null
           cancelled_at?: string | null
           event_id: string
+          guest_count?: number
           id?: string
           notes?: string | null
           registered_at?: string
@@ -1960,8 +1964,10 @@ export type Database = {
           attendee_email?: string | null
           attendee_name?: string
           attendee_user_id?: string | null
+          bringing_text?: string | null
           cancelled_at?: string | null
           event_id?: string
+          guest_count?: number
           id?: string
           notes?: string | null
           registered_at?: string

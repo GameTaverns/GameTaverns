@@ -15,6 +15,8 @@ export interface EventRegistration {
   registered_at: string;
   cancelled_at: string | null;
   notes: string | null;
+  bringing_text: string | null;
+  guest_count: number;
 }
 
 export function useEventRegistrations(eventId: string | undefined) {
@@ -46,6 +48,8 @@ export function useRegisterForEvent() {
       attendee_user_id?: string;
       max_attendees?: number | null;
       notes?: string;
+      bringing_text?: string;
+      guest_count?: number;
     }) => {
       // Check current count to determine registered vs waitlisted
       const { count, error: countError } = await db
@@ -79,6 +83,8 @@ export function useRegisterForEvent() {
           status: isWaitlisted ? "waitlisted" : "registered",
           waitlist_position: waitlistPosition,
           notes: input.notes || null,
+          bringing_text: input.bringing_text || null,
+          guest_count: input.guest_count || 0,
         })
         .select()
         .single();
