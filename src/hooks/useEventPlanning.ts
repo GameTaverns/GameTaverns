@@ -58,19 +58,7 @@ export interface EventTableSeat {
   created_at: string;
 }
 
-export interface EventAttendeePref {
-  id: string;
-  event_id: string;
-  attendee_identifier: string;
-  attendee_name: string | null;
-  attendee_user_id: string | null;
-  wants_to_play: string[];
-  can_bring: string[];
-  dietary_notes: string | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
+// EventAttendeePref type removed — feature consolidated into event_registrations
 
 export interface EventDetail {
   id: string;
