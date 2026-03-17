@@ -66,6 +66,7 @@ const VerifyEmail = lazy(lazyRetry(() => import("./pages/VerifyEmail")));
 const Setup2FA = lazy(lazyRetry(() => import("./pages/Setup2FA")));
 const Directory = lazy(lazyRetry(() => import("./pages/Directory")));
 const Achievements = lazy(lazyRetry(() => import("./pages/Achievements")));
+const Leaderboard = lazy(lazyRetry(() => import("./pages/Leaderboard")));
 const Community = lazy(lazyRetry(() => import("./pages/Community")));
 const ThreadDetail = lazy(lazyRetry(() => import("./pages/ThreadDetail")));
 const ClubPage = lazy(lazyRetry(() => import("./pages/ClubPage")));
