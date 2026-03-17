@@ -113,6 +113,7 @@ export function MobileV2MenuDrawer({ trigger }: MobileV2MenuDrawerProps) {
 
               {/* Tools */}
               <SectionHeader label={t('nav.tools', 'Tools')} />
+              <NavItem href={getPlatformUrl("/dashboard/collection")} icon={BookOpen} label={t('nav.manageMyLibrary', 'Manage Library')} />
               <NavItem href={getPlatformUrl("/catalog")} icon={Search} label={t('nav.catalog', 'Game Catalog')} />
               <NavItem href={getPlatformUrl("/dashboard/lending")} icon={ArrowLeftRight} label={t('nav.lending', 'My Loans')} />
               <NavItem href={getPlatformUrl("/dashboard/insights")} icon={ClipboardList} label={t('nav.insights', 'Insights')} />
