@@ -134,6 +134,7 @@ export function HeaderDropdownNav() {
           : []),
         { href: getPlatformUrl("/near-me"), label: t('nav.nearMe', 'Near Me'), icon: MapPin },
         { separator: true, label: 's2', icon: Users },
+        { href: getPlatformUrl("/achievements"), label: t('nav.achievements', 'Achievements'), icon: Trophy },
         { href: getPlatformUrl("/lists"), label: t('nav.curatedLists', 'Curated Lists'), icon: List },
         { separator: true, label: 's3', icon: Users },
         { href: getPlatformUrl("/news"), label: t('nav.news', 'News & Reviews'), icon: Newspaper },
