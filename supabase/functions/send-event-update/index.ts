@@ -91,7 +91,7 @@ function buildUpdateEmail(params: {
   ].join("");
 }
 
-export default async function handler(req: Request): Promise<Response> {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -254,4 +254,10 @@ export default async function handler(req: Request): Promise<Response> {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
 }
