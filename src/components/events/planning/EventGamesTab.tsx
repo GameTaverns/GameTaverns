@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Gamepad2, Clock, Users, Trash2, GripVertical, Pencil, Search } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, Gamepad2, Clock, Users, Trash2, GripVertical, Pencil, Search, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
