@@ -48,6 +48,8 @@ export function useRegisterForEvent() {
       attendee_user_id?: string;
       max_attendees?: number | null;
       notes?: string;
+      bringing_text?: string;
+      guest_count?: number;
     }) => {
       // Check current count to determine registered vs waitlisted
       const { count, error: countError } = await db
