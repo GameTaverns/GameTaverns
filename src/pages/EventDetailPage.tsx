@@ -6,7 +6,7 @@ import {
   ArrowLeft, Calendar, MapPin, Clock, Users, Gamepad2, 
   Package, LayoutGrid, Settings, Globe, Lock, Pencil,
   CheckCircle2, XCircle, Send, MoreVertical, Trophy,
-  UserPlus, CalendarDays
+  CalendarDays
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
