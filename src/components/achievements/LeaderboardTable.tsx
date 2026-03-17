@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { useLeaderboard, type LeaderboardEntry } from "@/hooks/useLeaderboard";
 import { getRank } from "@/lib/ranks";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { RankAvatar } from "@/components/achievements/RankAvatar";
+import { RankUsername } from "@/components/achievements/RankUsername";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Medal, Award } from "lucide-react";
+import { Trophy, Medal, Award, Crown } from "lucide-react";
 
 function getPlacementIcon(index: number) {
   if (index === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
