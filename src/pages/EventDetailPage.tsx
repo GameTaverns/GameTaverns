@@ -251,13 +251,8 @@ export default function EventDetailPage() {
           <EventGamesTab eventId={event.id} libraryId={event.library_id} />
         </TabsContent>
         <TabsContent value="attendees">
-          <EventAttendeesTab eventId={event.id} />
+          <EventAttendeesTab eventId={event.id} maxAttendees={event.max_attendees} />
         </TabsContent>
-        {(event.max_attendees || event.is_public) && (
-          <TabsContent value="registration">
-            <EventRegistrationTab eventId={event.id} maxAttendees={event.max_attendees} />
-          </TabsContent>
-        )}
         {isConventionOrMultiDay && (
           <TabsContent value="schedule">
             <EventScheduleTab eventId={event.id} eventDate={event.event_date} endDate={event.end_date} />
