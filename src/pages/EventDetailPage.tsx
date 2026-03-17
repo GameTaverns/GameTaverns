@@ -223,7 +223,7 @@ export default function EventDetailPage() {
         {/* Edit + Status / Actions Menu — only for event creator/admin/staff */}
         {canManageEvent && (
         <div className="flex items-center gap-2">
-        <EditEventDialog event={event} />
+        <EditEventDialog event={event} onDateRescheduled={handleDateRescheduled} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon">
