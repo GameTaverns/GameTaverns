@@ -26,6 +26,7 @@ import { useUpdateEventDetail } from "@/hooks/useEventPlanning";
 
 interface EditEventDialogProps {
   event: EventDetail;
+  onDateRescheduled?: (newDate: string, newEndDate?: string) => void;
 }
 
 export function EditEventDialog({ event }: EditEventDialogProps) {
