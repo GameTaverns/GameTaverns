@@ -94,9 +94,21 @@ export function EditEventDialog({ event, onDateRescheduled }: EditEventDialogPro
       parking_info: parkingInfo || null,
     };
 
+    // Detect if date changed
+    const newDateIso = eventDate ? new Date(eventDate).toISOString() : event.event_date;
+    const newEndIso = endDate ? new Date(endDate).toISOString() : null;
+    const dateChanged = newDateIso !== event.event_date || newEndIso !== event.end_date;
+
     updateEvent.mutate(
       { eventId: event.id, updates },
-      { onSuccess: () => setOpen(false) }
+      {
+        onSuccess: () => {
+          setOpen(false);
+          if (dateChanged && onDateRescheduled) {
+            onDateRescheduled(newDateIso, newEndIso || undefined);
+          }
+        },
+      }
     );
   }
 
