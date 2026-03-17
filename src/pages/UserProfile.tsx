@@ -26,6 +26,8 @@ import { ActivityFeedBatchItem } from "@/components/social/ActivityFeedBatchItem
 import { groupActivityEvents } from "@/utils/groupActivityEvents";
 import { useActivityFilters, ActivityFilterBar } from "@/components/social/ActivityFilterBar";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
+import { RankBadge, RankFlair } from "@/components/achievements/RankBadge";
+import { getRank } from "@/lib/ranks";
 import { FollowButton } from "@/components/social/FollowButton";
 import { UserSpecialBadges } from "@/components/social/SpecialBadge";
 import { useUserSpecialBadges } from "@/hooks/useSpecialBadges";
