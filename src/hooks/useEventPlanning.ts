@@ -14,6 +14,7 @@ export interface EventGame {
   game_id: string | null;
   catalog_game_id: string | null;
   title: string;
+  description: string | null;
   image_url: string | null;
   scheduled_time: string | null;
   duration_minutes: number | null;

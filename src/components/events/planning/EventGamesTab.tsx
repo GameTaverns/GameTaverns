@@ -66,7 +66,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
     setCatalogGameId(game.id);
     if (game.min_players) setMinPlayers(game.min_players.toString());
     if (game.max_players) setMaxPlayers(game.max_players.toString());
-    if (game.description) setDescription(game.description.slice(0, 200));
+    if (game.description) setDescription(game.description.slice(0, 300));
   };
 
   const handleAdd = async () => {
