@@ -230,8 +230,12 @@ export default function UserProfile() {
                   style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}
                 >
                   {profile.display_name || profile.username}
+                  <RankFlair points={profile.achievement_points || 0} />
                   <FeaturedBadge achievement={featuredAchievement ?? null} size="md" />
                 </h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <RankBadge points={profile.achievement_points || 0} size="sm" />
+                </div>
                 {specialBadges.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1 mb-1">
                     <UserSpecialBadges badges={specialBadges} size="sm" />
