@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, Gamepad2, Clock, Users, Trash2, GripVertical, Pencil, Search, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
 import { useEventGames, useAddEventGame, useRemoveEventGame, useUpdateEventGame, type EventGame } from "@/hooks/useEventPlanning";
 import { useCatalogGameSearch, type CatalogSearchResult } from "@/hooks/useCatalogGameSearch";
 import { GameImage } from "@/components/games/GameImage";
+import { supabase } from "@/integrations/backend/client";
 
 import { useEventRegistrations } from "@/hooks/useEventRegistrations";
 
@@ -148,6 +149,34 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }, [guestGameRequests]);
 
+  // Look up catalog info for requested game titles
+  const uniqueRequestedTitles = useMemo(() => {
+    return [...new Set(guestGameRequests.flatMap(r => r.games))];
+  }, [guestGameRequests]);
+
+  const [catalogLookup, setCatalogLookup] = useState<Record<string, { image_url: string | null; description: string | null }>>({});
+
+  useEffect(() => {
+    if (uniqueRequestedTitles.length === 0) return;
+    const lookup = async () => {
+      const { data } = await (supabase as any)
+        .from("game_catalog")
+        .select("title, image_url, description")
+        .in("title", uniqueRequestedTitles)
+        .limit(50);
+      if (data) {
+        const map: Record<string, { image_url: string | null; description: string | null }> = {};
+        for (const row of data) {
+          if (!map[row.title]) {
+            map[row.title] = { image_url: row.image_url, description: row.description };
+          }
+        }
+        setCatalogLookup(map);
+      }
+    };
+    lookup();
+  }, [uniqueRequestedTitles]);
+
   return (
     <div className="space-y-4">
       <Card>
@@ -200,14 +229,39 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
             <CardDescription>Games guests want to play based on RSVPs</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Aggregated counts */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {gameRequestCounts.map(([title, count]) => (
-                <Badge key={title} variant="secondary" className="text-xs gap-1">
-                  {title}
-                  {count > 1 && <span className="text-muted-foreground">×{count}</span>}
-                </Badge>
-              ))}
+            {/* Rich game cards with catalog info */}
+            <div className="space-y-2 mb-4">
+              {gameRequestCounts.map(([title, count]) => {
+                const catalog = catalogLookup[title];
+                return (
+                  <div key={title} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                    {catalog?.image_url ? (
+                      <GameImage
+                        imageUrl={catalog.image_url}
+                        alt={title}
+                        className="h-14 w-14 rounded-md object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
+                        <Gamepad2 className="h-5 w-5 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{title}</span>
+                        {count > 1 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {count} {count === 1 ? "request" : "requests"}
+                          </Badge>
+                        )}
+                      </div>
+                      {catalog?.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{catalog.description}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             {/* Per-guest breakdown */}
             <div className="space-y-1.5">
