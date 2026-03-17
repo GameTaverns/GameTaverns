@@ -265,18 +265,27 @@ export function AchievementsDisplay({ compact = false }: AchievementsDisplayProp
 
   return (
     <div className="space-y-6">
-      {/* Summary */}
-      <div className="flex items-center justify-between">
-        <div>
+      {/* Rank + Summary */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-2">
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Trophy className="h-6 w-6 text-primary" />
             Achievements
           </h2>
-          <p className="text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <RankBadge points={totalPoints} showProgress size="md" />
+          </div>
+          <p className="text-muted-foreground text-sm">
             {earnedCount} of {totalCount} unlocked
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <Link to="/leaderboard">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Crown className="h-4 w-4" />
+              Leaderboard
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
