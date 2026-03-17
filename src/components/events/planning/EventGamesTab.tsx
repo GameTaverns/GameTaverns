@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Gamepad2, Clock, Users, Trash2, GripVertical, Pencil } from "lucide-react";
+import { Plus, Gamepad2, Clock, Users, Trash2, GripVertical, Pencil, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useEventGames, useAddEventGame, useRemoveEventGame, useUpdateEventGame, type EventGame } from "@/hooks/useEventPlanning";
+import { useCatalogGameSearch, type CatalogSearchResult } from "@/hooks/useCatalogGameSearch";
+import { GameImage } from "@/components/games/GameImage";
 
 interface EventGamesTabProps {
   eventId: string;
@@ -29,6 +31,9 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
 
   // Add game form state
   const [title, setTitle] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [catalogGameId, setCatalogGameId] = useState<string | null>(null);
+  const [description, setDescription] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [duration, setDuration] = useState("");
   const [minPlayers, setMinPlayers] = useState("");
@@ -37,12 +42,16 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
   const [notes, setNotes] = useState("");
 
   const resetForm = () => {
-    setTitle(""); setScheduledTime(""); setDuration("");
+    setTitle(""); setImageUrl(null); setCatalogGameId(null); setDescription("");
+    setScheduledTime(""); setDuration("");
     setMinPlayers(""); setMaxPlayers(""); setTableLabel(""); setNotes("");
   };
 
   const populateForm = (game: EventGame) => {
     setTitle(game.title);
+    setImageUrl(game.image_url);
+    setCatalogGameId(game.catalog_game_id);
+    setDescription(game.notes || "");
     setScheduledTime(game.scheduled_time || "");
     setDuration(game.duration_minutes?.toString() || "");
     setMinPlayers(game.min_players?.toString() || "");
@@ -51,14 +60,23 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
     setNotes(game.notes || "");
   };
 
+  const handleSelectCatalogGame = (game: CatalogSearchResult) => {
+    setTitle(game.title);
+    setImageUrl(game.image_url);
+    setCatalogGameId(game.id);
+    if (game.min_players) setMinPlayers(game.min_players.toString());
+    if (game.max_players) setMaxPlayers(game.max_players.toString());
+    if (game.description) setDescription(game.description.slice(0, 200));
+  };
+
   const handleAdd = async () => {
     if (!title.trim()) return;
     await addGame.mutateAsync({
       event_id: eventId,
       game_id: null,
-      catalog_game_id: null,
+      catalog_game_id: catalogGameId,
       title: title.trim(),
-      image_url: null,
+      image_url: imageUrl,
       scheduled_time: scheduledTime || null,
       duration_minutes: duration ? parseInt(duration) : null,
       min_players: minPlayers ? parseInt(minPlayers) : null,
@@ -78,6 +96,8 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
       eventId,
       updates: {
         title: title.trim(),
+        image_url: imageUrl,
+        catalog_game_id: catalogGameId,
         scheduled_time: scheduledTime || null,
         duration_minutes: duration ? parseInt(duration) : null,
         min_players: minPlayers ? parseInt(minPlayers) : null,
@@ -138,7 +158,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
 
       {/* Add Game Dialog */}
       <Dialog open={showAddDialog} onOpenChange={(o) => { if (!o) resetForm(); setShowAddDialog(o); }}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Add Game to Lineup</DialogTitle>
           </DialogHeader>
@@ -150,6 +170,8 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
             maxPlayers={maxPlayers} setMaxPlayers={setMaxPlayers}
             tableLabel={tableLabel} setTableLabel={setTableLabel}
             notes={notes} setNotes={setNotes}
+            onSelectCatalogGame={handleSelectCatalogGame}
+            imageUrl={imageUrl}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
@@ -162,7 +184,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
 
       {/* Edit Game Dialog */}
       <Dialog open={!!editingGame} onOpenChange={(o) => { if (!o) { resetForm(); setEditingGame(null); } }}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Edit Game</DialogTitle>
           </DialogHeader>
@@ -174,6 +196,8 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
             maxPlayers={maxPlayers} setMaxPlayers={setMaxPlayers}
             tableLabel={tableLabel} setTableLabel={setTableLabel}
             notes={notes} setNotes={setNotes}
+            onSelectCatalogGame={handleSelectCatalogGame}
+            imageUrl={imageUrl}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => { resetForm(); setEditingGame(null); }}>Cancel</Button>
@@ -190,7 +214,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
 function GameFormFields({
   title, setTitle, scheduledTime, setScheduledTime, duration, setDuration,
   minPlayers, setMinPlayers, maxPlayers, setMaxPlayers, tableLabel, setTableLabel,
-  notes, setNotes,
+  notes, setNotes, onSelectCatalogGame, imageUrl,
 }: {
   title: string; setTitle: (v: string) => void;
   scheduledTime: string; setScheduledTime: (v: string) => void;
@@ -199,9 +223,66 @@ function GameFormFields({
   maxPlayers: string; setMaxPlayers: (v: string) => void;
   tableLabel: string; setTableLabel: (v: string) => void;
   notes: string; setNotes: (v: string) => void;
+  onSelectCatalogGame: (game: CatalogSearchResult) => void;
+  imageUrl: string | null;
 }) {
+  const { searchTerm, handleSearch, results, isLoading } = useCatalogGameSearch(3);
+  const [showResults, setShowResults] = useState(false);
+
   return (
     <div className="space-y-4">
+      {/* Catalog Search */}
+      <div className="space-y-2">
+        <Label>Search Catalog</Label>
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => { handleSearch(e.target.value); setShowResults(true); }}
+            onFocus={() => setShowResults(true)}
+            placeholder="Search our game catalog..."
+            className="pl-8 h-9 text-sm"
+          />
+        </div>
+        {showResults && searchTerm.length >= 3 && (
+          <div className="max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
+            {isLoading && <div className="p-2 text-xs text-muted-foreground text-center">Searching...</div>}
+            {!isLoading && results.length === 0 && (
+              <div className="p-2 text-xs text-muted-foreground text-center">No results</div>
+            )}
+            {results.map(game => (
+              <button
+                key={game.id}
+                type="button"
+                className="w-full flex items-center gap-2 p-2 hover:bg-muted/50 transition-colors text-left"
+                onClick={() => { onSelectCatalogGame(game); setShowResults(false); handleSearch(""); }}
+              >
+                {game.image_url ? (
+                  <GameImage imageUrl={game.image_url} alt={game.title} className="h-8 w-8 rounded object-cover shrink-0" />
+                ) : (
+                  <div className="h-8 w-8 rounded bg-muted shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{game.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {game.year_published || ""}
+                    {game.min_players && game.max_players ? ` · ${game.min_players}–${game.max_players}p` : ""}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Selected game preview */}
+      {imageUrl && (
+        <div className="flex items-center gap-3 p-2 rounded-md border bg-muted/30">
+          <GameImage imageUrl={imageUrl} alt={title} className="h-12 w-12 rounded object-cover" />
+          <span className="text-sm font-medium">{title}</span>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label>Game Title *</Label>
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Catan" />
@@ -241,7 +322,19 @@ function GameFormFields({
 function GameLineupItem({ game, onEdit, onRemove }: { game: EventGame; onEdit: () => void; onRemove: () => void }) {
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
-      <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />
+      {/* Thumbnail */}
+      {game.image_url ? (
+        <GameImage
+          imageUrl={game.image_url}
+          alt={game.title}
+          className="h-14 w-14 rounded-md object-cover shrink-0"
+        />
+      ) : (
+        <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
+          <Gamepad2 className="h-5 w-5 text-muted-foreground/50" />
+        </div>
+      )}
+
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium text-sm">{game.title}</span>
@@ -249,6 +342,9 @@ function GameLineupItem({ game, onEdit, onRemove }: { game: EventGame; onEdit: (
             <Badge variant="outline" className="text-xs">{game.table_label}</Badge>
           )}
         </div>
+        {game.notes && (
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{game.notes}</p>
+        )}
         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
           {game.scheduled_time && (
             <span className="flex items-center gap-1">
@@ -269,7 +365,6 @@ function GameLineupItem({ game, onEdit, onRemove }: { game: EventGame; onEdit: (
                   : `Up to ${game.max_players}`}
             </span>
           )}
-          {game.notes && <span className="truncate">{game.notes}</span>}
         </div>
       </div>
       <div className="flex items-center gap-1">
