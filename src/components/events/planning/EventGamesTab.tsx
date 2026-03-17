@@ -149,6 +149,34 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }, [guestGameRequests]);
 
+  // Look up catalog info for requested game titles
+  const uniqueRequestedTitles = useMemo(() => {
+    return [...new Set(guestGameRequests.flatMap(r => r.games))];
+  }, [guestGameRequests]);
+
+  const [catalogLookup, setCatalogLookup] = useState<Record<string, { image_url: string | null; description: string | null }>>({});
+
+  useEffect(() => {
+    if (uniqueRequestedTitles.length === 0) return;
+    const lookup = async () => {
+      const { data } = await (supabase as any)
+        .from("game_catalog")
+        .select("title, image_url, description")
+        .in("title", uniqueRequestedTitles)
+        .limit(50);
+      if (data) {
+        const map: Record<string, { image_url: string | null; description: string | null }> = {};
+        for (const row of data) {
+          if (!map[row.title]) {
+            map[row.title] = { image_url: row.image_url, description: row.description };
+          }
+        }
+        setCatalogLookup(map);
+      }
+    };
+    lookup();
+  }, [uniqueRequestedTitles]);
+
   return (
     <div className="space-y-4">
       <Card>
