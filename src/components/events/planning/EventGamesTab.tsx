@@ -16,6 +16,8 @@ import { useEventGames, useAddEventGame, useRemoveEventGame, useUpdateEventGame,
 import { useCatalogGameSearch, type CatalogSearchResult } from "@/hooks/useCatalogGameSearch";
 import { GameImage } from "@/components/games/GameImage";
 
+import { useEventRegistrations } from "@/hooks/useEventRegistrations";
+
 interface EventGamesTabProps {
   eventId: string;
   libraryId: string;

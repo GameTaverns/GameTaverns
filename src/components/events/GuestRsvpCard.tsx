@@ -117,6 +117,26 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
         return;
       }
 
+      // Auto-create supply items from "bringing" text
+      if (bringingText.trim()) {
+        try {
+          const items = bringingText.split(/[,&]/).map(s => s.trim()).filter(Boolean);
+          for (const item of items) {
+            await db.from("event_supplies").insert({
+              event_id: eventId,
+              item_name: item,
+              quantity: 1,
+              category: "other",
+              claimed_by: normalizedName,
+              claimed_by_user_id: linkedUserId,
+              is_fulfilled: true,
+            });
+          }
+        } catch (supplyErr) {
+          console.warn("Failed to auto-create supply items:", supplyErr);
+        }
+      }
+
       setResultStatus(status as "registered" | "waitlisted");
       setSubmitted(true);
       toast({
