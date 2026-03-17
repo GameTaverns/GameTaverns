@@ -168,11 +168,15 @@ export function AchievementsDisplay({ compact = false }: AchievementsDisplayProp
 
       const result = response.data;
       
+      // Store progress data for quest tracker
+      if (result.progress) {
+        setSyncProgress(result.progress as AchievementProgress);
+      }
+
       if (result.newAchievements > 0) {
         toast.success(`🎉 Unlocked ${result.newAchievements} achievement${result.newAchievements > 1 ? 's' : ''}!`, {
           description: result.awarded.join(", "),
         });
-        // Refresh achievements data
         queryClient.invalidateQueries({ queryKey: ["achievements"] });
         queryClient.invalidateQueries({ queryKey: ["user-achievements"] });
       } else {
