@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useAchievements, type Achievement, type AchievementCategory } from "@/hooks/useAchievements";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,8 @@ import {
   Star,
   CheckCircle2,
   RefreshCw,
-  Medal
+  Medal,
+  Crown,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
@@ -30,6 +32,10 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMyReferral, REFERRAL_TIERS, FOUNDING_MEMBER_BADGE } from "@/hooks/useReferral";
 import { ReferralBadges } from "@/components/referral/ReferralBadges";
+import { RankBadge } from "@/components/achievements/RankBadge";
+import { QuestTracker } from "@/components/achievements/QuestTracker";
+import { getRank, getNextRank, getRankProgress } from "@/lib/ranks";
+import type { AchievementProgress } from "@/hooks/useAchievements";
 
 const CATEGORY_CONFIG: Record<AchievementCategory, { label: string; icon: React.ReactNode; color: string }> = {
   collector: { label: "Collector", icon: <Gamepad2 className="h-5 w-5" />, color: "text-blue-500" },
