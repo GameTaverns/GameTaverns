@@ -73,9 +73,12 @@ export default function EventDetailPage() {
   const updateEvent = useUpdateEventDetail();
   const { user, isAuthenticated, isAdmin, isStaff } = useAuth();
   const { data: registrations = [] } = useEventRegistrations(eventId);
+  const { toast } = useToast();
   const registrationCount = registrations.filter(r => r.status === "registered").length;
   const [activeTab, setActiveTab] = useState("details");
-
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState("");
+  const [isSendingNotification, setIsSendingNotification] = useState(false);
   // Permission: only event creator, admin, or staff can edit/manage
   const canManageEvent = !!(event && user && (
     user.id === event.created_by ||
