@@ -347,8 +347,11 @@ function GameLineupItem({ game, onEdit, onRemove }: { game: EventGame; onEdit: (
             <Badge variant="outline" className="text-xs">{game.table_label}</Badge>
           )}
         </div>
+        {game.description && (
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{game.description}</p>
+        )}
         {game.notes && (
-          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{game.notes}</p>
+          <p className="text-xs text-muted-foreground/70 mt-0.5 italic line-clamp-1">{game.notes}</p>
         )}
         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
           {game.scheduled_time && (
