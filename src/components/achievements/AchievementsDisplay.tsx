@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useAchievements, type Achievement, type AchievementCategory } from "@/hooks/useAchievements";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,8 @@ import {
   Star,
   CheckCircle2,
   RefreshCw,
-  Medal
+  Medal,
+  Crown,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
@@ -30,6 +32,10 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMyReferral, REFERRAL_TIERS, FOUNDING_MEMBER_BADGE } from "@/hooks/useReferral";
 import { ReferralBadges } from "@/components/referral/ReferralBadges";
+import { RankBadge } from "@/components/achievements/RankBadge";
+import { QuestTracker } from "@/components/achievements/QuestTracker";
+import { getRank, getNextRank, getRankProgress } from "@/lib/ranks";
+import type { AchievementProgress } from "@/hooks/useAchievements";
 
 const CATEGORY_CONFIG: Record<AchievementCategory, { label: string; icon: React.ReactNode; color: string }> = {
   collector: { label: "Collector", icon: <Gamepad2 className="h-5 w-5" />, color: "text-blue-500" },
@@ -128,6 +134,7 @@ interface AchievementsDisplayProps {
 
 export function AchievementsDisplay({ compact = false }: AchievementsDisplayProps) {
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<AchievementProgress | null>(null);
   const queryClient = useQueryClient();
   
   const {
@@ -162,11 +169,15 @@ export function AchievementsDisplay({ compact = false }: AchievementsDisplayProp
 
       const result = response.data;
       
+      // Store progress data for quest tracker
+      if (result.progress) {
+        setSyncProgress(result.progress as AchievementProgress);
+      }
+
       if (result.newAchievements > 0) {
         toast.success(`🎉 Unlocked ${result.newAchievements} achievement${result.newAchievements > 1 ? 's' : ''}!`, {
           description: result.awarded.join(", "),
         });
-        // Refresh achievements data
         queryClient.invalidateQueries({ queryKey: ["achievements"] });
         queryClient.invalidateQueries({ queryKey: ["user-achievements"] });
       } else {
@@ -254,18 +265,27 @@ export function AchievementsDisplay({ compact = false }: AchievementsDisplayProp
 
   return (
     <div className="space-y-6">
-      {/* Summary */}
-      <div className="flex items-center justify-between">
-        <div>
+      {/* Rank + Summary */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-2">
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Trophy className="h-6 w-6 text-primary" />
             Achievements
           </h2>
-          <p className="text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <RankBadge points={totalPoints} showProgress size="md" />
+          </div>
+          <p className="text-muted-foreground text-sm">
             {earnedCount} of {totalCount} unlocked
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <Link to="/leaderboard">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Crown className="h-4 w-4" />
+              Leaderboard
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -302,6 +322,11 @@ export function AchievementsDisplay({ compact = false }: AchievementsDisplayProp
             ))}
           </div>
         </div>
+      )}
+
+      {/* Quest Chains */}
+      {syncProgress && (
+        <QuestTracker progress={syncProgress} />
       )}
 
       {/* Community Badges (Referral) */}

@@ -66,6 +66,7 @@ const VerifyEmail = lazy(lazyRetry(() => import("./pages/VerifyEmail")));
 const Setup2FA = lazy(lazyRetry(() => import("./pages/Setup2FA")));
 const Directory = lazy(lazyRetry(() => import("./pages/Directory")));
 const Achievements = lazy(lazyRetry(() => import("./pages/Achievements")));
+const Leaderboard = lazy(lazyRetry(() => import("./pages/Leaderboard")));
 const Community = lazy(lazyRetry(() => import("./pages/Community")));
 const ThreadDetail = lazy(lazyRetry(() => import("./pages/ThreadDetail")));
 const ClubPage = lazy(lazyRetry(() => import("./pages/ClubPage")));
@@ -325,6 +326,7 @@ function PlatformRoutes() {
       <Route path="/studio/login" element={<StudioLogin />} />
       <Route path="/directory" element={<Directory />} />
       <Route path="/achievements" element={<Achievements />} />
+      <Route path="/leaderboard" element={<Suspense fallback={<PageLoader />}><Leaderboard /></Suspense>} />
       <Route path="/community" element={<Community />} />
       <Route path="/community/:categorySlug" element={<Community />} />
       <Route path="/community/thread/:threadId" element={<ThreadDetail />} />

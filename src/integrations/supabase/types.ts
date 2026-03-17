@@ -1639,6 +1639,13 @@ export type Database = {
             foreignKeyName: "curated_lists_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "achievement_leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "curated_lists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "public_user_profiles"
             referencedColumns: ["user_id"]
           },
@@ -5998,6 +6005,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_quest_completions: {
+        Row: {
+          bonus_points_awarded: number
+          completed_at: string
+          id: string
+          quest_slug: string
+          user_id: string
+        }
+        Insert: {
+          bonus_points_awarded?: number
+          completed_at?: string
+          id?: string
+          quest_slug: string
+          user_id: string
+        }
+        Update: {
+          bonus_points_awarded?: number
+          completed_at?: string
+          id?: string
+          quest_slug?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -6093,6 +6124,19 @@ export type Database = {
       }
     }
     Views: {
+      achievement_leaderboard: {
+        Row: {
+          achievements_earned: number | null
+          avatar_url: string | null
+          display_name: string | null
+          grand_total: number | null
+          quest_bonus: number | null
+          total_points: number | null
+          user_id: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
       borrower_reputation: {
         Row: {
           average_rating: number | null

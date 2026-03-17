@@ -26,6 +26,8 @@ import { ActivityFeedBatchItem } from "@/components/social/ActivityFeedBatchItem
 import { groupActivityEvents } from "@/utils/groupActivityEvents";
 import { useActivityFilters, ActivityFilterBar } from "@/components/social/ActivityFilterBar";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
+import { RankBadge, RankFlair } from "@/components/achievements/RankBadge";
+import { getRank } from "@/lib/ranks";
 import { FollowButton } from "@/components/social/FollowButton";
 import { UserSpecialBadges } from "@/components/social/SpecialBadge";
 import { useUserSpecialBadges } from "@/hooks/useSpecialBadges";
@@ -212,7 +214,7 @@ export default function UserProfile() {
           <CardContent className="relative pt-0 pb-4 px-3 sm:pb-6 sm:px-6">
             {/* Avatar row — only avatar overlaps the banner */}
             <div className="flex items-end gap-3 sm:gap-4 -mt-10 sm:-mt-14">
-              <Avatar className="h-20 w-20 sm:h-28 sm:w-28 border-4 border-card shadow-lg flex-shrink-0 relative z-10">
+              <Avatar className={`h-20 w-20 sm:h-28 sm:w-28 border-4 border-card shadow-lg flex-shrink-0 relative z-10 ${getRank(profile.achievement_points || 0).frameClass}`}>
                 <AvatarImage src={profile.avatar_url || undefined} alt={profile.display_name || profile.username} className="object-cover" />
                 <AvatarFallback className="text-xl sm:text-2xl font-display bg-primary/20 text-primary">
                   {initials}
@@ -228,8 +230,12 @@ export default function UserProfile() {
                   style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}
                 >
                   {profile.display_name || profile.username}
+                  <RankFlair points={profile.achievement_points || 0} />
                   <FeaturedBadge achievement={featuredAchievement ?? null} size="md" />
                 </h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <RankBadge points={profile.achievement_points || 0} size="sm" />
+                </div>
                 {specialBadges.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1 mb-1">
                     <UserSpecialBadges badges={specialBadges} size="sm" />
