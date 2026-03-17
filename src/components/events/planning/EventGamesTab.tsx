@@ -250,24 +250,27 @@ function GameFormFields({
             {!isLoading && results.length === 0 && (
               <div className="p-2 text-xs text-muted-foreground text-center">No results</div>
             )}
-            {results.map(game => (
+              {results.map(game => (
               <button
                 key={game.id}
                 type="button"
-                className="w-full flex items-center gap-2 p-2 hover:bg-muted/50 transition-colors text-left"
+                className="w-full flex items-start gap-2 p-2 hover:bg-muted/50 transition-colors text-left"
                 onClick={() => { onSelectCatalogGame(game); setShowResults(false); handleSearch(""); }}
               >
                 {game.image_url ? (
-                  <GameImage imageUrl={game.image_url} alt={game.title} className="h-8 w-8 rounded object-cover shrink-0" />
+                  <GameImage imageUrl={game.image_url} alt={game.title} className="h-10 w-10 rounded object-cover shrink-0" />
                 ) : (
-                  <div className="h-8 w-8 rounded bg-muted shrink-0" />
+                  <div className="h-10 w-10 rounded bg-muted shrink-0" />
                 )}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{game.title}</p>
                   <p className="text-xs text-muted-foreground">
                     {game.year_published || ""}
                     {game.min_players && game.max_players ? ` · ${game.min_players}–${game.max_players}p` : ""}
                   </p>
+                  {game.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{game.description}</p>
+                  )}
                 </div>
               </button>
             ))}
