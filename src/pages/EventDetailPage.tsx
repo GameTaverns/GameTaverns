@@ -134,7 +134,60 @@ export default function EventDetailPage() {
   }
 
   const handleStatusChange = (newStatus: string) => {
+    if (newStatus === "cancelled") {
+      setShowCancelDialog(true);
+      return;
+    }
     updateEvent.mutate({ eventId: event.id, updates: { status: newStatus } as any });
+  };
+
+  const handleConfirmCancel = async () => {
+    setIsSendingNotification(true);
+    try {
+      updateEvent.mutate({ eventId: event.id, updates: { status: "cancelled" } as any });
+      
+      // Send cancellation emails to all attendees
+      const attendeesWithEmail = registrations.filter(r => r.attendee_email && r.status !== "cancelled");
+      if (attendeesWithEmail.length > 0) {
+        try {
+          await db.functions.invoke("send-event-update", {
+            body: {
+              event_id: event.id,
+              update_type: "cancelled",
+              message: cancelMessage.trim() || undefined,
+            },
+          });
+          toast({ title: "Cancellation emails sent", description: `Notified ${attendeesWithEmail.length} attendee(s)` });
+        } catch (emailErr) {
+          console.warn("Failed to send cancellation emails:", emailErr);
+          toast({ title: "Event cancelled", description: "Some notification emails may not have been sent", variant: "destructive" });
+        }
+      }
+    } finally {
+      setIsSendingNotification(false);
+      setShowCancelDialog(false);
+      setCancelMessage("");
+    }
+  };
+
+  // Called after event date is edited via EditEventDialog
+  const handleDateRescheduled = async (newDate: string, newEndDate?: string) => {
+    const attendeesWithEmail = registrations.filter(r => r.attendee_email && r.status !== "cancelled");
+    if (attendeesWithEmail.length === 0) return;
+
+    try {
+      await db.functions.invoke("send-event-update", {
+        body: {
+          event_id: event.id,
+          update_type: "rescheduled",
+          new_date: newDate,
+          new_end_date: newEndDate,
+        },
+      });
+      toast({ title: "Reschedule emails sent", description: `Notified ${attendeesWithEmail.length} attendee(s)` });
+    } catch (emailErr) {
+      console.warn("Failed to send reschedule emails:", emailErr);
+    }
   };
 
   return (
