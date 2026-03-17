@@ -1,13 +1,14 @@
 import { Link } from "react-router-dom";
 import { useLeaderboard, type LeaderboardEntry } from "@/hooks/useLeaderboard";
 import { getRank } from "@/lib/ranks";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { RankAvatar } from "@/components/achievements/RankAvatar";
+import { RankUsername } from "@/components/achievements/RankUsername";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Medal, Award } from "lucide-react";
+import { Trophy, Medal, Award, Crown } from "lucide-react";
 
 function getPlacementIcon(index: number) {
-  if (index === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
+  if (index === 0) return <Crown className="h-5 w-5 text-yellow-500" />;
   if (index === 1) return <Medal className="h-5 w-5 text-slate-400" />;
   if (index === 2) return <Award className="h-5 w-5 text-amber-700" />;
   return <span className="w-5 text-center text-sm font-bold text-muted-foreground">{index + 1}</span>;
@@ -68,19 +69,21 @@ function LeaderboardRow({ entry, index }: { entry: LeaderboardEntry; index: numb
       </div>
 
       {/* Avatar */}
-      <Avatar className={`h-9 w-9 ${rank.frameClass}`}>
-        <AvatarImage src={entry.avatar_url || undefined} alt={entry.display_name || entry.username} />
-        <AvatarFallback className="text-xs font-display bg-primary/20 text-primary">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
+      <RankAvatar
+        src={entry.avatar_url}
+        fallback={initials}
+        points={entry.grand_total}
+        size="sm"
+      />
 
       {/* Name + Rank */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-sm truncate">
-            {entry.display_name || entry.username}
-          </span>
+          <RankUsername
+            name={entry.display_name || entry.username}
+            points={entry.grand_total}
+            className="font-medium text-sm truncate"
+          />
           <Badge variant="secondary" className={`text-xs ${rank.color} bg-transparent border-0 px-1`}>
             {rank.icon} {rank.name}
           </Badge>

@@ -3,6 +3,11 @@ import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, BarChart3, Camera, Globe, Building2, GitCompare } from "lucide-react";
+import { RankAvatar } from "@/components/achievements/RankAvatar";
+import { RankUsername } from "@/components/achievements/RankUsername";
+import { LeaderboardPositionBadge } from "@/components/achievements/LeaderboardPositionBadge";
+import { PinnedAchievements } from "@/components/achievements/PinnedAchievements";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { BackLink } from "@/components/navigation/BackLink";
 import { SEO } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
@@ -214,27 +219,43 @@ export default function UserProfile() {
           <CardContent className="relative pt-0 pb-4 px-3 sm:pb-6 sm:px-6">
             {/* Avatar row — only avatar overlaps the banner */}
             <div className="flex items-end gap-3 sm:gap-4 -mt-10 sm:-mt-14">
-              <Avatar className={`h-20 w-20 sm:h-28 sm:w-28 border-4 border-card shadow-lg flex-shrink-0 relative z-10 ${getRank(profile.achievement_points || 0).frameClass}`}>
-                <AvatarImage src={profile.avatar_url || undefined} alt={profile.display_name || profile.username} className="object-cover" />
-                <AvatarFallback className="text-xl sm:text-2xl font-display bg-primary/20 text-primary">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              <RankAvatar
+                src={profile.avatar_url}
+                fallback={initials}
+                points={profile.achievement_points || 0}
+                size="lg"
+              />
             </div>
 
             {/* Name, badges, actions — fully in card body, never overlapping banner */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mt-2 sm:mt-3">
               <div className="flex-1 min-w-0">
-                <h1
-                  className="font-display text-xl sm:text-2xl font-bold truncate flex items-center gap-2"
-                  style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}
-                >
-                  {profile.display_name || profile.username}
+                <h1 className="font-display text-xl sm:text-2xl font-bold truncate flex items-center gap-2">
+                  <RankUsername
+                    name={profile.display_name || profile.username}
+                    points={profile.achievement_points || 0}
+                    className={!hasTheme ? "" : ""}
+                    as="span"
+                  />
                   <RankFlair points={profile.achievement_points || 0} />
                   <FeaturedBadge achievement={featuredAchievement ?? null} size="md" />
+                  <TooltipProvider>
+                    <PinnedAchievements
+                      achievements={(achievements || []).map((ua: any) => ({
+                        id: ua.achievement?.id || ua.id,
+                        name: ua.achievement?.name || "Achievement",
+                        icon: ua.achievement?.icon || null,
+                        tier: ua.achievement?.tier || 1,
+                        points: ua.achievement?.points || 0,
+                      }))}
+                      max={5}
+                      size="xs"
+                    />
+                  </TooltipProvider>
                 </h1>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <RankBadge points={profile.achievement_points || 0} size="sm" />
+                  <LeaderboardPositionBadge userId={profile.user_id} />
                 </div>
                 {specialBadges.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1 mb-1">
