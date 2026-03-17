@@ -485,3 +485,61 @@
 :focus:not(:focus-visible) {
   outline: none;
 }
+
+/* ─── Rank Ring Animations ─── */
+@keyframes rank-pulse {
+  0%, 100% { box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow); opacity: 1; }
+  50% { opacity: 0.85; filter: brightness(1.15); }
+}
+
+@keyframes rank-gold-rotate {
+  0% { --rank-angle: 0deg; }
+  100% { --rank-angle: 360deg; }
+}
+
+@keyframes rank-legend-aurora {
+  0% { --rank-angle: 0deg; filter: hue-rotate(0deg); }
+  100% { --rank-angle: 360deg; filter: hue-rotate(30deg); }
+}
+
+@keyframes sparkle-float {
+  0% { transform: translate(0, 0) scale(0); opacity: 0; }
+  30% { opacity: 1; transform: translate(var(--sx), var(--sy)) scale(1); }
+  100% { opacity: 0; transform: translate(calc(var(--sx) * 2), calc(var(--sy) * 2)) scale(0); }
+}
+
+/* Gold rotating gradient ring for Game Master */
+.rank-ring-gold {
+  animation: rank-gold-rotate 4s linear infinite;
+  ring-color: transparent;
+  box-shadow:
+    0 0 0 4px hsl(45 90% 50% / 0.7),
+    0 0 20px hsl(45 90% 50% / 0.3),
+    inset 0 0 8px hsl(45 90% 50% / 0.15);
+}
+
+/* Legend aurora ring */
+.rank-ring-legend {
+  animation: rank-legend-aurora 6s linear infinite;
+  ring-color: transparent;
+  box-shadow:
+    0 0 0 4px hsl(270 70% 60% / 0.8),
+    0 0 24px hsl(270 70% 60% / 0.4),
+    0 0 40px hsl(300 60% 50% / 0.2),
+    inset 0 0 10px hsl(270 70% 60% / 0.15);
+}
+
+/* Sparkle particles for Legend rank */
+.rank-sparkle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: hsl(270 80% 75%);
+  pointer-events: none;
+  animation: sparkle-float 2s ease-out infinite;
+}
+.rank-sparkle-1 { top: 10%; left: 5%; --sx: -6px; --sy: -8px; animation-delay: 0s; }
+.rank-sparkle-2 { top: 50%; right: 0; --sx: 8px; --sy: -4px; animation-delay: 0.7s; }
+.rank-sparkle-3 { bottom: 15%; left: 30%; --sx: 4px; --sy: 10px; animation-delay: 1.3s; }
+
