@@ -51,7 +51,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
     setTitle(game.title);
     setImageUrl(game.image_url);
     setCatalogGameId(game.catalog_game_id);
-    setDescription(game.notes || "");
+    setDescription(game.description || "");
     setScheduledTime(game.scheduled_time || "");
     setDuration(game.duration_minutes?.toString() || "");
     setMinPlayers(game.min_players?.toString() || "");
