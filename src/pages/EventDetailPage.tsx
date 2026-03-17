@@ -26,7 +26,7 @@ import { EventSuppliesTab } from "@/components/events/planning/EventSuppliesTab"
 import { EventTablesTab } from "@/components/events/planning/EventTablesTab";
 import { EventLogisticsTab } from "@/components/events/planning/EventLogisticsTab";
 import { EventAttendeesTab } from "@/components/events/planning/EventAttendeesTab";
-import { EventRegistrationTab } from "@/components/events/planning/EventRegistrationTab";
+
 import { EventScheduleTab } from "@/components/events/planning/EventScheduleTab";
 import { EventTournamentTab } from "@/components/events/planning/EventTournamentTab";
 import { Skeleton } from "@/components/ui/skeleton";
