@@ -29,7 +29,7 @@ interface EditEventDialogProps {
   onDateRescheduled?: (newDate: string, newEndDate?: string) => void;
 }
 
-export function EditEventDialog({ event }: EditEventDialogProps) {
+export function EditEventDialog({ event, onDateRescheduled }: EditEventDialogProps) {
   const [open, setOpen] = useState(false);
   const updateEvent = useUpdateEventDetail();
 
