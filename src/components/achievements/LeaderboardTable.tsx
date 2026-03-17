@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Medal, Award, Crown } from "lucide-react";
 
 function getPlacementIcon(index: number) {
-  if (index === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
+  if (index === 0) return <Crown className="h-5 w-5 text-yellow-500" />;
   if (index === 1) return <Medal className="h-5 w-5 text-slate-400" />;
   if (index === 2) return <Award className="h-5 w-5 text-amber-700" />;
   return <span className="w-5 text-center text-sm font-bold text-muted-foreground">{index + 1}</span>;
