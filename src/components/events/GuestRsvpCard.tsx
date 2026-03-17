@@ -63,6 +63,13 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
 
     setIsSubmitting(true);
     try {
+      const normalizedName = name.trim();
+      const normalizedEmail = email.trim().toLowerCase();
+      const linkedUserId =
+        isAuthenticated && user?.id && user?.email?.toLowerCase() === normalizedEmail
+          ? user.id
+          : null;
+
       // Determine status
       let status = "registered";
       let waitlistPosition: number | null = null;
@@ -81,9 +88,9 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
         .from("event_registrations")
         .insert({
           event_id: eventId,
-          attendee_name: name.trim(),
-          attendee_email: email.trim(),
-          attendee_user_id: isAuthenticated ? user?.id : null,
+          attendee_name: normalizedName,
+          attendee_email: normalizedEmail,
+          attendee_user_id: linkedUserId,
           status,
           waitlist_position: waitlistPosition,
           notes: gamePreferences.length > 0
