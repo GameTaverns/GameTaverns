@@ -189,7 +189,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
 
               {/* Social */}
               <SectionHeader label={t('nav.social', 'Social')} />
-              <NavItem href={getPlatformUrl("/dashboard")} icon={Users} label={t('nav.activityFeed', 'Activity Feed')} />
+              
               <NavItem href={getPlatformUrl("/directory")} icon={Globe} label={t('nav.libraryDirectory', 'Library Directory')} />
               <NavItem href={getPlatformUrl("/clubs")} icon={UserPlus} label={t('nav.clubDirectory', 'Club Directory')} />
               {myClubs && myClubs.length > 0 && (
