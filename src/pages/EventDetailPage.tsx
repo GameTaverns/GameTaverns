@@ -342,6 +342,43 @@ export default function EventDetailPage() {
           <EventTablesTab eventId={event.id} />
         </TabsContent>
       </Tabs>
+
+      {/* Cancel Event Confirmation Dialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel <strong>{event.title}</strong> and notify all registered attendees via email.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="cancel-message" className="text-sm">Message to attendees (optional)</Label>
+            <Textarea
+              id="cancel-message"
+              value={cancelMessage}
+              onChange={(e) => setCancelMessage(e.target.value)}
+              placeholder="Sorry, we need to cancel due to..."
+              rows={3}
+              maxLength={500}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSendingNotification}>Keep Event</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCancel}
+              disabled={isSendingNotification}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSendingNotification ? (
+                <>Sending notifications...</>
+              ) : (
+                <><Mail className="h-4 w-4 mr-1" /> Cancel & Notify Attendees</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
