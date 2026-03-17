@@ -120,6 +120,34 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
     setEditingGame(game);
   };
 
+  // Parse game requests from registration notes
+  const guestGameRequests = useMemo(() => {
+    const requests: { name: string; games: string[] }[] = [];
+    for (const reg of registrations) {
+      if (reg.notes && reg.status !== "cancelled") {
+        const match = reg.notes.match(/Wants to play:\s*(.+?)(?:\s*\||$)/);
+        if (match) {
+          const games = match[1].split(",").map(s => s.trim()).filter(Boolean);
+          if (games.length > 0) {
+            requests.push({ name: reg.attendee_name, games });
+          }
+        }
+      }
+    }
+    return requests;
+  }, [registrations]);
+
+  // Aggregate game titles with request counts
+  const gameRequestCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of guestGameRequests) {
+      for (const g of r.games) {
+        counts.set(g, (counts.get(g) || 0) + 1);
+      }
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [guestGameRequests]);
+
   return (
     <div className="space-y-4">
       <Card>
