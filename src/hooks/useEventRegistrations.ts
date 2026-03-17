@@ -15,6 +15,8 @@ export interface EventRegistration {
   registered_at: string;
   cancelled_at: string | null;
   notes: string | null;
+  bringing_text: string | null;
+  guest_count: number;
 }
 
 export function useEventRegistrations(eventId: string | undefined) {
