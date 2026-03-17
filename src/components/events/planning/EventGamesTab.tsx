@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Gamepad2, Clock, Users, Trash2, GripVertical, Pencil, Search } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, Gamepad2, Clock, Users, Trash2, GripVertical, Pencil, Search, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import { useEventGames, useAddEventGame, useRemoveEventGame, useUpdateEventGame,
 import { useCatalogGameSearch, type CatalogSearchResult } from "@/hooks/useCatalogGameSearch";
 import { GameImage } from "@/components/games/GameImage";
 
+import { useEventRegistrations } from "@/hooks/useEventRegistrations";
+
 interface EventGamesTabProps {
   eventId: string;
   libraryId: string;
@@ -23,6 +25,7 @@ interface EventGamesTabProps {
 
 export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
   const { data: games = [], isLoading } = useEventGames(eventId);
+  const { data: registrations = [] } = useEventRegistrations(eventId);
   const addGame = useAddEventGame();
   const removeGame = useRemoveEventGame();
   const updateGame = useUpdateEventGame();
@@ -117,6 +120,34 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
     setEditingGame(game);
   };
 
+  // Parse game requests from registration notes
+  const guestGameRequests = useMemo(() => {
+    const requests: { name: string; games: string[] }[] = [];
+    for (const reg of registrations) {
+      if (reg.notes && reg.status !== "cancelled") {
+        const match = reg.notes.match(/Wants to play:\s*(.+?)(?:\s*\||$)/);
+        if (match) {
+          const games = match[1].split(",").map(s => s.trim()).filter(Boolean);
+          if (games.length > 0) {
+            requests.push({ name: reg.attendee_name, games });
+          }
+        }
+      }
+    }
+    return requests;
+  }, [registrations]);
+
+  // Aggregate game titles with request counts
+  const gameRequestCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of guestGameRequests) {
+      for (const g of r.games) {
+        counts.set(g, (counts.get(g) || 0) + 1);
+      }
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [guestGameRequests]);
+
   return (
     <div className="space-y-4">
       <Card>
@@ -157,6 +188,39 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Guest Game Requests */}
+      {guestGameRequests.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Star className="h-4 w-4 text-primary" />
+              Guest Requests
+            </CardTitle>
+            <CardDescription>Games guests want to play based on RSVPs</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Aggregated counts */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {gameRequestCounts.map(([title, count]) => (
+                <Badge key={title} variant="secondary" className="text-xs gap-1">
+                  {title}
+                  {count > 1 && <span className="text-muted-foreground">×{count}</span>}
+                </Badge>
+              ))}
+            </div>
+            {/* Per-guest breakdown */}
+            <div className="space-y-1.5">
+              {guestGameRequests.map((req, i) => (
+                <div key={i} className="text-xs text-muted-foreground flex items-baseline gap-1.5">
+                  <span className="font-medium text-foreground">{req.name}:</span>
+                  <span>{req.games.join(", ")}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add Game Dialog */}
       <Dialog open={showAddDialog} onOpenChange={(o) => { if (!o) resetForm(); setShowAddDialog(o); }}>
