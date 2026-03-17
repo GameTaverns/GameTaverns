@@ -1770,6 +1770,167 @@ export type Database = {
         }
         Relationships: []
       }
+      event_attendee_prefs: {
+        Row: {
+          attendee_identifier: string
+          attendee_name: string | null
+          attendee_user_id: string | null
+          can_bring: string[] | null
+          created_at: string
+          dietary_notes: string | null
+          event_id: string
+          id: string
+          notes: string | null
+          updated_at: string
+          wants_to_play: string[] | null
+        }
+        Insert: {
+          attendee_identifier: string
+          attendee_name?: string | null
+          attendee_user_id?: string | null
+          can_bring?: string[] | null
+          created_at?: string
+          dietary_notes?: string | null
+          event_id: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          wants_to_play?: string[] | null
+        }
+        Update: {
+          attendee_identifier?: string
+          attendee_name?: string | null
+          attendee_user_id?: string | null
+          can_bring?: string[] | null
+          created_at?: string
+          dietary_notes?: string | null
+          event_id?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          wants_to_play?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_attendee_prefs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "library_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendee_prefs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_event_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_games: {
+        Row: {
+          catalog_game_id: string | null
+          created_at: string
+          description: string | null
+          display_order: number
+          duration_minutes: number | null
+          event_id: string
+          game_id: string | null
+          id: string
+          image_url: string | null
+          max_players: number | null
+          min_players: number | null
+          notes: string | null
+          scheduled_time: string | null
+          table_label: string | null
+          title: string
+        }
+        Insert: {
+          catalog_game_id?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          duration_minutes?: number | null
+          event_id: string
+          game_id?: string | null
+          id?: string
+          image_url?: string | null
+          max_players?: number | null
+          min_players?: number | null
+          notes?: string | null
+          scheduled_time?: string | null
+          table_label?: string | null
+          title: string
+        }
+        Update: {
+          catalog_game_id?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          duration_minutes?: number | null
+          event_id?: string
+          game_id?: string | null
+          id?: string
+          image_url?: string | null
+          max_players?: number | null
+          min_players?: number | null
+          notes?: string | null
+          scheduled_time?: string | null
+          table_label?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_games_catalog_game_id_fkey"
+            columns: ["catalog_game_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "event_games_catalog_game_id_fkey"
+            columns: ["catalog_game_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_games_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "library_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_games_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_event_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_games_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "event_games_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_games_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_registrations: {
         Row: {
           attendee_email: string | null
@@ -1820,6 +1981,161 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "public_event_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_supplies: {
+        Row: {
+          category: string
+          claimed_by: string | null
+          claimed_by_user_id: string | null
+          created_at: string
+          event_id: string
+          id: string
+          is_fulfilled: boolean
+          item_name: string
+          quantity: number
+        }
+        Insert: {
+          category?: string
+          claimed_by?: string | null
+          claimed_by_user_id?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          is_fulfilled?: boolean
+          item_name: string
+          quantity?: number
+        }
+        Update: {
+          category?: string
+          claimed_by?: string | null
+          claimed_by_user_id?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          is_fulfilled?: boolean
+          item_name?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_supplies_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "library_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_supplies_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_event_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_table_seats: {
+        Row: {
+          created_at: string
+          id: string
+          player_name: string
+          player_user_id: string | null
+          table_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          player_name: string
+          player_user_id?: string | null
+          table_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          player_name?: string
+          player_user_id?: string | null
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_table_seats_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "event_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_tables: {
+        Row: {
+          capacity: number
+          created_at: string
+          display_order: number
+          event_id: string
+          game_id: string | null
+          game_title: string | null
+          id: string
+          notes: string | null
+          table_label: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          display_order?: number
+          event_id: string
+          game_id?: string | null
+          game_title?: string | null
+          id?: string
+          notes?: string | null
+          table_label: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          display_order?: number
+          event_id?: string
+          game_id?: string | null
+          game_title?: string | null
+          id?: string
+          notes?: string | null
+          table_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_tables_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "library_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_tables_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_event_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_tables_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "event_tables_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_tables_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
             referencedColumns: ["id"]
           },
         ]

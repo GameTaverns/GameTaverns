@@ -51,7 +51,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
     setTitle(game.title);
     setImageUrl(game.image_url);
     setCatalogGameId(game.catalog_game_id);
-    setDescription(game.notes || "");
+    setDescription(game.description || "");
     setScheduledTime(game.scheduled_time || "");
     setDuration(game.duration_minutes?.toString() || "");
     setMinPlayers(game.min_players?.toString() || "");
@@ -66,7 +66,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
     setCatalogGameId(game.id);
     if (game.min_players) setMinPlayers(game.min_players.toString());
     if (game.max_players) setMaxPlayers(game.max_players.toString());
-    if (game.description) setDescription(game.description.slice(0, 200));
+    if (game.description) setDescription(game.description.slice(0, 300));
   };
 
   const handleAdd = async () => {
@@ -76,6 +76,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
       game_id: null,
       catalog_game_id: catalogGameId,
       title: title.trim(),
+      description: description || null,
       image_url: imageUrl,
       scheduled_time: scheduledTime || null,
       duration_minutes: duration ? parseInt(duration) : null,
@@ -96,6 +97,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
       eventId,
       updates: {
         title: title.trim(),
+        description: description || null,
         image_url: imageUrl,
         catalog_game_id: catalogGameId,
         scheduled_time: scheduledTime || null,
@@ -345,8 +347,11 @@ function GameLineupItem({ game, onEdit, onRemove }: { game: EventGame; onEdit: (
             <Badge variant="outline" className="text-xs">{game.table_label}</Badge>
           )}
         </div>
+        {game.description && (
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{game.description}</p>
+        )}
         {game.notes && (
-          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{game.notes}</p>
+          <p className="text-xs text-muted-foreground/70 mt-0.5 italic line-clamp-1">{game.notes}</p>
         )}
         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
           {game.scheduled_time && (
