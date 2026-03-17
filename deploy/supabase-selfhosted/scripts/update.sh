@@ -157,6 +157,7 @@ EXTERNAL_HANDLERS=(
   check-password-reuse
   notify-feedback-closed
   fetch-news-feeds
+  send-event-update
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   src="$FUNCTIONS_DIR/$handler"
