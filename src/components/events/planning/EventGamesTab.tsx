@@ -229,14 +229,39 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
             <CardDescription>Games guests want to play based on RSVPs</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Aggregated counts */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {gameRequestCounts.map(([title, count]) => (
-                <Badge key={title} variant="secondary" className="text-xs gap-1">
-                  {title}
-                  {count > 1 && <span className="text-muted-foreground">×{count}</span>}
-                </Badge>
-              ))}
+            {/* Rich game cards with catalog info */}
+            <div className="space-y-2 mb-4">
+              {gameRequestCounts.map(([title, count]) => {
+                const catalog = catalogLookup[title];
+                return (
+                  <div key={title} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                    {catalog?.image_url ? (
+                      <GameImage
+                        imageUrl={catalog.image_url}
+                        alt={title}
+                        className="h-14 w-14 rounded-md object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
+                        <Gamepad2 className="h-5 w-5 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{title}</span>
+                        {count > 1 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {count} {count === 1 ? "request" : "requests"}
+                          </Badge>
+                        )}
+                      </div>
+                      {catalog?.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{catalog.description}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             {/* Per-guest breakdown */}
             <div className="space-y-1.5">
