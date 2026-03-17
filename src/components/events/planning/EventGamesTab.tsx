@@ -76,6 +76,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
       game_id: null,
       catalog_game_id: catalogGameId,
       title: title.trim(),
+      description: description || null,
       image_url: imageUrl,
       scheduled_time: scheduledTime || null,
       duration_minutes: duration ? parseInt(duration) : null,
