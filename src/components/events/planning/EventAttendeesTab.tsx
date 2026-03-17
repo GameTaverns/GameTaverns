@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Plus, Users, Heart, Package, Trash2, MessageSquare, UtensilsCrossed, Crown, Mail } from "lucide-react";
+import { Users, Clock, AlertCircle, UserPlus, UserMinus, Trash2, Mail, Crown, Package, MessageSquare } from "lucide-react";
+import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -14,12 +16,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  useEventAttendeePrefs,
-  useSubmitAttendeePref,
-  useEventDetail,
-  type EventAttendeePref,
-} from "@/hooks/useEventPlanning";
-import { useEventRegistrations } from "@/hooks/useEventRegistrations";
+  useEventRegistrations,
+  useRegisterForEvent,
+  useCancelRegistration,
+  useRemoveRegistration,
+  type EventRegistration,
+} from "@/hooks/useEventRegistrations";
+import { useEventDetail } from "@/hooks/useEventPlanning";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 
@@ -27,6 +30,7 @@ const db = supabase as any;
 
 interface EventAttendeesTabProps {
   eventId: string;
+  maxAttendees?: number | null;
 }
 
 function useEventCreatorProfile(creatorUserId: string | null | undefined) {
@@ -47,243 +51,217 @@ function useEventCreatorProfile(creatorUserId: string | null | undefined) {
   });
 }
 
-export function EventAttendeesTab({ eventId }: EventAttendeesTabProps) {
-  const { data: prefs = [], isLoading: prefsLoading } = useEventAttendeePrefs(eventId);
-  const { data: registrations = [], isLoading: regsLoading } = useEventRegistrations(eventId);
+export function EventAttendeesTab({ eventId, maxAttendees }: EventAttendeesTabProps) {
+  const { data: registrations = [], isLoading } = useEventRegistrations(eventId);
   const { data: event } = useEventDetail(eventId);
   const creatorId = event?.created_by_user_id || event?.created_by;
   const { data: creatorProfile } = useEventCreatorProfile(creatorId);
-  const submitPref = useSubmitAttendeePref();
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const register = useRegisterForEvent();
+  const cancelReg = useCancelRegistration();
+  const removeReg = useRemoveRegistration();
+  const [showRegDialog, setShowRegDialog] = useState(false);
 
   const [name, setName] = useState("");
-  const [wantsToPlay, setWantsToPlay] = useState("");
-  const [canBring, setCanBring] = useState("");
-  const [dietaryNotes, setDietaryNotes] = useState("");
+  const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
+  const [bringingText, setBringingText] = useState("");
+  const [guestCount, setGuestCount] = useState(0);
 
-  const resetForm = () => {
-    setName("");
-    setWantsToPlay("");
-    setCanBring("");
-    setDietaryNotes("");
-    setNotes("");
-  };
-
-  const handleSubmit = async () => {
-    if (!name.trim()) return;
-    await submitPref.mutateAsync({
-      event_id: eventId,
-      attendee_identifier: name.trim().toLowerCase(),
-      attendee_name: name.trim(),
-      wants_to_play: wantsToPlay
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      can_bring: canBring
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      dietary_notes: dietaryNotes.trim() || undefined,
-      notes: notes.trim() || undefined,
-    });
-    resetForm();
-    setShowAddDialog(false);
-  };
-
-  // Merge registrations into attendee list
-  const activeRegistrations = registrations.filter(r => r.status === "registered" || r.status === "waitlisted");
+  const registered = registrations.filter(r => r.status === "registered");
+  const waitlisted = registrations.filter(r => r.status === "waitlisted");
+  const cancelled = registrations.filter(r => r.status === "cancelled");
   const creatorIsRegistered = creatorId && registrations.some(r => r.attendee_user_id === creatorId);
-  const totalAttendees = activeRegistrations.length + (creatorId && !creatorIsRegistered ? 1 : 0);
 
-  const isLoading = prefsLoading || regsLoading;
+  // Count total including plus-ones
+  const totalHeadcount = registered.reduce((sum, r) => sum + 1 + (r.guest_count || 0), 0)
+    + (creatorId && !creatorIsRegistered ? 1 : 0);
+  const totalRegistered = registered.length + (creatorId && !creatorIsRegistered ? 1 : 0);
+  const capacityPercent = maxAttendees ? Math.min(100, (totalRegistered / maxAttendees) * 100) : 0;
+
+  const handleRegister = async () => {
+    if (!name.trim()) return;
+    await register.mutateAsync({
+      event_id: eventId,
+      attendee_name: name.trim(),
+      attendee_email: email.trim() || undefined,
+      max_attendees: maxAttendees,
+      notes: notes.trim() || undefined,
+      bringing_text: bringingText.trim() || undefined,
+      guest_count: guestCount,
+    });
+    setName(""); setEmail(""); setNotes(""); setBringingText(""); setGuestCount(0);
+    setShowRegDialog(false);
+  };
 
   return (
     <div className="space-y-4">
-      {/* Attendee List from Registrations */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
-                Attendees
+                Attendees & Registration
               </CardTitle>
               <CardDescription>
-                {totalAttendees} {totalAttendees === 1 ? "person" : "people"} attending
+                {totalRegistered} registered
+                {totalHeadcount > totalRegistered ? ` (${totalHeadcount} total w/ guests)` : ""}
+                {maxAttendees ? ` / ${maxAttendees} spots` : ""}
+                {waitlisted.length > 0 ? ` • ${waitlisted.length} waitlisted` : ""}
               </CardDescription>
             </div>
+            <Button size="sm" onClick={() => setShowRegDialog(true)}>
+              <UserPlus className="h-4 w-4 mr-1" /> Register
+            </Button>
           </div>
+
+          {maxAttendees && (
+            <div className="mt-3 space-y-1">
+              <Progress value={capacityPercent} className="h-2" />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{totalRegistered} of {maxAttendees}</span>
+                {maxAttendees - totalRegistered > 0 ? (
+                  <span className="text-primary">{maxAttendees - totalRegistered} spots left</span>
+                ) : (
+                  <span className="text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> Full — waitlist active
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </CardHeader>
+
         <CardContent>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : totalAttendees === 0 ? (
+          ) : totalRegistered === 0 && waitlisted.length === 0 && cancelled.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No attendees yet</p>
-              <p className="text-xs mt-1">Share the event to get RSVPs</p>
+              <p className="text-xs mt-1">Share the event or register someone above</p>
             </div>
           ) : (
-            <div className="space-y-1">
-              {/* Show event creator as Host */}
-              {creatorId && !creatorIsRegistered && (
-                <div className="flex items-center gap-3 p-2 rounded-md border bg-card">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {creatorProfile?.display_name || creatorProfile?.username || "Event Creator"}
-                      </span>
-                      <Badge variant="secondary" className="text-xs gap-1">
-                        <Crown className="h-3 w-3" /> Host
-                      </Badge>
+            <div className="space-y-4">
+              {/* Registered */}
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                  Registered ({totalRegistered})
+                </h4>
+                <div className="space-y-1">
+                  {creatorId && !creatorIsRegistered && (
+                    <div className="flex items-center gap-3 p-2 rounded-md border bg-card">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {creatorProfile?.display_name || creatorProfile?.username || "Event Creator"}
+                          </span>
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <Crown className="h-3 w-3" /> Host
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">Event organizer</p>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">Event organizer</p>
+                  )}
+                  {registered.map(reg => (
+                    <RegistrationRow
+                      key={reg.id}
+                      reg={reg}
+                      isCreator={reg.attendee_user_id === creatorId}
+                      onCancel={() => cancelReg.mutate({ registrationId: reg.id, eventId })}
+                      onRemove={() => removeReg.mutate({ registrationId: reg.id, eventId })}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Waitlisted */}
+              {waitlisted.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Waitlist ({waitlisted.length})
+                  </h4>
+                  <div className="space-y-1">
+                    {waitlisted.map(reg => (
+                      <RegistrationRow
+                        key={reg.id}
+                        reg={reg}
+                        onCancel={() => cancelReg.mutate({ registrationId: reg.id, eventId })}
+                        onRemove={() => removeReg.mutate({ registrationId: reg.id, eventId })}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
-              {activeRegistrations.map(reg => (
-                <div key={reg.id} className="flex items-center gap-3 p-2 rounded-md border bg-card">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{reg.attendee_name}</span>
-                      {reg.attendee_user_id === creatorId && (
-                        <Badge variant="secondary" className="text-xs gap-1">
-                          <Crown className="h-3 w-3" /> Host
-                        </Badge>
-                      )}
-                      {reg.status === "waitlisted" && (
-                        <Badge variant="outline" className="text-xs text-amber-600">Waitlisted</Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                      {reg.attendee_email && (
-                        <span className="flex items-center gap-1">
-                          <Mail className="h-3 w-3" />{reg.attendee_email}
-                        </span>
-                      )}
-                      {reg.notes && <span className="truncate">· {reg.notes}</span>}
-                    </div>
+
+              {/* Cancelled */}
+              {cancelled.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                    Cancelled ({cancelled.length})
+                  </h4>
+                  <div className="space-y-1 opacity-60">
+                    {cancelled.map(reg => (
+                      <RegistrationRow
+                        key={reg.id}
+                        reg={reg}
+                        onRemove={() => removeReg.mutate({ registrationId: reg.id, eventId })}
+                      />
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Preferences Card */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Heart className="h-4 w-4 text-primary" />
-                Attendee Preferences
-              </CardTitle>
-              <CardDescription>
-                {prefs.length > 0
-                  ? `${prefs.length} attendee${prefs.length !== 1 ? "s" : ""} shared preferences`
-                  : "Attendees can share what games they want to play and what they can bring"}
-              </CardDescription>
-            </div>
-            <Button size="sm" onClick={() => setShowAddDialog(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Add Preferences
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {prefsLoading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : prefs.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground">
-              <p className="text-sm">No preferences submitted yet</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {prefs.map((pref) => (
-                <AttendeeCard key={pref.id} pref={pref} />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Game Wish Summary */}
-      {prefs.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Heart className="h-4 w-4 text-primary" />
-              Most Requested Games
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <GameRequestSummary prefs={prefs} />
-          </CardContent>
-        </Card>
-      )}
-
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      {/* Register Dialog */}
+      <Dialog open={showRegDialog} onOpenChange={setShowRegDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Your Preferences</DialogTitle>
+            <DialogTitle>Register for Event</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Your Name *</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Alex"
-              />
+              <Label>Name *</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
             </div>
             <div className="space-y-2">
-              <Label>Games You Want to Play</Label>
-              <Input
-                value={wantsToPlay}
-                onChange={(e) => setWantsToPlay(e.target.value)}
-                placeholder="Catan, Wingspan, Azul (comma-separated)"
-              />
-              <p className="text-xs text-muted-foreground">
-                Separate multiple games with commas
-              </p>
+              <Label>Email (optional)</Label>
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="For event updates" />
+            </div>
+            <div className="grid grid-cols-[1fr_auto] gap-3">
+              <div className="space-y-2">
+                <Label>Bringing (optional)</Label>
+                <Input value={bringingText} onChange={e => setBringingText(e.target.value)} placeholder="Snacks, drinks, a game..." />
+              </div>
+              <div className="space-y-2">
+                <Label>Plus-ones</Label>
+                <Input
+                  type="number" min={0} max={10}
+                  value={guestCount}
+                  onChange={e => setGuestCount(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-20"
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label>Games You Can Bring</Label>
-              <Input
-                value={canBring}
-                onChange={(e) => setCanBring(e.target.value)}
-                placeholder="Ticket to Ride, Codenames (comma-separated)"
-              />
+              <Label>Notes</Label>
+              <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Arriving late, dietary needs, etc." rows={2} />
             </div>
-            <div className="space-y-2">
-              <Label>Dietary Notes / Allergies</Label>
-              <Input
-                value={dietaryNotes}
-                onChange={(e) => setDietaryNotes(e.target.value)}
-                placeholder="Vegetarian, nut allergy, etc."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Other Notes</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Arriving late, need a ride, etc."
-                rows={2}
-              />
-            </div>
+            {maxAttendees && totalRegistered >= maxAttendees && (
+              <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                <Clock className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>This event is full. You'll be added to the waitlist.</span>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!name.trim() || submitPref.isPending}
-            >
-              {submitPref.isPending ? "Saving..." : "Submit"}
+            <Button variant="outline" onClick={() => setShowRegDialog(false)}>Cancel</Button>
+            <Button onClick={handleRegister} disabled={!name.trim() || register.isPending}>
+              {register.isPending ? "Registering..." : maxAttendees && totalRegistered >= maxAttendees ? "Join Waitlist" : "Register"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -292,94 +270,72 @@ export function EventAttendeesTab({ eventId }: EventAttendeesTabProps) {
   );
 }
 
-function AttendeeCard({ pref }: { pref: EventAttendeePref }) {
-  const wantsToPlay = Array.isArray(pref.wants_to_play) ? pref.wants_to_play : [];
-  const canBring = Array.isArray(pref.can_bring) ? pref.can_bring : [];
-
+function RegistrationRow({
+  reg,
+  isCreator,
+  onCancel,
+  onRemove,
+}: {
+  reg: EventRegistration;
+  isCreator?: boolean;
+  onCancel?: () => void;
+  onRemove?: () => void;
+}) {
   return (
-    <div className="p-3 rounded-lg border bg-card space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="font-medium text-sm">
-          {pref.attendee_name || pref.attendee_identifier}
-        </span>
+    <div className="flex items-center gap-3 p-2 rounded-md border bg-card group">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`text-sm font-medium ${reg.status === "cancelled" ? "line-through text-muted-foreground" : ""}`}>
+            {reg.attendee_name}
+          </span>
+          {isCreator && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Crown className="h-3 w-3" /> Host
+            </Badge>
+          )}
+          {reg.guest_count > 0 && (
+            <Badge variant="outline" className="text-xs">+{reg.guest_count}</Badge>
+          )}
+          {reg.status === "waitlisted" && reg.waitlist_position && (
+            <Badge variant="outline" className="text-xs text-amber-600">#{reg.waitlist_position}</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground flex-wrap">
+          {reg.attendee_email && (
+            <span className="flex items-center gap-1">
+              <Mail className="h-3 w-3" />{reg.attendee_email}
+            </span>
+          )}
+          <span>{format(new Date(reg.registered_at), "MMM d, h:mm a")}</span>
+        </div>
+        {/* Extra details row */}
+        {(reg.bringing_text || reg.notes) && (
+          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+            {reg.bringing_text && (
+              <span className="flex items-center gap-1">
+                <Package className="h-3 w-3 shrink-0" /> {reg.bringing_text}
+              </span>
+            )}
+            {reg.notes && (
+              <span className="flex items-center gap-1">
+                <MessageSquare className="h-3 w-3 shrink-0" /> {reg.notes}
+              </span>
+            )}
+          </div>
+        )}
       </div>
-
-      {wantsToPlay.length > 0 && (
-        <div className="flex items-start gap-2">
-          <Heart className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-          <div className="flex flex-wrap gap-1">
-            {wantsToPlay.map((g, i) => (
-              <Badge key={i} variant="secondary" className="text-xs">
-                {g}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {canBring.length > 0 && (
-        <div className="flex items-start gap-2">
-          <Package className="h-3.5 w-3.5 text-accent-foreground mt-0.5 shrink-0" />
-          <div className="flex flex-wrap gap-1">
-            {canBring.map((g, i) => (
-              <Badge key={i} variant="outline" className="text-xs">
-                {g}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {pref.dietary_notes && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <UtensilsCrossed className="h-3 w-3 shrink-0" />
-          <span>{pref.dietary_notes}</span>
-        </div>
-      )}
-
-      {pref.notes && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <MessageSquare className="h-3 w-3 shrink-0" />
-          <span>{pref.notes}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function GameRequestSummary({ prefs }: { prefs: EventAttendeePref[] }) {
-  const gameCounts: Record<string, number> = {};
-  prefs.forEach((p) => {
-    const wtp = Array.isArray(p.wants_to_play) ? p.wants_to_play : [];
-    wtp.forEach((g) => {
-      const key = g.toLowerCase().trim();
-      if (key) gameCounts[key] = (gameCounts[key] || 0) + 1;
-    });
-  });
-
-  const sorted = Object.entries(gameCounts).sort((a, b) => b[1] - a[1]);
-
-  if (sorted.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No game preferences submitted yet
-      </p>
-    );
-  }
-
-  return (
-    <div className="space-y-1.5">
-      {sorted.map(([game, count]) => (
-        <div
-          key={game}
-          className="flex items-center justify-between text-sm p-2 rounded bg-muted/50"
-        >
-          <span className="capitalize">{game}</span>
-          <Badge variant="secondary" className="text-xs">
-            {count} {count === 1 ? "request" : "requests"}
-          </Badge>
-        </div>
-      ))}
+      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onCancel && reg.status !== "cancelled" && (
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onCancel}>
+            <UserMinus className="h-3 w-3 mr-1" /> Cancel
+          </Button>
+        )}
+        {onRemove && (
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onRemove}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

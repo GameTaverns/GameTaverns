@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { UserPlus, Check, Clock, Mail, PartyPopper, ArrowRight } from "lucide-react";
+import { UserPlus, Clock, PartyPopper, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/backend/client";
@@ -35,6 +36,9 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
   const [submitted, setSubmitted] = useState(false);
   const [resultStatus, setResultStatus] = useState<"registered" | "waitlisted" | null>(null);
   const [gamePreferences, setGamePreferences] = useState<CatalogSearchResult[]>([]);
+  const [bringingText, setBringingText] = useState("");
+  const [notesForHost, setNotesForHost] = useState("");
+  const [guestCount, setGuestCount] = useState(0);
 
   if (!isPublic) return null;
 
@@ -44,7 +48,6 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Honeypot check
     if (honeypot) {
       toast({ title: "Verification failed", variant: "destructive" });
       return;
@@ -55,7 +58,6 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
       return;
     }
 
-    // Basic email validation
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       toast({ title: "Please enter a valid email", variant: "destructive" });
       return;
@@ -70,7 +72,6 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
           ? user.id
           : null;
 
-      // Determine status
       let status = "registered";
       let waitlistPosition: number | null = null;
 
@@ -84,6 +85,15 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
         waitlistPosition = (count || 0) + 1;
       }
 
+      // Build notes from game preferences + host notes
+      const notesParts: string[] = [];
+      if (gamePreferences.length > 0) {
+        notesParts.push(`Wants to play: ${gamePreferences.map(g => g.title).join(", ")}`);
+      }
+      if (notesForHost.trim()) {
+        notesParts.push(notesForHost.trim());
+      }
+
       const { error } = await db
         .from("event_registrations")
         .insert({
@@ -93,9 +103,9 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
           attendee_user_id: linkedUserId,
           status,
           waitlist_position: waitlistPosition,
-          notes: gamePreferences.length > 0
-            ? `Wants to play: ${gamePreferences.map(g => g.title).join(", ")}`
-            : null,
+          notes: notesParts.length > 0 ? notesParts.join(" | ") : null,
+          bringing_text: bringingText.trim() || null,
+          guest_count: guestCount,
         });
 
       if (error) {
@@ -116,7 +126,7 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
           : `You're confirmed for "${eventTitle}"`,
       });
 
-      // Fire-and-forget: send RSVP confirmation email with calendar invite
+      // Fire-and-forget: send RSVP confirmation email
       try {
         await db.functions.invoke("send-rsvp-confirmation", {
           body: {
@@ -128,7 +138,6 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
           },
         });
       } catch (_emailErr) {
-        // Non-blocking — don't show error to user if email fails
         console.warn("RSVP confirmation email failed:", _emailErr);
       }
     } catch (err: any) {
@@ -161,7 +170,6 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
             </p>
           </div>
 
-          {/* Prompt to create account */}
           {!isAuthenticated && (
             <div className="bg-muted/50 rounded-lg p-4 mt-4 text-left space-y-2">
               <p className="text-sm font-medium">Want to manage your RSVPs and discover more events?</p>
@@ -200,28 +208,31 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="rsvp-name" className="text-sm">Name *</Label>
-            <Input
-              id="rsvp-name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Your name"
-              required
-              maxLength={100}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="rsvp-email" className="text-sm">Email *</Label>
-            <Input
-              id="rsvp-email"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="For event updates and reminders"
-              required
-              maxLength={255}
-            />
+          {/* Core fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="rsvp-name" className="text-sm">Name *</Label>
+              <Input
+                id="rsvp-name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Your name"
+                required
+                maxLength={100}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="rsvp-email" className="text-sm">Email *</Label>
+              <Input
+                id="rsvp-email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="For event updates"
+                required
+                maxLength={255}
+              />
+            </div>
           </div>
 
           {/* Game Preferences */}
@@ -233,6 +244,45 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
               onRemove={(id) => setGamePreferences(prev => prev.filter(g => g.id !== id))}
               maxSelections={2}
               placeholder="Search for a game..."
+            />
+          </div>
+
+          {/* Bringing + Guest Count row */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="rsvp-bringing" className="text-sm">Bringing (optional)</Label>
+              <Input
+                id="rsvp-bringing"
+                value={bringingText}
+                onChange={e => setBringingText(e.target.value)}
+                placeholder="Snacks, drinks, a game, etc."
+                maxLength={200}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="rsvp-guests" className="text-sm">Plus-ones</Label>
+              <Input
+                id="rsvp-guests"
+                type="number"
+                min={0}
+                max={10}
+                value={guestCount}
+                onChange={e => setGuestCount(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-20"
+              />
+            </div>
+          </div>
+
+          {/* Notes for host */}
+          <div className="space-y-1.5">
+            <Label htmlFor="rsvp-notes" className="text-sm">Note for Host (optional)</Label>
+            <Textarea
+              id="rsvp-notes"
+              value={notesForHost}
+              onChange={e => setNotesForHost(e.target.value)}
+              placeholder="Running late, need directions, dietary restrictions, etc."
+              rows={2}
+              maxLength={500}
             />
           </div>
 
