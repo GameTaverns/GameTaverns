@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Users, Heart, Package, Trash2, MessageSquare, UtensilsCrossed } from "lucide-react";
+import { Plus, Users, Heart, Package, Trash2, MessageSquare, UtensilsCrossed, Crown, Mail } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,15 +16,43 @@ import {
 import {
   useEventAttendeePrefs,
   useSubmitAttendeePref,
+  useEventDetail,
   type EventAttendeePref,
 } from "@/hooks/useEventPlanning";
+import { useEventRegistrations } from "@/hooks/useEventRegistrations";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/backend/client";
+
+const db = supabase as any;
 
 interface EventAttendeesTabProps {
   eventId: string;
 }
 
+function useEventCreatorProfile(creatorUserId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["event-creator-profile", creatorUserId],
+    queryFn: async () => {
+      if (!creatorUserId) return null;
+      const { data, error } = await db
+        .from("user_profiles")
+        .select("user_id, display_name, username")
+        .eq("user_id", creatorUserId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { user_id: string; display_name: string | null; username: string | null } | null;
+    },
+    enabled: !!creatorUserId,
+    staleTime: 60_000,
+  });
+}
+
 export function EventAttendeesTab({ eventId }: EventAttendeesTabProps) {
-  const { data: prefs = [], isLoading } = useEventAttendeePrefs(eventId);
+  const { data: prefs = [], isLoading: prefsLoading } = useEventAttendeePrefs(eventId);
+  const { data: registrations = [], isLoading: regsLoading } = useEventRegistrations(eventId);
+  const { data: event } = useEventDetail(eventId);
+  const creatorId = event?.created_by_user_id || event?.created_by;
+  const { data: creatorProfile } = useEventCreatorProfile(creatorId);
   const submitPref = useSubmitAttendeePref();
   const [showAddDialog, setShowAddDialog] = useState(false);
 
@@ -63,19 +91,99 @@ export function EventAttendeesTab({ eventId }: EventAttendeesTabProps) {
     setShowAddDialog(false);
   };
 
+  // Merge registrations into attendee list
+  const activeRegistrations = registrations.filter(r => r.status === "registered" || r.status === "waitlisted");
+  const creatorIsRegistered = creatorId && registrations.some(r => r.attendee_user_id === creatorId);
+  const totalAttendees = activeRegistrations.length + (creatorId && !creatorIsRegistered ? 1 : 0);
+
+  const isLoading = prefsLoading || regsLoading;
+
   return (
     <div className="space-y-4">
+      {/* Attendee List from Registrations */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
+                Attendees
+              </CardTitle>
+              <CardDescription>
+                {totalAttendees} {totalAttendees === 1 ? "person" : "people"} attending
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : totalAttendees === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No attendees yet</p>
+              <p className="text-xs mt-1">Share the event to get RSVPs</p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {/* Show event creator as Host */}
+              {creatorId && !creatorIsRegistered && (
+                <div className="flex items-center gap-3 p-2 rounded-md border bg-card">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">
+                        {creatorProfile?.display_name || creatorProfile?.username || "Event Creator"}
+                      </span>
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        <Crown className="h-3 w-3" /> Host
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">Event organizer</p>
+                  </div>
+                </div>
+              )}
+              {activeRegistrations.map(reg => (
+                <div key={reg.id} className="flex items-center gap-3 p-2 rounded-md border bg-card">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{reg.attendee_name}</span>
+                      {reg.attendee_user_id === creatorId && (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          <Crown className="h-3 w-3" /> Host
+                        </Badge>
+                      )}
+                      {reg.status === "waitlisted" && (
+                        <Badge variant="outline" className="text-xs text-amber-600">Waitlisted</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                      {reg.attendee_email && (
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />{reg.attendee_email}
+                        </span>
+                      )}
+                      {reg.notes && <span className="truncate">· {reg.notes}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Preferences Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Heart className="h-4 w-4 text-primary" />
                 Attendee Preferences
               </CardTitle>
               <CardDescription>
                 {prefs.length > 0
-                  ? `${prefs.length} attendee${prefs.length !== 1 ? "s" : ""} responded`
+                  ? `${prefs.length} attendee${prefs.length !== 1 ? "s" : ""} shared preferences`
                   : "Attendees can share what games they want to play and what they can bring"}
               </CardDescription>
             </div>
@@ -85,15 +193,11 @@ export function EventAttendeesTab({ eventId }: EventAttendeesTabProps) {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {prefsLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
           ) : prefs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <div className="text-center py-6 text-muted-foreground">
               <p className="text-sm">No preferences submitted yet</p>
-              <p className="text-xs mt-1">
-                Share what you want to play and what you can bring
-              </p>
             </div>
           ) : (
             <div className="space-y-3">
