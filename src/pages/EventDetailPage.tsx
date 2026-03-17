@@ -81,9 +81,6 @@ export default function EventDetailPage() {
       { value: "games", label: "Games", icon: <Gamepad2 className="h-3.5 w-3.5" /> },
       { value: "attendees", label: "Attendees", icon: <Users className="h-3.5 w-3.5" /> },
     ];
-    if (event?.max_attendees || event?.is_public) {
-      base.push({ value: "registration", label: "Registration", icon: <UserPlus className="h-3.5 w-3.5" /> });
-    }
     if (isConventionOrMultiDay) {
       base.push({ value: "schedule", label: "Schedule", icon: <CalendarDays className="h-3.5 w-3.5" /> });
     }
@@ -95,7 +92,7 @@ export default function EventDetailPage() {
       { value: "tables", label: "Tables", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
     );
     return base;
-  }, [event?.max_attendees, event?.is_public, isConventionOrMultiDay, isTournament]);
+  }, [isConventionOrMultiDay, isTournament]);
 
   if (isLoading) {
     return (
