@@ -189,6 +189,39 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
         </CardContent>
       </Card>
 
+      {/* Guest Game Requests */}
+      {guestGameRequests.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Star className="h-4 w-4 text-primary" />
+              Guest Requests
+            </CardTitle>
+            <CardDescription>Games guests want to play based on RSVPs</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Aggregated counts */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {gameRequestCounts.map(([title, count]) => (
+                <Badge key={title} variant="secondary" className="text-xs gap-1">
+                  {title}
+                  {count > 1 && <span className="text-muted-foreground">×{count}</span>}
+                </Badge>
+              ))}
+            </div>
+            {/* Per-guest breakdown */}
+            <div className="space-y-1.5">
+              {guestGameRequests.map((req, i) => (
+                <div key={i} className="text-xs text-muted-foreground flex items-baseline gap-1.5">
+                  <span className="font-medium text-foreground">{req.name}:</span>
+                  <span>{req.games.join(", ")}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Add Game Dialog */}
       <Dialog open={showAddDialog} onOpenChange={(o) => { if (!o) resetForm(); setShowAddDialog(o); }}>
         <DialogContent className="sm:max-w-[480px]">
