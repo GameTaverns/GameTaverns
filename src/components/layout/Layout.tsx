@@ -9,6 +9,7 @@ import { OwnerAdminBar } from "./OwnerAdminBar";
 import { useTenant } from "@/contexts/TenantContext";
 import { cn } from "@/lib/utils";
 import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
+import tavernBg from "@/assets/tavern-bg.jpg";
 
 interface LayoutContextType {
   sidebarVisible: boolean;
@@ -34,7 +35,9 @@ export function Layout({ children, hideSidebar = false }: LayoutProps) {
 
   return (
     <LayoutContext.Provider value={{ sidebarVisible: showSidebar, sidebarCollapsed }}>
-      <div className={cn("min-h-screen parchment-texture flex flex-col")}>
+      <div className={cn("min-h-screen flex flex-col relative")}>
+        <img src={tavernBg} alt="" className="fixed inset-0 w-full h-full object-cover -z-10" loading="eager" />
+        <div className="fixed inset-0 bg-background/60 -z-10" />
         {/* Skip-to-content link for keyboard users */}
         <a
           href="#main-content"

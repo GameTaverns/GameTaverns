@@ -2,19 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Shuffle } from "lucide-react";
-import { AppHeader } from "@/components/layout/AppHeader";
+import { Layout } from "@/components/layout/Layout";
 import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
-import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
 import { GuidedTour } from "@/components/dashboard/GuidedTour";
-import { Footer } from "@/components/layout/Footer";
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DashboardActivityFeed } from "@/components/dashboard/DashboardActivityFeed";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import tavernBg from "@/assets/tavern-bg.jpg";
 
 const MOTIVATIONAL_MESSAGES = [
   "Every game night is a memory waiting to happen. 🎲",
@@ -36,7 +33,6 @@ const MOTIVATIONAL_MESSAGES = [
 
 function MotivationalMessage() {
   const message = useMemo(() => {
-    // Rotate daily based on the date
     const dayIndex = Math.floor(Date.now() / 86400000) % MOTIVATIONAL_MESSAGES.length;
     return MOTIVATIONAL_MESSAGES[dayIndex];
   }, []);
@@ -71,56 +67,46 @@ export default function Dashboard() {
   const displayName = profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0] || "Player";
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background flex flex-col relative">
-      <img src={tavernBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" />
-      <div className="absolute inset-0 bg-background/60" />
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <AnnouncementBanner />
-        <div className="container mx-auto px-4 pt-3">
-          <TwoFactorBanner />
+    <Layout hideSidebar>
+      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 max-w-6xl">
+        <TwoFactorBanner />
+
+        {/* Greeting + motivational message */}
+        <div className="mb-3 sm:mb-6">
+          <h1 className="font-display text-lg sm:text-2xl font-bold text-foreground leading-tight">
+            {t('dashboard.welcomeBack', { name: displayName })}
+          </h1>
+          <MotivationalMessage />
         </div>
-        <AppHeader />
 
-        <main className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 max-w-6xl flex-1">
-          {/* Greeting + motivational message */}
-          <div className="mb-3 sm:mb-6">
-            <h1 className="font-display text-lg sm:text-2xl font-bold text-foreground leading-tight">
-              {t('dashboard.welcomeBack', { name: displayName })}
-            </h1>
-            <MotivationalMessage />
+        {/* Two-column layout: Feed + Sidebar — tops aligned */}
+        <div className="flex flex-col lg:flex-row gap-3 sm:gap-6 lg:items-start">
+          {/* Main feed column */}
+          <div className="flex-1 min-w-0">
+            <DashboardActivityFeed />
           </div>
 
-          {/* Two-column layout: Feed + Sidebar — tops aligned */}
-          <div className="flex flex-col lg:flex-row gap-3 sm:gap-6 lg:items-start">
-            {/* Main feed column */}
-            <div className="flex-1 min-w-0">
-              <DashboardActivityFeed />
-            </div>
-
-            {/* Right sidebar — stacks below on mobile */}
-            <aside className="w-full lg:w-72 xl:w-80 shrink-0">
-              <DashboardSidebar />
-            </aside>
-          </div>
-        </main>
-
-        <Footer />
-        <MobileBottomTabs />
-        <GuidedTour librarySlug={library?.slug} />
-
-        {/* Random Picker Dialog */}
-        <Dialog open={randomPickerOpen} onOpenChange={setRandomPickerOpen}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Shuffle className="h-5 w-5 text-primary" />
-                {t('dashboard.randomPicker')}
-              </DialogTitle>
-            </DialogHeader>
-            {library && <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />}
-          </DialogContent>
-        </Dialog>
+          {/* Right sidebar — stacks below on mobile */}
+          <aside className="w-full lg:w-72 xl:w-80 shrink-0">
+            <DashboardSidebar />
+          </aside>
+        </div>
       </div>
-    </div>
+
+      <GuidedTour librarySlug={library?.slug} />
+
+      {/* Random Picker Dialog */}
+      <Dialog open={randomPickerOpen} onOpenChange={setRandomPickerOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shuffle className="h-5 w-5 text-primary" />
+              {t('dashboard.randomPicker')}
+            </DialogTitle>
+          </DialogHeader>
+          {library && <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />}
+        </DialogContent>
+      </Dialog>
+    </Layout>
   );
 }
