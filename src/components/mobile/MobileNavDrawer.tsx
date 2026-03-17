@@ -163,7 +163,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
               {/* Library */}
               <SectionHeader label={t('nav.library', 'Library')} />
               <NavItem href={libraryHref} icon={Library} label={t('nav.myLibrary', 'My Library')} />
-              <NavItem href={getPlatformUrl("/dashboard/collection")} icon={BookOpen} label={t('nav.myLibrary', 'My Library')} />
+              <NavItem href={getPlatformUrl("/dashboard/collection")} icon={BookOpen} label={t('nav.manageMyLibrary', 'Manage Library')} />
               <NavItem href={getPlatformUrl("/dashboard/lending")} icon={ArrowLeftRight} label={t('nav.lending', 'Lending')} />
               <NavItem href={getPlatformUrl("/dashboard/insights")} icon={ClipboardList} label={t('nav.insights', 'Insights')} />
               <NavItem href={getPlatformUrl("/catalog")} icon={Search} label={t('nav.catalog', 'Game Catalog')} />
