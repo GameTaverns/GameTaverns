@@ -324,6 +324,11 @@ export function AchievementsDisplay({ compact = false }: AchievementsDisplayProp
         </div>
       )}
 
+      {/* Quest Chains */}
+      {syncProgress && (
+        <QuestTracker progress={syncProgress} />
+      )}
+
       {/* Community Badges (Referral) */}
       {referralBadges && (
         <div className="space-y-3">
