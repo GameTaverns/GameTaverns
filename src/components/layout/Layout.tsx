@@ -9,6 +9,7 @@ import { OwnerAdminBar } from "./OwnerAdminBar";
 import { useTenant } from "@/contexts/TenantContext";
 import { cn } from "@/lib/utils";
 import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
+import tavernBg from "@/assets/tavern-bg.jpg";
 
 interface LayoutContextType {
   sidebarVisible: boolean;
