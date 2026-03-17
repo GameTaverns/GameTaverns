@@ -25,6 +25,7 @@ interface EventGamesTabProps {
 
 export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
   const { data: games = [], isLoading } = useEventGames(eventId);
+  const { data: registrations = [] } = useEventRegistrations(eventId);
   const addGame = useAddEventGame();
   const removeGame = useRemoveEventGame();
   const updateGame = useUpdateEventGame();
