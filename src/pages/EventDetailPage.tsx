@@ -6,7 +6,7 @@ import {
   ArrowLeft, Calendar, MapPin, Clock, Users, Gamepad2, 
   Package, LayoutGrid, Settings, Globe, Lock, Pencil,
   CheckCircle2, XCircle, Send, MoreVertical, Trophy,
-  CalendarDays
+  CalendarDays, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/backend/client";
 import { useEventDetail, useUpdateEventDetail } from "@/hooks/useEventPlanning";
 import { useEventRegistrations } from "@/hooks/useEventRegistrations";
 import { EventGamesTab } from "@/components/events/planning/EventGamesTab";
@@ -33,6 +47,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GuestRsvpCard } from "@/components/events/GuestRsvpCard";
 import { EditEventDialog } from "@/components/events/planning/EditEventDialog";
 import { useAuth } from "@/hooks/useAuth";
+
+const db = supabase as any;
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   game_night: "Game Night",
