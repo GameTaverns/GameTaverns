@@ -214,7 +214,7 @@ export default function UserProfile() {
           <CardContent className="relative pt-0 pb-4 px-3 sm:pb-6 sm:px-6">
             {/* Avatar row — only avatar overlaps the banner */}
             <div className="flex items-end gap-3 sm:gap-4 -mt-10 sm:-mt-14">
-              <Avatar className="h-20 w-20 sm:h-28 sm:w-28 border-4 border-card shadow-lg flex-shrink-0 relative z-10">
+              <Avatar className={`h-20 w-20 sm:h-28 sm:w-28 border-4 border-card shadow-lg flex-shrink-0 relative z-10 ${getRank(profile.achievement_points || 0).frameClass}`}>
                 <AvatarImage src={profile.avatar_url || undefined} alt={profile.display_name || profile.username} className="object-cover" />
                 <AvatarFallback className="text-xl sm:text-2xl font-display bg-primary/20 text-primary">
                   {initials}
