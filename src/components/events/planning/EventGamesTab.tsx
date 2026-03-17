@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, Gamepad2, Clock, Users, Trash2, GripVertical, Pencil, Search, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
 import { useEventGames, useAddEventGame, useRemoveEventGame, useUpdateEventGame, type EventGame } from "@/hooks/useEventPlanning";
 import { useCatalogGameSearch, type CatalogSearchResult } from "@/hooks/useCatalogGameSearch";
 import { GameImage } from "@/components/games/GameImage";
+import { supabase } from "@/integrations/backend/client";
 
 import { useEventRegistrations } from "@/hooks/useEventRegistrations";
 
