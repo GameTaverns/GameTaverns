@@ -1770,6 +1770,60 @@ export type Database = {
         }
         Relationships: []
       }
+      event_registrations: {
+        Row: {
+          attendee_email: string | null
+          attendee_name: string
+          attendee_user_id: string | null
+          cancelled_at: string | null
+          event_id: string
+          id: string
+          notes: string | null
+          registered_at: string
+          status: string
+          waitlist_position: number | null
+        }
+        Insert: {
+          attendee_email?: string | null
+          attendee_name: string
+          attendee_user_id?: string | null
+          cancelled_at?: string | null
+          event_id: string
+          id?: string
+          notes?: string | null
+          registered_at?: string
+          status?: string
+          waitlist_position?: number | null
+        }
+        Update: {
+          attendee_email?: string | null
+          attendee_name?: string
+          attendee_user_id?: string | null
+          cancelled_at?: string | null
+          event_id?: string
+          id?: string
+          notes?: string | null
+          registered_at?: string
+          status?: string
+          waitlist_position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "library_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_event_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback_notes: {
         Row: {
           attachment_urls: string[] | null
