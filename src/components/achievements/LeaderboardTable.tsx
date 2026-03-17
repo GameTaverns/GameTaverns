@@ -69,12 +69,12 @@ function LeaderboardRow({ entry, index }: { entry: LeaderboardEntry; index: numb
       </div>
 
       {/* Avatar */}
-      <Avatar className={`h-9 w-9 ${rank.frameClass}`}>
-        <AvatarImage src={entry.avatar_url || undefined} alt={entry.display_name || entry.username} />
-        <AvatarFallback className="text-xs font-display bg-primary/20 text-primary">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
+      <RankAvatar
+        src={entry.avatar_url}
+        fallback={initials}
+        points={entry.grand_total}
+        size="sm"
+      />
 
       {/* Name + Rank */}
       <div className="flex-1 min-w-0">
