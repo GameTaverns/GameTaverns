@@ -134,6 +134,7 @@ interface AchievementsDisplayProps {
 
 export function AchievementsDisplay({ compact = false }: AchievementsDisplayProps) {
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<AchievementProgress | null>(null);
   const queryClient = useQueryClient();
   
   const {
