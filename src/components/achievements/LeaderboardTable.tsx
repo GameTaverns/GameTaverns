@@ -79,9 +79,11 @@ function LeaderboardRow({ entry, index }: { entry: LeaderboardEntry; index: numb
       {/* Name + Rank */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-sm truncate">
-            {entry.display_name || entry.username}
-          </span>
+          <RankUsername
+            name={entry.display_name || entry.username}
+            points={entry.grand_total}
+            className="font-medium text-sm truncate"
+          />
           <Badge variant="secondary" className={`text-xs ${rank.color} bg-transparent border-0 px-1`}>
             {rank.icon} {rank.name}
           </Badge>
