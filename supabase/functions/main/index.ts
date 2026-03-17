@@ -69,6 +69,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "export-user-data":           () => import("./export-user-data/index.ts"),
   "send-push-notification":     () => import("./send-push-notification/index.ts"),
   "send-rsvp-confirmation":     () => import("./send-rsvp-confirmation/index.ts"),
+  "send-event-update":          () => import("./send-event-update/index.ts"),
   "reply-feedback":             () => import("./reply-feedback/index.ts"),
   "submit-feedback-reply":      () => import("./submit-feedback-reply/index.ts"),
   "fix-expansion-flags":        () => import("./fix-expansion-flags/index.ts"),

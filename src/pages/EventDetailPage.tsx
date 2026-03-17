@@ -6,7 +6,7 @@ import {
   ArrowLeft, Calendar, MapPin, Clock, Users, Gamepad2, 
   Package, LayoutGrid, Settings, Globe, Lock, Pencil,
   CheckCircle2, XCircle, Send, MoreVertical, Trophy,
-  CalendarDays
+  CalendarDays, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/backend/client";
 import { useEventDetail, useUpdateEventDetail } from "@/hooks/useEventPlanning";
 import { useEventRegistrations } from "@/hooks/useEventRegistrations";
 import { EventGamesTab } from "@/components/events/planning/EventGamesTab";
@@ -33,6 +47,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GuestRsvpCard } from "@/components/events/GuestRsvpCard";
 import { EditEventDialog } from "@/components/events/planning/EditEventDialog";
 import { useAuth } from "@/hooks/useAuth";
+
+const db = supabase as any;
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   game_night: "Game Night",
@@ -57,9 +73,12 @@ export default function EventDetailPage() {
   const updateEvent = useUpdateEventDetail();
   const { user, isAuthenticated, isAdmin, isStaff } = useAuth();
   const { data: registrations = [] } = useEventRegistrations(eventId);
+  const { toast } = useToast();
   const registrationCount = registrations.filter(r => r.status === "registered").length;
   const [activeTab, setActiveTab] = useState("details");
-
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState("");
+  const [isSendingNotification, setIsSendingNotification] = useState(false);
   // Permission: only event creator, admin, or staff can edit/manage
   const canManageEvent = !!(event && user && (
     user.id === event.created_by ||
@@ -115,7 +134,60 @@ export default function EventDetailPage() {
   }
 
   const handleStatusChange = (newStatus: string) => {
+    if (newStatus === "cancelled") {
+      setShowCancelDialog(true);
+      return;
+    }
     updateEvent.mutate({ eventId: event.id, updates: { status: newStatus } as any });
+  };
+
+  const handleConfirmCancel = async () => {
+    setIsSendingNotification(true);
+    try {
+      updateEvent.mutate({ eventId: event.id, updates: { status: "cancelled" } as any });
+      
+      // Send cancellation emails to all attendees
+      const attendeesWithEmail = registrations.filter(r => r.attendee_email && r.status !== "cancelled");
+      if (attendeesWithEmail.length > 0) {
+        try {
+          await db.functions.invoke("send-event-update", {
+            body: {
+              event_id: event.id,
+              update_type: "cancelled",
+              message: cancelMessage.trim() || undefined,
+            },
+          });
+          toast({ title: "Cancellation emails sent", description: `Notified ${attendeesWithEmail.length} attendee(s)` });
+        } catch (emailErr) {
+          console.warn("Failed to send cancellation emails:", emailErr);
+          toast({ title: "Event cancelled", description: "Some notification emails may not have been sent", variant: "destructive" });
+        }
+      }
+    } finally {
+      setIsSendingNotification(false);
+      setShowCancelDialog(false);
+      setCancelMessage("");
+    }
+  };
+
+  // Called after event date is edited via EditEventDialog
+  const handleDateRescheduled = async (newDate: string, newEndDate?: string) => {
+    const attendeesWithEmail = registrations.filter(r => r.attendee_email && r.status !== "cancelled");
+    if (attendeesWithEmail.length === 0) return;
+
+    try {
+      await db.functions.invoke("send-event-update", {
+        body: {
+          event_id: event.id,
+          update_type: "rescheduled",
+          new_date: newDate,
+          new_end_date: newEndDate,
+        },
+      });
+      toast({ title: "Reschedule emails sent", description: `Notified ${attendeesWithEmail.length} attendee(s)` });
+    } catch (emailErr) {
+      console.warn("Failed to send reschedule emails:", emailErr);
+    }
   };
 
   return (
@@ -151,7 +223,7 @@ export default function EventDetailPage() {
         {/* Edit + Status / Actions Menu — only for event creator/admin/staff */}
         {canManageEvent && (
         <div className="flex items-center gap-2">
-        <EditEventDialog event={event} />
+        <EditEventDialog event={event} onDateRescheduled={handleDateRescheduled} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon">
@@ -270,6 +342,43 @@ export default function EventDetailPage() {
           <EventTablesTab eventId={event.id} />
         </TabsContent>
       </Tabs>
+
+      {/* Cancel Event Confirmation Dialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel <strong>{event.title}</strong> and notify all registered attendees via email.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="cancel-message" className="text-sm">Message to attendees (optional)</Label>
+            <Textarea
+              id="cancel-message"
+              value={cancelMessage}
+              onChange={(e) => setCancelMessage(e.target.value)}
+              placeholder="Sorry, we need to cancel due to..."
+              rows={3}
+              maxLength={500}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSendingNotification}>Keep Event</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCancel}
+              disabled={isSendingNotification}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSendingNotification ? (
+                <>Sending notifications...</>
+              ) : (
+                <><Mail className="h-4 w-4 mr-1" /> Cancel & Notify Attendees</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

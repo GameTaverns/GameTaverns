@@ -26,9 +26,10 @@ import { useUpdateEventDetail } from "@/hooks/useEventPlanning";
 
 interface EditEventDialogProps {
   event: EventDetail;
+  onDateRescheduled?: (newDate: string, newEndDate?: string) => void;
 }
 
-export function EditEventDialog({ event }: EditEventDialogProps) {
+export function EditEventDialog({ event, onDateRescheduled }: EditEventDialogProps) {
   const [open, setOpen] = useState(false);
   const updateEvent = useUpdateEventDetail();
 
@@ -93,9 +94,21 @@ export function EditEventDialog({ event }: EditEventDialogProps) {
       parking_info: parkingInfo || null,
     };
 
+    // Detect if date changed
+    const newDateIso = eventDate ? new Date(eventDate).toISOString() : event.event_date;
+    const newEndIso = endDate ? new Date(endDate).toISOString() : null;
+    const dateChanged = newDateIso !== event.event_date || newEndIso !== event.end_date;
+
     updateEvent.mutate(
       { eventId: event.id, updates },
-      { onSuccess: () => setOpen(false) }
+      {
+        onSuccess: () => {
+          setOpen(false);
+          if (dateChanged && onDateRescheduled) {
+            onDateRescheduled(newDateIso, newEndIso || undefined);
+          }
+        },
+      }
     );
   }
 
