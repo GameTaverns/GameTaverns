@@ -83,6 +83,8 @@ export function useRegisterForEvent() {
           status: isWaitlisted ? "waitlisted" : "registered",
           waitlist_position: waitlistPosition,
           notes: input.notes || null,
+          bringing_text: input.bringing_text || null,
+          guest_count: input.guest_count || 0,
         })
         .select()
         .single();
