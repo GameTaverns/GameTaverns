@@ -91,7 +91,7 @@ function buildUpdateEmail(params: {
   ].join("");
 }
 
-export default async function handler(req: Request): Promise<Response> {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
