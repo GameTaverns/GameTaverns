@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { TenantLink } from "@/components/TenantLink";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, BarChart3, Camera, Globe, Building2, GitCompare } from "lucide-react";
 import { RankAvatar } from "@/components/achievements/RankAvatar";
 import { RankUsername } from "@/components/achievements/RankUsername";
@@ -275,14 +277,14 @@ export default function UserProfile() {
                     return (
                       <>
                         <span className="text-muted-foreground/40 text-sm">·</span>
-                        <Link
-                          to={`/${primaryLib.slug}`}
+                        <TenantLink
+                          href={getLibraryUrl(primaryLib.slug)}
                           className="inline-flex items-center gap-1 text-sm hover:text-primary transition-colors"
                           style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}
                         >
                           <BookOpen className="h-3 w-3" />
                           <span className="hover:underline underline-offset-2">{primaryLib.name}</span>
-                        </Link>
+                        </TenantLink>
                       </>
                     );
                   })()}
