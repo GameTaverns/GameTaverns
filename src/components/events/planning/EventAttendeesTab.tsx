@@ -191,6 +191,22 @@ export function EventAttendeesTab({ eventId, maxAttendees }: EventAttendeesTabPr
                           <Badge variant="secondary" className="text-xs gap-1">
                             <Crown className="h-3 w-3" /> Host
                           </Badge>
+                          {creatorId && attendeeLibraries[creatorId] && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Link
+                                  to={`/libraries/${attendeeLibraries[creatorId].slug}`}
+                                  className="text-muted-foreground hover:text-primary transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <BookOpen className="h-3.5 w-3.5" />
+                                </Link>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                Browse {attendeeLibraries[creatorId].name}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">Event organizer</p>
                       </div>
