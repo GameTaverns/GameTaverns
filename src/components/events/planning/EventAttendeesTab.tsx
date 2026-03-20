@@ -217,6 +217,7 @@ export function EventAttendeesTab({ eventId, maxAttendees }: EventAttendeesTabPr
                       key={reg.id}
                       reg={reg}
                       isCreator={reg.attendee_user_id === creatorId}
+                      library={reg.attendee_user_id ? attendeeLibraries[reg.attendee_user_id] : undefined}
                       onCancel={() => cancelReg.mutate({ registrationId: reg.id, eventId })}
                       onRemove={() => removeReg.mutate({ registrationId: reg.id, eventId })}
                     />
