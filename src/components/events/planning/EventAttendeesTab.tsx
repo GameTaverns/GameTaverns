@@ -323,11 +323,13 @@ export function EventAttendeesTab({ eventId, maxAttendees }: EventAttendeesTabPr
 function RegistrationRow({
   reg,
   isCreator,
+  library,
   onCancel,
   onRemove,
 }: {
   reg: EventRegistration;
   isCreator?: boolean;
+  library?: { name: string; slug: string };
   onCancel?: () => void;
   onRemove?: () => void;
 }) {
@@ -342,6 +344,22 @@ function RegistrationRow({
             <Badge variant="secondary" className="text-xs gap-1">
               <Crown className="h-3 w-3" /> Host
             </Badge>
+          )}
+          {library && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to={`/libraries/${library.slug}`}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Browse {library.name}
+              </TooltipContent>
+            </Tooltip>
           )}
           {reg.guest_count > 0 && (
             <Badge variant="outline" className="text-xs">+{reg.guest_count}</Badge>
