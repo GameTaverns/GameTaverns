@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { TenantLink } from "@/components/TenantLink";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, BarChart3, Camera, Globe, Building2, GitCompare } from "lucide-react";
 import { RankAvatar } from "@/components/achievements/RankAvatar";
 import { RankUsername } from "@/components/achievements/RankUsername";
