@@ -58,6 +58,36 @@ export function EventAttendeesTab({ eventId, maxAttendees }: EventAttendeesTabPr
   const { data: event } = useEventDetail(eventId);
   const creatorId = event?.created_by_user_id || event?.created_by;
   const { data: creatorProfile } = useEventCreatorProfile(creatorId);
+
+  // Batch-fetch primary libraries for all attendee user IDs
+  const attendeeUserIds = useMemo(() => {
+    const ids = registrations
+      .filter(r => r.attendee_user_id)
+      .map(r => r.attendee_user_id!);
+    if (creatorId) ids.push(creatorId);
+    return [...new Set(ids)];
+  }, [registrations, creatorId]);
+
+  const { data: attendeeLibraries = {} } = useQuery({
+    queryKey: ["attendee-libraries", attendeeUserIds],
+    queryFn: async () => {
+      if (attendeeUserIds.length === 0) return {};
+      const { data, error } = await db
+        .from("libraries")
+        .select("id, name, slug, owner_id")
+        .in("owner_id", attendeeUserIds);
+      if (error) throw error;
+      const map: Record<string, { name: string; slug: string }> = {};
+      for (const lib of data || []) {
+        if (!map[lib.owner_id]) {
+          map[lib.owner_id] = { name: lib.name, slug: lib.slug };
+        }
+      }
+      return map;
+    },
+    enabled: attendeeUserIds.length > 0,
+    staleTime: 60_000,
+  });
   const register = useRegisterForEvent();
   const cancelReg = useCancelRegistration();
   const removeReg = useRemoveRegistration();
