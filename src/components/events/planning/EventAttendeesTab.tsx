@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Users, Clock, AlertCircle, UserPlus, UserMinus, Trash2, Mail, Crown, Package, MessageSquare } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Users, Clock, AlertCircle, UserPlus, UserMinus, Trash2, Mail, Crown, Package, MessageSquare, BookOpen } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
