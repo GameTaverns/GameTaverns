@@ -262,12 +262,31 @@ export default function UserProfile() {
                     <UserSpecialBadges badges={specialBadges} size="sm" />
                   </div>
                 )}
-                <p
-                  className="text-sm"
-                  style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}
-                >
-                  @{profile.username}
-                </p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p
+                    className="text-sm"
+                    style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}
+                  >
+                    @{profile.username}
+                  </p>
+                  {(() => {
+                    const primaryLib = communities?.find((c) => c.type === "library" && c.role === "owner");
+                    if (!primaryLib) return null;
+                    return (
+                      <>
+                        <span className="text-muted-foreground/40 text-sm">·</span>
+                        <Link
+                          to={`/${primaryLib.slug}`}
+                          className="inline-flex items-center gap-1 text-sm hover:text-primary transition-colors"
+                          style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}
+                        >
+                          <BookOpen className="h-3 w-3" />
+                          <span className="hover:underline underline-offset-2">{primaryLib.name}</span>
+                        </Link>
+                      </>
+                    );
+                  })()}
+                </div>
                 {profile.user_id && (
                   <div className="flex items-center gap-2 mt-1">
                     <FollowButton currentUserId={currentUserId} targetUserId={profile.user_id} />
