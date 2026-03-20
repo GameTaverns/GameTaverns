@@ -282,7 +282,7 @@ export default function UserProfile() {
                         >
                           <BookOpen className="h-3 w-3" />
                           <span className="hover:underline underline-offset-2">{primaryLib.name}</span>
-                        </Link>
+                        </TenantLink>
                       </>
                     );
                   })()}
