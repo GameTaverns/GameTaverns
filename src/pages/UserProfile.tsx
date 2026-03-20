@@ -275,8 +275,8 @@ export default function UserProfile() {
                     return (
                       <>
                         <span className="text-muted-foreground/40 text-sm">·</span>
-                        <Link
-                          to={`/${primaryLib.slug}`}
+                        <TenantLink
+                          href={getLibraryUrl(primaryLib.slug)}
                           className="inline-flex items-center gap-1 text-sm hover:text-primary transition-colors"
                           style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}
                         >
