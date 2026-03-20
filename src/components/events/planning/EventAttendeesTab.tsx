@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Users, Clock, AlertCircle, UserPlus, UserMinus, Trash2, Mail, Crown, Package, MessageSquare } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Users, Clock, AlertCircle, UserPlus, UserMinus, Trash2, Mail, Crown, Package, MessageSquare, BookOpen } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,6 +58,36 @@ export function EventAttendeesTab({ eventId, maxAttendees }: EventAttendeesTabPr
   const { data: event } = useEventDetail(eventId);
   const creatorId = event?.created_by_user_id || event?.created_by;
   const { data: creatorProfile } = useEventCreatorProfile(creatorId);
+
+  // Batch-fetch primary libraries for all attendee user IDs
+  const attendeeUserIds = useMemo(() => {
+    const ids = registrations
+      .filter(r => r.attendee_user_id)
+      .map(r => r.attendee_user_id!);
+    if (creatorId) ids.push(creatorId);
+    return [...new Set(ids)];
+  }, [registrations, creatorId]);
+
+  const { data: attendeeLibraries = {} } = useQuery({
+    queryKey: ["attendee-libraries", attendeeUserIds],
+    queryFn: async () => {
+      if (attendeeUserIds.length === 0) return {};
+      const { data, error } = await db
+        .from("libraries")
+        .select("id, name, slug, owner_id")
+        .in("owner_id", attendeeUserIds);
+      if (error) throw error;
+      const map: Record<string, { name: string; slug: string }> = {};
+      for (const lib of data || []) {
+        if (!map[lib.owner_id]) {
+          map[lib.owner_id] = { name: lib.name, slug: lib.slug };
+        }
+      }
+      return map;
+    },
+    enabled: attendeeUserIds.length > 0,
+    staleTime: 60_000,
+  });
   const register = useRegisterForEvent();
   const cancelReg = useCancelRegistration();
   const removeReg = useRemoveRegistration();
@@ -159,6 +191,22 @@ export function EventAttendeesTab({ eventId, maxAttendees }: EventAttendeesTabPr
                           <Badge variant="secondary" className="text-xs gap-1">
                             <Crown className="h-3 w-3" /> Host
                           </Badge>
+                          {creatorId && attendeeLibraries[creatorId] && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Link
+                                  to={`/libraries/${attendeeLibraries[creatorId].slug}`}
+                                  className="text-muted-foreground hover:text-primary transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <BookOpen className="h-3.5 w-3.5" />
+                                </Link>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                Browse {attendeeLibraries[creatorId].name}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">Event organizer</p>
                       </div>
@@ -169,6 +217,7 @@ export function EventAttendeesTab({ eventId, maxAttendees }: EventAttendeesTabPr
                       key={reg.id}
                       reg={reg}
                       isCreator={reg.attendee_user_id === creatorId}
+                      library={reg.attendee_user_id ? attendeeLibraries[reg.attendee_user_id] : undefined}
                       onCancel={() => cancelReg.mutate({ registrationId: reg.id, eventId })}
                       onRemove={() => removeReg.mutate({ registrationId: reg.id, eventId })}
                     />
@@ -187,6 +236,7 @@ export function EventAttendeesTab({ eventId, maxAttendees }: EventAttendeesTabPr
                       <RegistrationRow
                         key={reg.id}
                         reg={reg}
+                        library={reg.attendee_user_id ? attendeeLibraries[reg.attendee_user_id] : undefined}
                         onCancel={() => cancelReg.mutate({ registrationId: reg.id, eventId })}
                         onRemove={() => removeReg.mutate({ registrationId: reg.id, eventId })}
                       />
@@ -273,11 +323,13 @@ export function EventAttendeesTab({ eventId, maxAttendees }: EventAttendeesTabPr
 function RegistrationRow({
   reg,
   isCreator,
+  library,
   onCancel,
   onRemove,
 }: {
   reg: EventRegistration;
   isCreator?: boolean;
+  library?: { name: string; slug: string };
   onCancel?: () => void;
   onRemove?: () => void;
 }) {
@@ -292,6 +344,22 @@ function RegistrationRow({
             <Badge variant="secondary" className="text-xs gap-1">
               <Crown className="h-3 w-3" /> Host
             </Badge>
+          )}
+          {library && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to={`/libraries/${library.slug}`}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Browse {library.name}
+              </TooltipContent>
+            </Tooltip>
           )}
           {reg.guest_count > 0 && (
             <Badge variant="outline" className="text-xs">+{reg.guest_count}</Badge>
