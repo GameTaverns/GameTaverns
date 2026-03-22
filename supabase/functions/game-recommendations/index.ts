@@ -1,11 +1,35 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { aiComplete, isAIConfigured, getAIProviderName } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+interface ScoredGame {
+  id: string;
+  title: string;
+  slug: string | null;
+  image_url: string | null;
+  difficulty: string | null;
+  play_time: string | null;
+  min_players: number | null;
+  max_players: number | null;
+  reason: string;
+  score: number;
+}
+
+/**
+ * Algorithmic game recommendation engine.
+ * Returns two lists:
+ * - discoveries: Games from the global catalog that the user does NOT own
+ * - collection_matches: Similar games already in the user's library
+ *
+ * Scoring is based on:
+ * - Mechanic family overlap (strongest signal)
+ * - Player count range overlap
+ * - Weight/complexity similarity
+ * - Play time similarity
+ */
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,29 +45,17 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    if (!isAIConfigured()) {
-      // Gracefully degrade: return empty recommendations instead of 500
-      console.warn("[game-recommendations] No AI provider configured, returning empty results");
-      return new Response(
-        JSON.stringify({ recommendations: [], message: "AI service not configured" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log(`[game-recommendations] Using AI provider: ${getAIProviderName()}`);
-
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "";
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch the source game
+    // 1. Fetch the source game with its catalog link and mechanics
     const { data: sourceGame, error: sourceError } = await supabase
       .from("games")
       .select(`
-        id, title, description, difficulty, play_time, game_type, 
-        min_players, max_players,
-        game_mechanics(mechanic:mechanics(name))
+        id, title, description, difficulty, play_time, game_type,
+        min_players, max_players, catalog_id,
+        game_mechanics(mechanic:mechanics(id, name, family_id))
       `)
       .eq("id", game_id)
       .single();
@@ -55,137 +67,176 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Extract mechanics names
+    // Extract mechanic family IDs and names for scoring
     const sourceMechanics = (sourceGame.game_mechanics || [])
-      .map((gm: any) => gm.mechanic?.name)
+      .map((gm: any) => gm.mechanic)
       .filter(Boolean);
+    const sourceFamilyIds = new Set(
+      sourceMechanics.map((m: any) => m.family_id).filter(Boolean)
+    );
+    const sourceMechanicIds = new Set(
+      sourceMechanics.map((m: any) => m.id).filter(Boolean)
+    );
 
-    // Fetch all other games in the library (excluding expansions and coming soon)
-    const { data: libraryGames, error: libraryError } = await supabase
+    // Get catalog-level info for weight/playtime if available
+    let sourceWeight: number | null = null;
+    let sourcePlayTimeMinutes: number | null = null;
+    if (sourceGame.catalog_id) {
+      const { data: catalogEntry } = await supabase
+        .from("game_catalog")
+        .select("weight, play_time_minutes, min_players, max_players")
+        .eq("id", sourceGame.catalog_id)
+        .single();
+      if (catalogEntry) {
+        sourceWeight = catalogEntry.weight;
+        sourcePlayTimeMinutes = catalogEntry.play_time_minutes;
+      }
+    }
+
+    const sourceMinPlayers = sourceGame.min_players || 1;
+    const sourceMaxPlayers = sourceGame.max_players || 4;
+
+    // Get all catalog_ids owned by this library (to exclude from discoveries)
+    const { data: ownedGames } = await supabase
+      .from("games")
+      .select("catalog_id")
+      .eq("library_id", library_id)
+      .not("catalog_id", "is", null);
+    const ownedCatalogIds = new Set(
+      (ownedGames || []).map((g: any) => g.catalog_id)
+    );
+
+    // ── SECTION 1: Collection Matches (games in user's library) ──
+    const { data: libraryGames } = await supabase
       .from("games")
       .select(`
-        id, title, description, difficulty, play_time, game_type, 
-        min_players, max_players, slug, image_url,
-        game_mechanics(mechanic:mechanics(name))
+        id, title, slug, image_url, difficulty, play_time,
+        min_players, max_players,
+        game_mechanics(mechanic:mechanics(id, name, family_id))
       `)
       .eq("library_id", library_id)
       .neq("id", game_id)
       .eq("is_expansion", false)
       .eq("is_coming_soon", false)
-      .limit(100);
+      .limit(200);
 
-    if (libraryError) {
-      throw libraryError;
-    }
+    const collectionMatches: ScoredGame[] = scoreGames(
+      libraryGames || [],
+      sourceFamilyIds,
+      sourceMechanicIds,
+      sourceMinPlayers,
+      sourceMaxPlayers,
+      sourceWeight,
+      sourcePlayTimeMinutes,
+      "library"
+    )
+      .slice(0, limit);
 
-    if (!libraryGames || libraryGames.length === 0) {
-      return new Response(
-        JSON.stringify({ recommendations: [], message: "No other games in library" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // ── SECTION 2: Discoveries (from global catalog, NOT owned) ──
+    // Strategy: find catalog entries sharing mechanics with the source game
+    let discoveries: ScoredGame[] = [];
 
-    // Prepare game data for AI
-    const gamesForAI = libraryGames.map((g: any) => ({
-      id: g.id,
-      title: g.title,
-      difficulty: g.difficulty,
-      play_time: g.play_time,
-      game_type: g.game_type,
-      min_players: g.min_players,
-      max_players: g.max_players,
-      mechanics: (g.game_mechanics || []).map((gm: any) => gm.mechanic?.name).filter(Boolean),
-    }));
+    if (sourceMechanicIds.size > 0) {
+      // Get catalog IDs that share mechanics with the source game
+      const mechanicIdArray = Array.from(sourceMechanicIds);
+      const { data: matchingCatalogMechanics } = await supabase
+        .from("catalog_mechanics")
+        .select("catalog_id")
+        .in("mechanic_id", mechanicIdArray)
+        .limit(500);
 
-    // Build prompt for AI
-    const systemPrompt = `You are a board game recommendation expert. Given a source game and a list of available games, recommend the most similar games based on:
-- Game mechanics overlap
-- Similar player counts
-- Similar play time
-- Similar difficulty/complexity
-- Similar game type/category
+      if (matchingCatalogMechanics && matchingCatalogMechanics.length > 0) {
+        // Deduplicate and exclude owned
+        const candidateCatalogIds = [
+          ...new Set(
+            matchingCatalogMechanics
+              .map((cm: any) => cm.catalog_id)
+              .filter((cid: string) => !ownedCatalogIds.has(cid) && cid !== sourceGame.catalog_id)
+          ),
+        ].slice(0, 100); // cap for performance
 
-Return ONLY a JSON array of game IDs, ordered by relevance (most similar first). Include a brief reason for each recommendation.
-Format: [{"id": "game-uuid", "reason": "brief explanation"}]`;
+        if (candidateCatalogIds.length > 0) {
+          const { data: catalogGames } = await supabase
+            .from("game_catalog")
+            .select(`
+              id, title, slug, image_url, weight, play_time_minutes,
+              min_players, max_players, is_expansion,
+              catalog_mechanics(mechanic:mechanics(id, name, family_id))
+            `)
+            .in("id", candidateCatalogIds)
+            .eq("is_expansion", false)
+            .limit(100);
 
-    const userPrompt = `Source game to find recommendations for:
-Title: ${sourceGame.title}
-Type: ${sourceGame.game_type || "Unknown"}
-Difficulty: ${sourceGame.difficulty || "Unknown"}
-Play Time: ${sourceGame.play_time || "Unknown"}
-Players: ${sourceGame.min_players || 1}-${sourceGame.max_players || 4}
-Mechanics: ${sourceMechanics.join(", ") || "None listed"}
+          if (catalogGames) {
+            // Map catalog games to the format scoreGames expects
+            const mappedCatalogGames = catalogGames.map((cg: any) => ({
+              id: cg.id,
+              title: cg.title,
+              slug: cg.slug,
+              image_url: cg.image_url,
+              difficulty: weightToLabel(cg.weight),
+              play_time: cg.play_time_minutes ? `${cg.play_time_minutes} min` : null,
+              min_players: cg.min_players,
+              max_players: cg.max_players,
+              game_mechanics: (cg.catalog_mechanics || []),
+            }));
 
-Available games in the library:
-${JSON.stringify(gamesForAI, null, 2)}
-
-Return the top ${limit} most similar games as a JSON array with format:
-[{"id": "game-uuid", "reason": "brief explanation"}]`;
-
-    // Call AI via shared client (supports Perplexity, Lovable, OpenAI, etc.)
-    const aiResult = await aiComplete({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      max_tokens: 1000,
-    });
-
-    // Parse AI response
-    let recommendations: { id: string; reason: string }[] = [];
-
-    if (aiResult.success && aiResult.content) {
-      try {
-        const jsonMatch = aiResult.content.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          recommendations = JSON.parse(jsonMatch[0]);
+            discoveries = scoreGames(
+              mappedCatalogGames,
+              sourceFamilyIds,
+              sourceMechanicIds,
+              sourceMinPlayers,
+              sourceMaxPlayers,
+              sourceWeight,
+              sourcePlayTimeMinutes,
+              "catalog"
+            )
+              .slice(0, limit);
+          }
         }
-      } catch (parseError) {
-        console.error("Failed to parse AI response:", aiResult.content);
       }
-    } else if (aiResult.rateLimited) {
-      return new Response(
-        JSON.stringify({ error: "Rate limit exceeded, please try again later" }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } else {
-      console.warn("[game-recommendations] AI request failed:", aiResult.error);
     }
 
-    // Fallback: mechanic overlap sorting if AI didn't return results
-    if (recommendations.length === 0) {
-      recommendations = gamesForAI
-        .map((g: any) => ({
-          id: g.id,
-          reason: "Similar game in your collection",
-          score: g.mechanics.filter((m: string) => sourceMechanics.includes(m)).length,
-        }))
-        .sort((a: any, b: any) => b.score - a.score)
-        .slice(0, limit)
-        .map(({ id, reason }: any) => ({ id, reason }));
-    }
+    // Fallback: if no mechanic-based discoveries, try weight/player-count similarity
+    if (discoveries.length === 0 && sourceWeight !== null) {
+      const { data: fallbackCatalog } = await supabase
+        .from("game_catalog")
+        .select("id, title, slug, image_url, weight, play_time_minutes, min_players, max_players")
+        .eq("is_expansion", false)
+        .gte("weight", Math.max(1, (sourceWeight || 2) - 0.75))
+        .lte("weight", (sourceWeight || 2) + 0.75)
+        .gte("min_players", Math.max(1, sourceMinPlayers - 1))
+        .lte("max_players", sourceMaxPlayers + 2)
+        .limit(50);
 
-    // Enrich recommendations with full game data
-    const enrichedRecommendations = recommendations
-      .map((rec) => {
-        const game = libraryGames.find((g: any) => g.id === rec.id);
-        if (!game) return null;
-        return {
-          id: game.id,
-          title: game.title,
-          slug: game.slug,
-          image_url: game.image_url,
-          difficulty: game.difficulty,
-          play_time: game.play_time,
-          min_players: game.min_players,
-          max_players: game.max_players,
-          reason: rec.reason || "Similar game",
-        };
-      })
-      .filter(Boolean);
+      if (fallbackCatalog) {
+        const filtered = fallbackCatalog.filter(
+          (cg: any) => !ownedCatalogIds.has(cg.id) && cg.id !== sourceGame.catalog_id
+        );
+        discoveries = filtered
+          .map((cg: any) => ({
+            id: cg.id,
+            title: cg.title,
+            slug: cg.slug,
+            image_url: cg.image_url,
+            difficulty: weightToLabel(cg.weight),
+            play_time: cg.play_time_minutes ? `${cg.play_time_minutes} min` : null,
+            min_players: cg.min_players,
+            max_players: cg.max_players,
+            reason: "Similar complexity and player count",
+            score: 1,
+          }))
+          .slice(0, limit);
+      }
+    }
 
     return new Response(
-      JSON.stringify({ recommendations: enrichedRecommendations }),
+      JSON.stringify({
+        discoveries,
+        collection_matches: collectionMatches,
+        // Legacy compat: also return as "recommendations" (union of both)
+        recommendations: [...discoveries, ...collectionMatches].slice(0, limit),
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
@@ -197,7 +248,107 @@ Return the top ${limit} most similar games as a JSON array with format:
   }
 }
 
-// For Lovable Cloud deployment (direct function invocation)
+// ── Scoring helpers ──
+
+function scoreGames(
+  games: any[],
+  sourceFamilyIds: Set<string>,
+  sourceMechanicIds: Set<string>,
+  sourceMinPlayers: number,
+  sourceMaxPlayers: number,
+  sourceWeight: number | null,
+  sourcePlayTime: number | null,
+  source: "library" | "catalog"
+): ScoredGame[] {
+  return games
+    .map((g: any) => {
+      const mechanics = (g.game_mechanics || [])
+        .map((gm: any) => gm.mechanic)
+        .filter(Boolean);
+      const familyIds = new Set(mechanics.map((m: any) => m.family_id).filter(Boolean));
+      const mechanicIds = new Set(mechanics.map((m: any) => m.id).filter(Boolean));
+
+      // Family overlap (strongest signal, worth 5 points each)
+      let familyOverlap = 0;
+      for (const fid of familyIds) {
+        if (sourceFamilyIds.has(fid)) familyOverlap++;
+      }
+
+      // Exact mechanic overlap (worth 2 points each)
+      let mechanicOverlap = 0;
+      for (const mid of mechanicIds) {
+        if (sourceMechanicIds.has(mid)) mechanicOverlap++;
+      }
+
+      // Player count overlap (0-3 points)
+      const gMin = g.min_players || 1;
+      const gMax = g.max_players || 4;
+      const overlapMin = Math.max(sourceMinPlayers, gMin);
+      const overlapMax = Math.min(sourceMaxPlayers, gMax);
+      const playerOverlap = Math.max(0, Math.min(3, overlapMax - overlapMin + 1));
+
+      // Weight similarity (0-3 points)
+      let weightScore = 0;
+      if (sourceWeight !== null && g.difficulty) {
+        const gWeight = labelToWeight(g.difficulty);
+        if (gWeight !== null) {
+          const diff = Math.abs(sourceWeight - gWeight);
+          weightScore = diff < 0.5 ? 3 : diff < 1.0 ? 2 : diff < 1.5 ? 1 : 0;
+        }
+      }
+
+      const totalScore = familyOverlap * 5 + mechanicOverlap * 2 + playerOverlap + weightScore;
+
+      // Build reason
+      const reasons: string[] = [];
+      if (familyOverlap > 0 || mechanicOverlap > 0) {
+        const sharedNames = mechanics
+          .filter((m: any) => sourceMechanicIds.has(m.id) || sourceFamilyIds.has(m.family_id))
+          .map((m: any) => m.name)
+          .slice(0, 3);
+        if (sharedNames.length > 0) reasons.push(`Shares: ${sharedNames.join(", ")}`);
+      }
+      if (playerOverlap >= 2) reasons.push("Similar player count");
+      if (weightScore >= 2) reasons.push("Similar complexity");
+      if (reasons.length === 0) reasons.push(source === "catalog" ? "You might enjoy this" : "In your collection");
+
+      return {
+        id: g.id,
+        title: g.title,
+        slug: g.slug,
+        image_url: g.image_url,
+        difficulty: g.difficulty,
+        play_time: g.play_time,
+        min_players: g.min_players,
+        max_players: g.max_players,
+        reason: reasons.join(" · "),
+        score: totalScore,
+      };
+    })
+    .filter((g) => g.score > 0)
+    .sort((a, b) => b.score - a.score);
+}
+
+function weightToLabel(weight: number | null): string | null {
+  if (weight === null) return null;
+  if (weight < 1.5) return "Light";
+  if (weight < 2.5) return "Medium Light";
+  if (weight < 3.5) return "Medium";
+  if (weight < 4.0) return "Medium Heavy";
+  return "Heavy";
+}
+
+function labelToWeight(label: string): number | null {
+  const map: Record<string, number> = {
+    light: 1.0,
+    "medium light": 2.0,
+    medium: 3.0,
+    "medium heavy": 3.75,
+    heavy: 4.5,
+  };
+  return map[label.toLowerCase()] ?? null;
+}
+
 if (import.meta.main) {
   Deno.serve(handler);
 }
