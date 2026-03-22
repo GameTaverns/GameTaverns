@@ -15,33 +15,33 @@ export interface GameRecommendation {
   reason: string;
 }
 
+export interface GameRecommendationsResult {
+  discoveries: GameRecommendation[];
+  collection_matches: GameRecommendation[];
+}
+
 export function useGameRecommendations(gameId: string | undefined, enabled = true) {
   const { library } = useTenant();
 
   return useQuery({
     queryKey: ["game-recommendations", gameId, library?.id],
-    queryFn: async (): Promise<GameRecommendation[]> => {
-      if (!gameId || !library?.id) return [];
+    queryFn: async (): Promise<GameRecommendationsResult> => {
+      if (!gameId || !library?.id) return { discoveries: [], collection_matches: [] };
 
-      // Self-hosted mode: use local API
+      const payload = { game_id: gameId, library_id: library.id, limit: 5 };
+
       if (isSelfHostedMode()) {
         try {
-          const response = await apiClient.post<{ recommendations: GameRecommendation[] }>(
-            "/games/recommendations",
-            {
-              game_id: gameId,
-              library_id: library.id,
-              limit: 5,
-            }
-          );
-          return response.recommendations || [];
+          const response = await apiClient.post<any>("/games/recommendations", payload);
+          return {
+            discoveries: response.discoveries || [],
+            collection_matches: response.collection_matches || [],
+          };
         } catch {
-          // Feature may not be implemented in self-hosted
-          return [];
+          return { discoveries: [], collection_matches: [] };
         }
       }
 
-      // Cloud mode: call Supabase Edge Function
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       const { url: apiUrl, anonKey } = getSupabaseConfig();
@@ -55,11 +55,7 @@ export function useGameRecommendations(gameId: string | undefined, enabled = tru
             "apikey": anonKey,
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({
-            game_id: gameId,
-            library_id: library.id,
-            limit: 5,
-          }),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -69,10 +65,13 @@ export function useGameRecommendations(gameId: string | undefined, enabled = tru
       }
 
       const data = await response.json();
-      return data.recommendations || [];
+      return {
+        discoveries: data.discoveries || [],
+        collection_matches: data.collection_matches || [],
+      };
     },
     enabled: enabled && !!gameId && !!library?.id,
-    staleTime: 1000 * 60 * 10, // Cache for 10 minutes
+    staleTime: 1000 * 60 * 10,
     retry: 1,
   });
 }
