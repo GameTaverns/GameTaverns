@@ -7495,6 +7495,14 @@ export type Database = {
       }
       generate_slug: { Args: { title: string }; Returns: string }
       get_catalog_enrichment_status: { Args: never; Returns: Json }
+      get_catalog_entries_without_genres: {
+        Args: { p_include_expansions?: boolean; p_limit?: number }
+        Returns: {
+          description: string
+          id: string
+          title: string
+        }[]
+      }
       get_catalog_entries_without_mechanics: {
         Args: { p_limit?: number }
         Returns: {
