@@ -15,8 +15,8 @@
 
 set -uo pipefail
 
-BATCH_SIZE="${1:-50}"
-DELAY="${2:-6}"
+BATCH_SIZE="${1:-100}"
+DELAY="${2:-2}"
 FUNC_URL="http://localhost:8000/functions/v1/catalog-backfill"
 MAX_CONSECUTIVE_ERRORS=5
 
