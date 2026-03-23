@@ -371,17 +371,22 @@ export function useGame(slugOrId: string | undefined) {
 
       const { data: gameMechanics, error: mechanicsError } = await supabase
         .from("game_mechanics")
-        .select(
-          `
-          mechanic:mechanics(id, name)
-        `
-        )
+        .select(`mechanic:mechanics(id, name, family:mechanic_families(name))`)
         .eq("game_id", game.id);
 
       if (mechanicsError) throw mechanicsError;
 
-      let mechanics: Mechanic[] =
-        gameMechanics?.map((gm: { mechanic: Mechanic | null }) => gm.mechanic).filter((m): m is Mechanic => m !== null) || [];
+      let mechanics: Mechanic[] = [];
+      const seenNames = new Set<string>();
+      (gameMechanics || []).forEach((gm: any) => {
+        if (gm.mechanic) {
+          const name = gm.mechanic.family?.name || gm.mechanic.name;
+          if (!seenNames.has(name)) {
+            seenNames.add(name);
+            mechanics.push({ id: gm.mechanic.id, name });
+          }
+        }
+      });
 
       // Fetch designers
       const { data: gameDesigners } = await supabase
