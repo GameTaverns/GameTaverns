@@ -1340,95 +1340,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     // =====================================================================
     // MODE: classify-genres — AI-classify catalog entries into genres
-    // Uses Google Gemini Flash Lite via direct API call for cost efficiency
+    // Uses self-hosted Cortex at https://cortex.tzolak.com/api/classify-genre
     // =====================================================================
     if (mode === "classify-genres") {
-      const genreBatchSize = Math.min(body.batch_size || 50, 100);
-      const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
-      if (!googleKey) {
-        return new Response(JSON.stringify({ error: "GOOGLE_AI_API_KEY not configured" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const CORTEX_URL = "https://cortex.tzolak.com/api/classify-genre";
+      const genreBatchSize = Math.min(body.batch_size || 50, 200);
 
       const VALID_GENRES = [
         "Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure",
         "Economic", "Abstract", "Humor", "Nature", "War", "Political",
         "Party", "Trivia", "Sports", "Educational", "Cooperative", "Other",
       ];
-
-      const normalizeGenreKey = (value: string) =>
-        value
-          .toLowerCase()
-          .trim()
-          .replace(/['\u2019]/g, "'")
-          .replace(/[^a-z0-9\s'-]/g, " ")
-          .replace(/\s+/g, " ");
-
-      // Aliases: everything funnels into the 18 valid genres
-      const GENRE_ALIASES: Record<string, string> = {
-        // Sci-Fi bucket
-        "science fiction": "Sci-Fi", "scifi": "Sci-Fi", "sci fi": "Sci-Fi", "sci-fi": "Sci-Fi",
-        "space": "Sci-Fi", "steampunk": "Sci-Fi", "cyberpunk": "Sci-Fi",
-        "post-apocalyptic": "Sci-Fi", "apocalyptic": "Sci-Fi",
-        // Fantasy bucket
-        "mythology": "Fantasy", "myth": "Fantasy", "mythological": "Fantasy",
-        "fairy tale": "Fantasy", "dungeon": "Fantasy", "magic": "Fantasy",
-        "medieval": "Fantasy", "middle ages": "Fantasy", "dungeon crawler": "Fantasy",
-        // Historical bucket
-        "ancient": "Historical", "antiquity": "Historical", "modern": "Historical",
-        "western": "Historical", "wild west": "Historical", "religious": "Historical",
-        "civilization": "Historical", "civ": "Historical",
-        // Horror bucket
-        "zombies": "Horror", "zombie": "Horror", "undead": "Horror",
-        "cthulhu": "Horror", "lovecraft": "Horror", "gothic": "Horror",
-        // Mystery bucket
-        "crime": "Mystery", "criminal": "Mystery", "heist": "Mystery",
-        "espionage": "Mystery", "spy": "Mystery", "spies": "Mystery",
-        "deduction": "Mystery", "social deduction": "Mystery",
-        "detective": "Mystery", "investigation": "Mystery",
-        // Adventure bucket
-        "exploration": "Adventure", "explore": "Adventure", "travel": "Adventure",
-        "survival": "Adventure", "pirates": "Adventure", "pirate": "Adventure",
-        "nautical": "Adventure", "sailing": "Adventure",
-        // Economic bucket
-        "strategy": "Economic", "euro": "Economic", "resource management": "Economic",
-        "industry": "Economic", "industrial": "Economic", "manufacturing": "Economic",
-        "city building": "Economic", "urban": "Economic",
-        "farming": "Economic", "agriculture": "Economic",
-        "train": "Economic", "railroad": "Economic", "railway": "Economic",
-        // Abstract bucket
-        "puzzle": "Abstract", "brain teaser": "Abstract",
-        "memory": "Abstract", "set collection": "Abstract",
-        "word game": "Abstract", "word": "Abstract", "vocabulary": "Abstract",
-        // Humor bucket
-        "comedy": "Humor", "comedic": "Humor", "funny": "Humor", "humorous": "Humor",
-        // Nature bucket
-        "animals": "Nature", "animal": "Nature", "wildlife": "Nature",
-        "dinosaur": "Nature", "fishing": "Nature",
-        // War bucket
-        "wargame": "War", "military": "War", "warfare": "War", "combat": "War",
-        "fighting": "War", "martial arts": "War",
-        "aviation": "War", "flying": "War", "aircraft": "War",
-        "miniatures": "War", "minis": "War", "miniature": "War",
-        // Political bucket
-        "negotiation": "Political", "diplomacy": "Political",
-        // Party bucket
-        "party game": "Party", "party": "Party",
-        "dexterity": "Party", "bluffing": "Party", "bluff": "Party", "social": "Party",
-        // Trivia bucket
-        "quiz": "Trivia",
-        // Sports bucket
-        "racing": "Sports", "race": "Sports", "sport": "Sports", "sports": "Sports",
-        // Educational bucket
-        "children's": "Educational", "childrens": "Educational", "children": "Educational", "kids": "Educational",
-        "learning": "Educational", "educational": "Educational",
-        // Cooperative bucket
-        "co-op": "Cooperative", "coop": "Cooperative", "cooperative": "Cooperative",
-        // Other bucket (catch-alls)
-        "card game": "Other", "cards": "Other", "dice game": "Other", "dice": "Other",
-        "miscellaneous": "Other", "misc": "Other", "other": "Other", "none": "Other",
-      };
 
       // Fetch unclassified catalog entries
       const includeExpansions = body.include_expansions === true;
@@ -1454,93 +1376,101 @@ const handler = async (req: Request): Promise<Response> => {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      // Fetch existing mechanics for these entries to enrich Cortex input
+      const catalogIds = entries.map((e: any) => e.id);
+      const { data: mechRows } = await admin
+        .from("catalog_mechanics")
+        .select("catalog_id, mechanic_id")
+        .in("catalog_id", catalogIds);
+
+      // Resolve mechanic IDs to names
+      let mechNameMap: Record<string, string> = {};
+      if (mechRows && mechRows.length > 0) {
+        const mechIds = [...new Set(mechRows.map((r: any) => r.mechanic_id))];
+        const { data: mechs } = await admin
+          .from("mechanics")
+          .select("id, name")
+          .in("id", mechIds);
+        if (mechs) {
+          for (const m of mechs) mechNameMap[m.id] = m.name;
+        }
+      }
+
+      // Build per-catalog mechanic lists
+      const catalogMechanics: Record<string, string[]> = {};
+      if (mechRows) {
+        for (const r of mechRows as any[]) {
+          const name = mechNameMap[r.mechanic_id];
+          if (name) {
+            if (!catalogMechanics[r.catalog_id]) catalogMechanics[r.catalog_id] = [];
+            catalogMechanics[r.catalog_id].push(name);
+          }
+        }
+      }
+
       let genreClassified = 0;
       const genreErrors: string[] = [];
 
-      // Process in sub-batches of 10 for Gemini (multiple games per prompt)
-      const SUB_BATCH = 10;
+      // Process in sub-batches of 15 for Cortex
+      const SUB_BATCH = 15;
       for (let i = 0; i < entries.length; i += SUB_BATCH) {
         const subBatch = entries.slice(i, i + SUB_BATCH);
-        
-        const gamesPayload = subBatch.map((e, idx) => ({
-          idx,
+
+        const cortexPayload = subBatch.map((e: any) => ({
+          id: e.id,
           title: e.title,
-          desc: (e.description || "").slice(0, 500),
+          description: (e.description || "").slice(0, 500),
+          mechanics: catalogMechanics[e.id] || [],
         }));
 
-        const classifyPrompt = `Classify each board game into exactly ONE genre from this list: ${VALID_GENRES.join(", ")}.
-
-IMPORTANT: Use "Other" ONLY if the game truly does not fit any other genre. Prefer a specific genre whenever possible.
-
-Games to classify:
-${gamesPayload.map(g => `[${g.idx}] "${g.title}": ${g.desc}`).join("\n\n")}
-
-Return ONLY a JSON array of objects with "idx" and "genre" fields. The genre MUST be exactly one from the list above.
-Example: [{"idx":0,"genre":"Fantasy"},{"idx":1,"genre":"Economic"}]
-Do NOT include any other text.`;
-
         try {
-          const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${googleKey}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: classifyPrompt }] }],
-                generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-              }),
-            }
-          );
+          const cortexRes = await fetch(CORTEX_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cortexPayload),
+          });
 
-          if (geminiRes.status === 429) {
-            console.warn("[classify-genres] Rate limited, stopping batch early");
+          if (cortexRes.status === 429) {
+            console.warn("[classify-genres] Cortex rate limited, stopping batch early");
             genreErrors.push("Rate limited — stopping early");
             break;
           }
 
-          if (!geminiRes.ok) {
-            const errText = await geminiRes.text();
-            genreErrors.push(`Gemini API error ${geminiRes.status}: ${errText.slice(0, 200)}`);
+          if (!cortexRes.ok) {
+            const errText = await cortexRes.text();
+            genreErrors.push(`Cortex API error ${cortexRes.status}: ${errText.slice(0, 200)}`);
             continue;
           }
 
-          const geminiData = await geminiRes.json();
-          const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          
-          // Extract JSON array from response (handle markdown code blocks)
-          const jsonMatch = rawText.match(/\[[\s\S]*?\]/);
-          if (!jsonMatch) {
-            genreErrors.push(`No JSON in response for batch starting at ${subBatch[0].title}`);
-            continue;
+          const cortexData = await cortexRes.json();
+
+          // Cortex batch returns { classified: [{id, genre}, ...], count }
+          const results: { id: string; genre: string }[] = cortexData.classified || [];
+
+          // Also handle single-game response format {id, genre}
+          if (!cortexData.classified && cortexData.id && cortexData.genre) {
+            results.push({ id: cortexData.id, genre: cortexData.genre });
           }
 
-          const genreResults: { idx: number; genre: string }[] = JSON.parse(jsonMatch[0]);
-
-          for (const result of genreResults) {
-            const entry = subBatch[result.idx];
-            if (!entry) continue;
-            // Try exact match first, then normalized alias lookup
+          for (const result of results) {
             const rawGenre = (result.genre || "").trim();
-            const normalizedRawGenre = normalizeGenreKey(rawGenre);
-            let matchedGenre = VALID_GENRES.find((g) => normalizeGenreKey(g) === normalizedRawGenre);
+            // Validate against our canonical genre list
+            const matchedGenre = VALID_GENRES.find(
+              (g) => g.toLowerCase() === rawGenre.toLowerCase()
+            );
             if (!matchedGenre) {
-              matchedGenre = GENRE_ALIASES[normalizedRawGenre] || null;
-            }
-            if (!matchedGenre && normalizedRawGenre.includes("'")) {
-              matchedGenre = GENRE_ALIASES[normalizedRawGenre.replace(/'/g, "")] || null;
-            }
-            if (!matchedGenre) {
-              genreErrors.push(`Invalid genre "${result.genre}" for "${entry.title}"`);
+              const entry = subBatch.find((e: any) => e.id === result.id);
+              genreErrors.push(`Invalid genre "${rawGenre}" for "${entry?.title || result.id}"`);
               continue;
             }
 
             const { error: updateErr } = await admin
               .from("game_catalog")
               .update({ genre: matchedGenre })
-              .eq("id", entry.id);
+              .eq("id", result.id);
 
             if (updateErr) {
-              genreErrors.push(`Update failed for "${entry.title}": ${updateErr.message}`);
+              genreErrors.push(`Update failed for ${result.id}: ${updateErr.message}`);
             } else {
               genreClassified++;
             }
