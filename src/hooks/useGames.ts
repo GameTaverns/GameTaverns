@@ -29,7 +29,7 @@ export function useGames(enabled = true) {
             publisher:publishers(id, name),
             admin_data:game_admin_data(*),
             game_mechanics(
-              mechanic:mechanics(id, name)
+              mechanic:mechanics(id, name, family:mechanic_families(name))
             ),
             game_designers(
               designer:designers(id, name)
