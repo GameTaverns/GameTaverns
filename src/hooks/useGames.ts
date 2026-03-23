@@ -84,10 +84,14 @@ export function useGames(enabled = true) {
       }
 
       const mechanicsMap = new Map<string, Mechanic[]>();
-      allMechanics.forEach((gm: { game_id: string; mechanic: Mechanic | null }) => {
+      allMechanics.forEach((gm: any) => {
         if (gm.mechanic) {
+          const familyName = gm.mechanic.family?.name;
+          const mech: Mechanic = familyName
+            ? { id: gm.mechanic.id, name: familyName }
+            : { id: gm.mechanic.id, name: gm.mechanic.name };
           const existing = mechanicsMap.get(gm.game_id) || [];
-          existing.push(gm.mechanic);
+          if (!existing.some(m => m.name === mech.name)) existing.push(mech);
           mechanicsMap.set(gm.game_id, existing);
         }
       });
