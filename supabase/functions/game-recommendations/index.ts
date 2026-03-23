@@ -413,6 +413,9 @@ function labelToWeight(label: string): number | null {
     "medium heavy": 3.75,
     heavy: 4.5,
   };
+  return map[label.toLowerCase()] ?? null;
+}
+
 /**
  * Merge AI re-ranked results back onto the full game objects.
  * AI returns ordered IDs with optional enhanced reasons.
