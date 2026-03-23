@@ -152,7 +152,7 @@ export default function CatalogGameDetail() {
       const [designersRes, artistsRes, mechanicsRes, publishersRes, expansionsRes, parentRes, ratingsRes, genresRes] = await Promise.all([
         supabase.from("catalog_designers").select("designer:designers(name)").eq("catalog_id", data.id),
         supabase.from("catalog_artists").select("artist:artists(name)").eq("catalog_id", data.id),
-        supabase.from("catalog_mechanics").select("mechanic:mechanics(name)").eq("catalog_id", data.id),
+        supabase.from("catalog_mechanics").select("mechanic:mechanics(name, family:mechanic_families(name))").eq("catalog_id", data.id),
         supabase.from("catalog_publishers").select("publisher:publishers(name)").eq("catalog_id", data.id),
         supabase.from("game_catalog").select("id, title, slug, image_url").eq("parent_catalog_id", data.id).eq("is_expansion", true).order("title"),
         data.parent_catalog_id
