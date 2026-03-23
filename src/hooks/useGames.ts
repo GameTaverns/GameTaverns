@@ -78,7 +78,7 @@ export function useGames(enabled = true) {
         const batch = gameIds.slice(i, i + BATCH_SIZE);
         const { data } = await supabase
           .from("game_mechanics")
-          .select(`game_id, mechanic:mechanics(id, name)`)
+          .select(`game_id, mechanic:mechanics(id, name, family:mechanic_families(name))`)
           .in("game_id", batch);
         if (data) allMechanics.push(...data);
       }
