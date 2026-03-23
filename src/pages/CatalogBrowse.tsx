@@ -327,10 +327,11 @@ export default function CatalogBrowse() {
       const buildMap = (rows: any[], key: string) => {
         const map = new Map<string, string[]>();
         for (const row of rows || []) {
-          const name = row[key]?.name;
+          // For mechanics, prefer family name over granular name
+          const name = row[key]?.family?.name || row[key]?.name;
           if (name) {
             const list = map.get(row.catalog_id) || [];
-            list.push(name);
+            if (!list.includes(name)) list.push(name);
             map.set(row.catalog_id, list);
           }
         }
