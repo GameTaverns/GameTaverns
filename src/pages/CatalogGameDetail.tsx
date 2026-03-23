@@ -159,7 +159,7 @@ export default function CatalogGameDetail() {
           ? supabase.from("game_catalog").select("id, title, slug").eq("id", data.parent_catalog_id).maybeSingle()
           : Promise.resolve({ data: null }),
         supabase.from("catalog_ratings_summary").select("visitor_average, visitor_count").eq("catalog_id", data.id).maybeSingle(),
-        (supabase as any).from("catalog_genres").select("genre").eq("catalog_id", data.id).order("genre"),
+        (supabase as any).from("catalog_genres").select("genre").eq("catalog_id", data.id).order("display_order"),
       ]);
 
       const ratingRow = ratingsRes.data;
