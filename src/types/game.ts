@@ -131,7 +131,7 @@ export const GENRE_OPTIONS: Genre[] = [
   'Horror',
   'Mystery',
   'Adventure',
-  'Economic',
+  'Strategy',
   'Abstract',
   'Humor',
   'Nature',
@@ -142,5 +142,7 @@ export const GENRE_OPTIONS: Genre[] = [
   'Sports',
   'Educational',
   'Cooperative',
+  'Family',
+  'Deck Building',
   'Other'
 ];
