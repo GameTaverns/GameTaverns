@@ -73,57 +73,50 @@ async function handleListGames(url: URL, corsHeaders: Record<string, string>) {
   const minPlayers = url.searchParams.get("min_players");
   const maxPlayers = url.searchParams.get("max_players");
   const expansions = url.searchParams.get("include_expansions") === "true";
-  const updatedSince = url.searchParams.get("updated_since"); // ISO date for incremental sync
+  const updatedSince = url.searchParams.get("updated_since");
   const mechanicNamesParam = url.searchParams.get("mechanic_names");
 
-  // If mechanic_names filter is provided, resolve matching catalog IDs first
-  let mechanicCatalogIds: string[] | null = null;
-  let mechanicMatchCounts: Record<string, number> = {};
-
+  // Use server-side RPC for mechanic filtering to avoid URI-too-long issues
   if (mechanicNamesParam) {
     const mechanicNames = mechanicNamesParam.split(",").map(n => n.trim()).filter(Boolean);
     if (mechanicNames.length === 0) {
       return errorResponse("mechanic_names must contain at least one mechanic name", 400, corsHeaders);
     }
 
-    // 1. Find mechanic IDs matching the requested names (case-insensitive)
-    const { data: matchedMechanics, error: mechErr } = await supabase
-      .from("mechanics")
-      .select("id, name")
-      .in("name", mechanicNames);
+    const { data, error } = await supabase.rpc("search_catalog_by_mechanics", {
+      _mechanic_names: mechanicNames,
+      _search: search,
+      _limit: limit,
+      _offset: offset,
+      _min_weight: minWeight ? parseFloat(minWeight) : null,
+      _max_weight: maxWeight ? parseFloat(maxWeight) : null,
+      _min_players: minPlayers ? parseInt(minPlayers) : null,
+      _max_players: maxPlayers ? parseInt(maxPlayers) : null,
+      _include_expansions: expansions,
+      _updated_since: updatedSince || null,
+    });
 
-    if (mechErr) return errorResponse(mechErr.message, 500, corsHeaders);
-    if (!matchedMechanics || matchedMechanics.length === 0) {
-      return jsonResponse({ games: [], total: 0, limit, offset, has_more: false, matched_mechanics: [] }, 200, corsHeaders);
-    }
+    if (error) return errorResponse(error.message, 500, corsHeaders);
 
-    const mechanicIds = matchedMechanics.map((m: any) => m.id);
+    const total = data && data.length > 0 ? Number(data[0].total_count) : 0;
+    const games = (data || []).map((g: any) => {
+      const { total_count, ...rest } = g;
+      return rest;
+    });
 
-    // 2. Find catalog_ids linked to those mechanics
-    const { data: catalogMechs, error: cmErr } = await supabase
-      .from("catalog_mechanics")
-      .select("catalog_id, mechanic_id")
-      .in("mechanic_id", mechanicIds);
-
-    if (cmErr) return errorResponse(cmErr.message, 500, corsHeaders);
-    if (!catalogMechs || catalogMechs.length === 0) {
-      return jsonResponse({ games: [], total: 0, limit, offset, has_more: false, matched_mechanics: matchedMechanics.map((m: any) => m.name) }, 200, corsHeaders);
-    }
-
-    // 3. Count matching mechanics per catalog_id for relevance sorting
-    for (const cm of catalogMechs) {
-      mechanicMatchCounts[cm.catalog_id] = (mechanicMatchCounts[cm.catalog_id] || 0) + 1;
-    }
-
-    // Sort by match count descending, take unique IDs
-    mechanicCatalogIds = Object.entries(mechanicMatchCounts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([id]) => id);
+    return jsonResponse({
+      games,
+      total,
+      limit,
+      offset,
+      has_more: total > offset + limit,
+    }, 200, corsHeaders);
   }
 
+  // Standard query without mechanic filter
   let query = supabase
     .from("game_catalog")
-    .select("id, bgg_id, title, slug, description, image_url, min_players, max_players, play_time_minutes, weight, year_published, suggested_age, is_expansion, bgg_community_rating, created_at, updated_at", { count: "exact" });
+    .select("id, bgg_id, title, slug, description, image_url, min_players, max_players, play_time_minutes, weight, year_published, suggested_age, is_expansion, created_at, updated_at", { count: "exact" });
 
   if (!expansions) {
     query = query.eq("is_expansion", false);
@@ -137,42 +130,13 @@ async function handleListGames(url: URL, corsHeaders: Record<string, string>) {
   if (maxPlayers) query = query.lte("min_players", parseInt(maxPlayers));
   if (updatedSince) query = query.gte("updated_at", updatedSince);
 
-  // Apply mechanic filter: restrict to matching catalog IDs
-  if (mechanicCatalogIds !== null) {
-    // Supabase .in() has a practical limit; batch if needed
-    const batchSize = 500;
-    if (mechanicCatalogIds.length <= batchSize) {
-      query = query.in("id", mechanicCatalogIds);
-    } else {
-      // Take top N by match count (already sorted)
-      query = query.in("id", mechanicCatalogIds.slice(0, batchSize));
-    }
-  }
-
   query = query.order("title").range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
   if (error) return errorResponse(error.message, 500, corsHeaders);
 
-  // Re-sort by mechanic match count if mechanic filter was used
-  let sortedData = data || [];
-  if (mechanicCatalogIds !== null && sortedData.length > 0) {
-    sortedData = sortedData.sort((a: any, b: any) => {
-      const countA = mechanicMatchCounts[a.id] || 0;
-      const countB = mechanicMatchCounts[b.id] || 0;
-      if (countB !== countA) return countB - countA;
-      return (a.title || "").localeCompare(b.title || "");
-    });
-
-    // Attach match_count to each game for consumer convenience
-    sortedData = sortedData.map((g: any) => ({
-      ...g,
-      mechanic_match_count: mechanicMatchCounts[g.id] || 0,
-    }));
-  }
-
   return jsonResponse({
-    games: sortedData,
+    games: data || [],
     total: count,
     limit,
     offset,

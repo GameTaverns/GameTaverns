@@ -7603,6 +7603,39 @@ export type Database = {
         Returns: boolean
       }
       resolve_admin_email: { Args: { _admin_email: string }; Returns: string }
+      search_catalog_by_mechanics: {
+        Args: {
+          _include_expansions?: boolean
+          _limit?: number
+          _max_players?: number
+          _max_weight?: number
+          _mechanic_names: string[]
+          _min_players?: number
+          _min_weight?: number
+          _offset?: number
+          _search?: string
+          _updated_since?: string
+        }
+        Returns: {
+          bgg_id: string
+          created_at: string
+          description: string
+          id: string
+          image_url: string
+          is_expansion: boolean
+          max_players: number
+          mechanic_match_count: number
+          min_players: number
+          play_time_minutes: number
+          slug: string
+          suggested_age: string
+          title: string
+          total_count: number
+          updated_at: string
+          weight: number
+          year_published: number
+        }[]
+      }
       set_timezone: { Args: never; Returns: undefined }
       slugify: { Args: { input: string }; Returns: string }
       update_player_elo: {
