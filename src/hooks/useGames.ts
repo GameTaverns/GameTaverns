@@ -423,7 +423,8 @@ export function useGame(slugOrId: string | undefined) {
             ? supabase.from("game_catalog").select("upc, slug").eq("id", catalogId).maybeSingle()
             : Promise.resolve({ data: null }),
           mechanics.length === 0
-            ? supabase.from("catalog_mechanics").select("mechanic:mechanics(id, name)").eq("catalog_id", catalogId)
+            ? supabase.from("catalog_mechanics").select("mechanic:mechanics(id, name, family:mechanic_families(name))").eq("catalog_id", catalogId)
+            : Promise.resolve({ data: null }),
             : Promise.resolve({ data: null }),
           !game.genre
             ? (supabase as any).from("catalog_genres").select("genre").eq("catalog_id", catalogId).order("genre")
