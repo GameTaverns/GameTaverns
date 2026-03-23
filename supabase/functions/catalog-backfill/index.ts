@@ -1581,7 +1581,7 @@ const handler = async (req: Request): Promise<Response> => {
       const genreHasMore = entries.length > 0 && (genreClassified > 0 || wasRateLimited || hadErrors);
       return new Response(JSON.stringify({
         success: true, mode: "classify-genres", classified: genreClassified,
-        total: entries.length, hasMore: genreHasMore, stalled: isStalled,
+        total: entries.length, hasMore: genreHasMore,
         errors: genreErrors.slice(0, 20),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
