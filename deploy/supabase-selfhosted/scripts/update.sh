@@ -123,7 +123,7 @@ EXTERNAL_HANDLERS=(
   send-auth-email send-inquiry-reply send-message
   verify-email verify-reset-token _shared
   totp-status totp-setup totp-verify totp-disable
-  manage-users wishlist rate-game
+  manage-users wishlist rate-game game-recommendations
   discord-config discord-unlink image-proxy manage-account
   refresh-images signup
   resolve-username sync-achievements
