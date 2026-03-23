@@ -319,7 +319,7 @@ export default function CatalogBrowse() {
       const [designersRows, artistsRows, mechanicsRows, publishersRows, ratingsRows] = await Promise.all([
         batchFetch("catalog_designers", "catalog_id, designer:designers(name)"),
         batchFetch("catalog_artists", "catalog_id, artist:artists(name)"),
-        batchFetch("catalog_mechanics", "catalog_id, mechanic:mechanics(name)"),
+        batchFetch("catalog_mechanics", "catalog_id, mechanic:mechanics(name, family:mechanic_families(name))"),
         batchFetch("catalog_publishers", "catalog_id, publisher:publishers(name)"),
         batchFetch("catalog_ratings_summary", "catalog_id, visitor_average, visitor_count"),
       ]);
