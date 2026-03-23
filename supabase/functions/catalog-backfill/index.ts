@@ -1561,6 +1561,212 @@ Do NOT include any other text.`;
     }
 
     // =====================================================================
+    // MODE: classify-mechanics — AI-classify catalog entries into mechanic families
+    // Uses Google Gemini Flash Lite to suggest mechanic families based on title/description
+    // Then maps to actual mechanic IDs via mechanic_families -> mechanics
+    // =====================================================================
+    if (mode === "classify-mechanics") {
+      const mechBatchSize = Math.min(body.batch_size || 30, 80);
+      const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
+      if (!googleKey) {
+        return new Response(JSON.stringify({ error: "GOOGLE_AI_API_KEY not configured" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Load all mechanic families and their child mechanic IDs
+      const familyNameToChildIds = new Map<string, string[]>();
+      const familyNames: string[] = [];
+      let mfOffset = 0;
+      const MF_PAGE = 100;
+      while (true) {
+        const { data: mfPage } = await admin.from("mechanic_families").select("id, name").range(mfOffset, mfOffset + MF_PAGE - 1);
+        if (!mfPage || mfPage.length === 0) break;
+        for (const mf of mfPage) {
+          familyNames.push(mf.name);
+          familyNameToChildIds.set(mf.name.toLowerCase(), []);
+        }
+        if (mfPage.length < MF_PAGE) break;
+        mfOffset += MF_PAGE;
+      }
+
+      // Load all mechanics with their family mapping
+      let mecOffset = 0;
+      const MEC_PAGE = 1000;
+      while (true) {
+        const { data: mecPage } = await admin.from("mechanics").select("id, name, family_id, mechanic_families(name)").range(mecOffset, mecOffset + MEC_PAGE - 1);
+        if (!mecPage || mecPage.length === 0) break;
+        for (const m of mecPage) {
+          const familyName = (m as any).mechanic_families?.name;
+          if (familyName) {
+            const key = familyName.toLowerCase();
+            const arr = familyNameToChildIds.get(key);
+            if (arr) arr.push(m.id);
+          }
+        }
+        if (mecPage.length < MEC_PAGE) break;
+        mecOffset += MEC_PAGE;
+      }
+
+      console.log(`[classify-mechanics] Loaded ${familyNames.length} families, mapping to child mechanic IDs`);
+
+      // Fetch catalog entries that have NO mechanics assigned (neither catalog_mechanics nor existing BGG data)
+      // We target games missing from catalog_mechanics entirely
+      const { data: entries, error: mFetchErr } = await admin
+        .rpc("get_catalog_entries_without_mechanics", { p_limit: mechBatchSize });
+
+      // Fallback if RPC doesn't exist
+      let entriesToProcess = entries;
+      if (mFetchErr) {
+        console.warn("[classify-mechanics] RPC not found, using inline query");
+        const { data: fallbackEntries, error: fbErr } = await admin
+          .from("game_catalog")
+          .select("id, title, description")
+          .eq("is_expansion", false)
+          .not("description", "is", null)
+          .order("created_at", { ascending: true })
+          .limit(mechBatchSize);
+
+        if (fbErr) throw fbErr;
+
+        // Filter out ones that already have catalog_mechanics
+        if (fallbackEntries && fallbackEntries.length > 0) {
+          const ids = fallbackEntries.map((e: any) => e.id);
+          const { data: existingMechs } = await admin
+            .from("catalog_mechanics")
+            .select("catalog_id")
+            .in("catalog_id", ids);
+          const hasIds = new Set((existingMechs || []).map((r: any) => r.catalog_id));
+          entriesToProcess = fallbackEntries.filter((e: any) => !hasIds.has(e.id));
+        } else {
+          entriesToProcess = [];
+        }
+      }
+
+      if (!entriesToProcess || entriesToProcess.length === 0) {
+        return new Response(JSON.stringify({
+          success: true, mode: "classify-mechanics", classified: 0,
+          message: "All entries have mechanics assigned", hasMore: false,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      console.log(`[classify-mechanics] Processing ${entriesToProcess.length} entries`);
+
+      let mechClassified = 0;
+      let mechInserted = 0;
+      const mechErrors: string[] = [];
+
+      // Process in sub-batches of 8 for Gemini
+      const MECH_SUB_BATCH = 8;
+      for (let i = 0; i < entriesToProcess.length; i += MECH_SUB_BATCH) {
+        const subBatch = entriesToProcess.slice(i, i + MECH_SUB_BATCH);
+
+        const gamesPayload = subBatch.map((e: any, idx: number) => ({
+          idx,
+          title: e.title,
+          desc: (e.description || "").slice(0, 600),
+        }));
+
+        const classifyPrompt = `You are a board game expert. For each game below, assign 2-5 mechanic families from this list:
+${familyNames.join(", ")}
+
+Rules:
+- Choose ONLY from the list above. Do NOT invent new families.
+- Assign 2-5 families per game based on its primary gameplay mechanics.
+- If a game is about managing resources (food, wood, money, etc.), include "Resource Management".
+- If players place workers/meeples to take actions, include "Worker Placement".
+- If players build a personal tableau or engine, include "Engine Building".
+- Be generous — if a mechanic is a significant part of gameplay, include it.
+- "Miscellaneous" should only be used if the game truly doesn't fit any other family.
+
+Games to classify:
+${gamesPayload.map(g => `[${g.idx}] "${g.title}": ${g.desc}`).join("\n\n")}
+
+Return ONLY a JSON array: [{"idx":0,"families":["Worker Placement","Resource Management"]},...]
+Do NOT include any other text.`;
+
+        try {
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${googleKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: classifyPrompt }] }],
+                generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+              }),
+            }
+          );
+
+          if (geminiRes.status === 429) {
+            console.warn("[classify-mechanics] Rate limited, stopping batch early");
+            mechErrors.push("Rate limited — stopping early");
+            break;
+          }
+
+          if (!geminiRes.ok) {
+            const errText = await geminiRes.text();
+            mechErrors.push(`Gemini API error ${geminiRes.status}: ${errText.slice(0, 200)}`);
+            continue;
+          }
+
+          const geminiData = await geminiRes.json();
+          const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+          const jsonMatch = rawText.match(/\[[\s\S]*?\]/);
+          if (!jsonMatch) {
+            mechErrors.push(`No JSON in response for batch starting at ${subBatch[0].title}`);
+            continue;
+          }
+
+          const mechResults: { idx: number; families: string[] }[] = JSON.parse(jsonMatch[0]);
+
+          for (const result of mechResults) {
+            const entry = subBatch[result.idx];
+            if (!entry) continue;
+
+            const junctionsToInsert: { catalog_id: string; mechanic_id: string }[] = [];
+
+            for (const familyName of (result.families || [])) {
+              const key = familyName.toLowerCase().trim();
+              const childIds = familyNameToChildIds.get(key);
+              if (childIds && childIds.length > 0) {
+                // Insert the FIRST child mechanic from this family as representative
+                // This links the game to the family via the mechanic->family relationship
+                junctionsToInsert.push({ catalog_id: entry.id, mechanic_id: childIds[0] });
+              } else {
+                mechErrors.push(`Unknown family "${familyName}" for "${entry.title}"`);
+              }
+            }
+
+            if (junctionsToInsert.length > 0) {
+              const { error: insertErr } = await admin
+                .from("catalog_mechanics")
+                .upsert(junctionsToInsert, { onConflict: "catalog_id,mechanic_id" });
+              if (insertErr) {
+                mechErrors.push(`Insert failed for "${entry.title}": ${insertErr.message}`);
+              } else {
+                mechClassified++;
+                mechInserted += junctionsToInsert.length;
+              }
+            }
+          }
+        } catch (e) {
+          mechErrors.push(`Sub-batch error: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+
+      const wasRateLimited = mechErrors.some(e => e.toLowerCase().includes("rate limited"));
+      const mechHasMore = entriesToProcess.length === mechBatchSize && (mechClassified > 0 || wasRateLimited);
+      return new Response(JSON.stringify({
+        success: true, mode: "classify-mechanics", classified: mechClassified,
+        mechanics_inserted: mechInserted,
+        total: entriesToProcess.length, hasMore: mechHasMore,
+        errors: mechErrors.slice(0, 20),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // =====================================================================
     // DEFAULT MODE: Link unlinked games to catalog
     // =====================================================================
     const batchSize = Math.min(body.batch_size || 5, 10);
