@@ -1,11 +1,11 @@
 #!/bin/bash
 # ============================================================================
-# Genre Classification Runner
-# Classifies all game_catalog entries into genres using Gemini Flash Lite
+# Genre Classification Runner (Cortex-powered)
+# Classifies all game_catalog entries into genres using self-hosted Cortex AI
 #
 # Usage: ./classify-genres.sh [batch_size] [delay_seconds]
-#   batch_size:     Number of entries per API call (default: 50)
-#   delay_seconds:  Seconds between batches (default: 6 = ~500/min)
+#   batch_size:     Number of entries per API call (default: 100)
+#   delay_seconds:  Seconds between batches (default: 2, Cortex is self-hosted)
 #
 # Run in a separate terminal window:
 #   cd /opt/gametaverns/deploy/supabase-selfhosted/scripts
