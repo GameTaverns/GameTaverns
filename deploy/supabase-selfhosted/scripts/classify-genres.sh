@@ -1,11 +1,11 @@
 #!/bin/bash
 # ============================================================================
-# Genre Classification Runner
-# Classifies all game_catalog entries into genres using Gemini Flash Lite
+# Genre Classification Runner (Cortex-powered)
+# Classifies all game_catalog entries into genres using self-hosted Cortex AI
 #
 # Usage: ./classify-genres.sh [batch_size] [delay_seconds]
-#   batch_size:     Number of entries per API call (default: 50)
-#   delay_seconds:  Seconds between batches (default: 6 = ~500/min)
+#   batch_size:     Number of entries per API call (default: 100)
+#   delay_seconds:  Seconds between batches (default: 2, Cortex is self-hosted)
 #
 # Run in a separate terminal window:
 #   cd /opt/gametaverns/deploy/supabase-selfhosted/scripts
@@ -15,8 +15,8 @@
 
 set -uo pipefail
 
-BATCH_SIZE="${1:-50}"
-DELAY="${2:-6}"
+BATCH_SIZE="${1:-100}"
+DELAY="${2:-2}"
 FUNC_URL="http://localhost:8000/functions/v1/catalog-backfill"
 MAX_CONSECUTIVE_ERRORS=5
 
@@ -35,7 +35,7 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 echo "============================================"
-echo "🎮 Genre Classification - Gemini Flash Lite"
+echo "🎮 Genre Classification — Cortex AI (self-hosted)"
 echo "============================================"
 echo "Batch size: $BATCH_SIZE entries"
 echo "Delay: ${DELAY}s between batches (~$((BATCH_SIZE * 60 / DELAY))/min)"
