@@ -35,7 +35,7 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 echo "============================================"
-echo "🎮 Genre Classification - Gemini Flash Lite"
+echo "🎮 Genre Classification — Cortex AI (self-hosted)"
 echo "============================================"
 echo "Batch size: $BATCH_SIZE entries"
 echo "Delay: ${DELAY}s between batches (~$((BATCH_SIZE * 60 / DELAY))/min)"
