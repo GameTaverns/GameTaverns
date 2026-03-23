@@ -1459,9 +1459,10 @@ const handler = async (req: Request): Promise<Response> => {
 
           for (const result of results) {
             const rawGenre = (result.genre || "").trim();
-            // Validate against our canonical genre list
+            // Check aliases first, then validate against canonical list
+            const aliased = GENRE_ALIASES[rawGenre] || rawGenre;
             const matchedGenre = VALID_GENRES.find(
-              (g) => g.toLowerCase() === rawGenre.toLowerCase()
+              (g) => g.toLowerCase() === aliased.toLowerCase()
             );
             if (!matchedGenre) {
               const entry = subBatch.find((e: any) => e.id === result.id);
