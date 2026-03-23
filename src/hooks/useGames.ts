@@ -252,9 +252,18 @@ function processGames(games: any[]): GameWithRelations[] {
     game_type: game.game_type as GameType,
     play_time: game.play_time as PlayTime,
     additional_images: game.additional_images || [],
-    mechanics: (game.game_mechanics || [])
-      .map((gm: { mechanic: Mechanic | null }) => gm.mechanic)
-      .filter((m): m is Mechanic => m !== null),
+    mechanics: (() => {
+      const seen = new Set<string>();
+      return (game.game_mechanics || [])
+        .map((gm: any) => {
+          if (!gm.mechanic) return null;
+          const name = gm.mechanic.family?.name || gm.mechanic.name;
+          if (seen.has(name)) return null;
+          seen.add(name);
+          return { id: gm.mechanic.id, name } as Mechanic;
+        })
+        .filter((m): m is Mechanic => m !== null);
+    })(),
     designers: (game.game_designers || [])
       .map((gd: any) => gd.designer)
       .filter(Boolean),
