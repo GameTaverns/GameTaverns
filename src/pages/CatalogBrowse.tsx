@@ -319,7 +319,7 @@ export default function CatalogBrowse() {
       const [designersRows, artistsRows, mechanicsRows, publishersRows, ratingsRows] = await Promise.all([
         batchFetch("catalog_designers", "catalog_id, designer:designers(name)"),
         batchFetch("catalog_artists", "catalog_id, artist:artists(name)"),
-        batchFetch("catalog_mechanics", "catalog_id, mechanic:mechanics(name)"),
+        batchFetch("catalog_mechanics", "catalog_id, mechanic:mechanics(name, family:mechanic_families(name))"),
         batchFetch("catalog_publishers", "catalog_id, publisher:publishers(name)"),
         batchFetch("catalog_ratings_summary", "catalog_id, visitor_average, visitor_count"),
       ]);
@@ -327,10 +327,11 @@ export default function CatalogBrowse() {
       const buildMap = (rows: any[], key: string) => {
         const map = new Map<string, string[]>();
         for (const row of rows || []) {
-          const name = row[key]?.name;
+          // For mechanics, prefer family name over granular name
+          const name = row[key]?.family?.name || row[key]?.name;
           if (name) {
             const list = map.get(row.catalog_id) || [];
-            list.push(name);
+            if (!list.includes(name)) list.push(name);
             map.set(row.catalog_id, list);
           }
         }

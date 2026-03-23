@@ -29,7 +29,7 @@ export function useGames(enabled = true) {
             publisher:publishers(id, name),
             admin_data:game_admin_data(*),
             game_mechanics(
-              mechanic:mechanics(id, name)
+              mechanic:mechanics(id, name, family:mechanic_families(name))
             ),
             game_designers(
               designer:designers(id, name)
@@ -78,16 +78,20 @@ export function useGames(enabled = true) {
         const batch = gameIds.slice(i, i + BATCH_SIZE);
         const { data } = await supabase
           .from("game_mechanics")
-          .select(`game_id, mechanic:mechanics(id, name)`)
+          .select(`game_id, mechanic:mechanics(id, name, family:mechanic_families(name))`)
           .in("game_id", batch);
         if (data) allMechanics.push(...data);
       }
 
       const mechanicsMap = new Map<string, Mechanic[]>();
-      allMechanics.forEach((gm: { game_id: string; mechanic: Mechanic | null }) => {
+      allMechanics.forEach((gm: any) => {
         if (gm.mechanic) {
+          const familyName = gm.mechanic.family?.name;
+          const mech: Mechanic = familyName
+            ? { id: gm.mechanic.id, name: familyName }
+            : { id: gm.mechanic.id, name: gm.mechanic.name };
           const existing = mechanicsMap.get(gm.game_id) || [];
-          existing.push(gm.mechanic);
+          if (!existing.some(m => m.name === mech.name)) existing.push(mech);
           mechanicsMap.set(gm.game_id, existing);
         }
       });
@@ -248,9 +252,18 @@ function processGames(games: any[]): GameWithRelations[] {
     game_type: game.game_type as GameType,
     play_time: game.play_time as PlayTime,
     additional_images: game.additional_images || [],
-    mechanics: (game.game_mechanics || [])
-      .map((gm: { mechanic: Mechanic | null }) => gm.mechanic)
-      .filter((m): m is Mechanic => m !== null),
+    mechanics: (() => {
+      const seen = new Set<string>();
+      return (game.game_mechanics || [])
+        .map((gm: any) => {
+          if (!gm.mechanic) return null;
+          const name = gm.mechanic.family?.name || gm.mechanic.name;
+          if (seen.has(name)) return null;
+          seen.add(name);
+          return { id: gm.mechanic.id, name } as Mechanic;
+        })
+        .filter((m): m is Mechanic => m !== null);
+    })(),
     designers: (game.game_designers || [])
       .map((gd: any) => gd.designer)
       .filter(Boolean),
@@ -367,17 +380,22 @@ export function useGame(slugOrId: string | undefined) {
 
       const { data: gameMechanics, error: mechanicsError } = await supabase
         .from("game_mechanics")
-        .select(
-          `
-          mechanic:mechanics(id, name)
-        `
-        )
+        .select(`mechanic:mechanics(id, name, family:mechanic_families(name))`)
         .eq("game_id", game.id);
 
       if (mechanicsError) throw mechanicsError;
 
-      let mechanics: Mechanic[] =
-        gameMechanics?.map((gm: { mechanic: Mechanic | null }) => gm.mechanic).filter((m): m is Mechanic => m !== null) || [];
+      let mechanics: Mechanic[] = [];
+      const seenNames = new Set<string>();
+      (gameMechanics || []).forEach((gm: any) => {
+        if (gm.mechanic) {
+          const name = gm.mechanic.family?.name || gm.mechanic.name;
+          if (!seenNames.has(name)) {
+            seenNames.add(name);
+            mechanics.push({ id: gm.mechanic.id, name });
+          }
+        }
+      });
 
       // Fetch designers
       const { data: gameDesigners } = await supabase
@@ -414,7 +432,7 @@ export function useGame(slugOrId: string | undefined) {
             ? supabase.from("game_catalog").select("upc, slug").eq("id", catalogId).maybeSingle()
             : Promise.resolve({ data: null }),
           mechanics.length === 0
-            ? supabase.from("catalog_mechanics").select("mechanic:mechanics(id, name)").eq("catalog_id", catalogId)
+            ? supabase.from("catalog_mechanics").select("mechanic:mechanics(id, name, family:mechanic_families(name))").eq("catalog_id", catalogId)
             : Promise.resolve({ data: null }),
           !game.genre
             ? (supabase as any).from("catalog_genres").select("genre").eq("catalog_id", catalogId).order("genre")
@@ -437,7 +455,15 @@ export function useGame(slugOrId: string | undefined) {
           game.catalog_slug = catUpc.data.slug;
         }
         if (catMechanics.data && mechanics.length === 0) {
-          mechanics = catMechanics.data.map((cm: any) => cm.mechanic).filter(Boolean);
+          const seen = new Set<string>();
+          mechanics = catMechanics.data
+            .map((cm: any) => {
+              const name = cm.mechanic?.family?.name || cm.mechanic?.name;
+              if (!name || seen.has(name)) return null;
+              seen.add(name);
+              return { id: cm.mechanic.id, name };
+            })
+            .filter(Boolean) as Mechanic[];
         }
         if (catGenres.data && catGenres.data.length > 0 && !game.genre) {
           game.genre = catGenres.data.map((g: any) => g.genre).join(", ");

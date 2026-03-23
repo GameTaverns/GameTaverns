@@ -152,7 +152,7 @@ export default function CatalogGameDetail() {
       const [designersRes, artistsRes, mechanicsRes, publishersRes, expansionsRes, parentRes, ratingsRes, genresRes] = await Promise.all([
         supabase.from("catalog_designers").select("designer:designers(name)").eq("catalog_id", data.id),
         supabase.from("catalog_artists").select("artist:artists(name)").eq("catalog_id", data.id),
-        supabase.from("catalog_mechanics").select("mechanic:mechanics(name)").eq("catalog_id", data.id),
+        supabase.from("catalog_mechanics").select("mechanic:mechanics(name, family:mechanic_families(name))").eq("catalog_id", data.id),
         supabase.from("catalog_publishers").select("publisher:publishers(name)").eq("catalog_id", data.id),
         supabase.from("game_catalog").select("id, title, slug, image_url").eq("parent_catalog_id", data.id).eq("is_expansion", true).order("title"),
         data.parent_catalog_id
@@ -168,7 +168,7 @@ export default function CatalogGameDetail() {
         ...data,
         designers: (designersRes.data || []).map((r: any) => r.designer?.name).filter(Boolean),
         artists: (artistsRes.data || []).map((r: any) => r.artist?.name).filter(Boolean),
-        mechanics: (mechanicsRes.data || []).map((r: any) => r.mechanic?.name).filter(Boolean),
+        mechanics: [...new Set((mechanicsRes.data || []).map((r: any) => r.mechanic?.family?.name || r.mechanic?.name).filter(Boolean))],
         publishers: (publishersRes.data || []).map((r: any) => r.publisher?.name).filter(Boolean),
         expansions: expansionsRes.data || [],
         parent: parentRes.data || null,
