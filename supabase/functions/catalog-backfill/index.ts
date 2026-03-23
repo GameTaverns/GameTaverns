@@ -1460,11 +1460,43 @@ const handler = async (req: Request): Promise<Response> => {
         }));
 
         try {
-          const cortexRes = await fetch(CORTEX_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(cortexPayload),
-          });
+          // Retry Cortex calls on 502/503/timeout (up to 3 attempts)
+          let cortexRes: Response | null = null;
+          let cortexAttempts = 0;
+          const MAX_CORTEX_RETRIES = 3;
+          while (cortexAttempts < MAX_CORTEX_RETRIES) {
+            cortexAttempts++;
+            try {
+              cortexRes = await fetch(CORTEX_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(cortexPayload),
+              });
+              if (cortexRes.status === 502 || cortexRes.status === 503) {
+                const errText = await cortexRes.text();
+                console.warn(`[classify-genres] Cortex ${cortexRes.status}, attempt ${cortexAttempts}/${MAX_CORTEX_RETRIES}`);
+                if (cortexAttempts < MAX_CORTEX_RETRIES) {
+                  await sleep(cortexAttempts * 2000);
+                  cortexRes = null;
+                  continue;
+                }
+                genreErrors.push(`Cortex API error ${cortexRes.status} after ${MAX_CORTEX_RETRIES} retries: ${errText.slice(0, 200)}`);
+                cortexRes = null;
+                break;
+              }
+              break; // success or non-retryable error
+            } catch (fetchErr) {
+              console.warn(`[classify-genres] Cortex fetch error, attempt ${cortexAttempts}/${MAX_CORTEX_RETRIES}:`, fetchErr);
+              if (cortexAttempts < MAX_CORTEX_RETRIES) {
+                await sleep(cortexAttempts * 2000);
+              } else {
+                genreErrors.push(`Cortex connection failed after ${MAX_CORTEX_RETRIES} retries: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
+              }
+              cortexRes = null;
+            }
+          }
+
+          if (!cortexRes) continue;
 
           if (cortexRes.status === 429) {
             console.warn("[classify-genres] Cortex rate limited, stopping batch early");
@@ -1544,8 +1576,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const wasRateLimited = genreErrors.some((e) => e.toLowerCase().includes("rate limited"));
-      const isStalled = genreClassified === 0;
-      const genreHasMore = entries.length > 0 && (genreClassified > 0 || wasRateLimited);
+      const hadErrors = genreErrors.length > 0;
+      // Keep going if: we classified some, OR we had retryable errors (entries still unclassified), OR rate limited
+      const genreHasMore = entries.length > 0 && (genreClassified > 0 || wasRateLimited || hadErrors);
       return new Response(JSON.stringify({
         success: true, mode: "classify-genres", classified: genreClassified,
         total: entries.length, hasMore: genreHasMore, stalled: isStalled,
