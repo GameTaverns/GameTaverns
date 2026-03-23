@@ -64,7 +64,7 @@ export function CatalogDataEditor({ catalogId, currentData }: CatalogDataEditorP
   const genres = selectedGenres ?? existingGenreNames;
   const toggleGenre = (g: string) => {
     setSelectedGenres(prev => {
-      const current = prev ?? existingGenres;
+      const current = prev ?? existingGenreNames;
       return current.includes(g) ? current.filter(x => x !== g) : [...current, g];
     });
   };
