@@ -1360,16 +1360,15 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Fetch unclassified catalog entries (those without any catalog_genres rows)
       const includeExpansions = body.include_expansions === true;
-      const offset = body.offset || 0;
 
-      // Find entries that have NO rows in catalog_genres yet
-      // Use a left join approach: get entries, then filter out those with existing genres
+      // Use RPC-style approach: fetch entries that have NO rows in catalog_genres
+      // First get a batch of candidate IDs, then filter out already-classified ones
       let genreQuery = admin
         .from("game_catalog")
         .select("id, title, description")
         .not("description", "is", null)
         .order("created_at", { ascending: true })
-        .range(offset, offset + genreBatchSize - 1);
+        .limit(genreBatchSize * 4); // Overfetch to account for filtering
 
       if (!includeExpansions) {
         genreQuery = genreQuery.eq("is_expansion", false);
@@ -1388,6 +1387,8 @@ const handler = async (req: Request): Promise<Response> => {
           .in("catalog_id", ids);
         const hasGenres = new Set((existingGenres || []).map((r: any) => r.catalog_id));
         entries = entries.filter((e: any) => !hasGenres.has(e.id));
+        // Trim back to requested batch size
+        entries = entries.slice(0, genreBatchSize);
       }
 
       if (!entries || entries.length === 0) {
