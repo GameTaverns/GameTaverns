@@ -1362,16 +1362,15 @@ const handler = async (req: Request): Promise<Response> => {
       const includeExpansions = body.include_expansions === true;
 
       // Use a database-level approach to find unclassified entries
-      // We fetch in pages, skipping entries that already have catalog_genres rows
-      const expansionFilter = includeExpansions ? "" : "AND gc.is_expansion = false";
-      const { data: entries, error: gFetchErr } = await admin.rpc("get_catalog_entries_without_genres", {
+      let entries: any[] = [];
+      const { data: rpcData, error: gFetchErr } = await admin.rpc("get_catalog_entries_without_genres", {
         p_limit: genreBatchSize,
         p_include_expansions: includeExpansions,
       });
+
       if (gFetchErr) {
         // Fallback: paginated JS filtering if RPC doesn't exist yet
         console.warn("[classify-genres] RPC fallback:", gFetchErr.message);
-        // Fetch a larger window and filter in JS
         const PAGE_SIZE = 1000;
         let offset = 0;
         let filteredEntries: any[] = [];
@@ -1399,12 +1398,11 @@ const handler = async (req: Request): Promise<Response> => {
           filteredEntries.push(...unclassified);
           
           offset += PAGE_SIZE;
-          if (page.length < PAGE_SIZE) break; // No more pages
+          if (page.length < PAGE_SIZE) break;
         }
-        
-        var entries_fallback = filteredEntries.slice(0, genreBatchSize);
-        // Use fallback entries below
-        (entries as any) = entries_fallback;
+        entries = filteredEntries.slice(0, genreBatchSize);
+      } else {
+        entries = rpcData || [];
       }
 
       if (!entries || entries.length === 0) {
