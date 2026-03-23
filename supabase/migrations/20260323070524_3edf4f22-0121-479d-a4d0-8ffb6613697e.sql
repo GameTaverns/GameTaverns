@@ -1,0 +1,1 @@
+ALTER TABLE public.catalog_genres ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 0;
