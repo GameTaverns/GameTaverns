@@ -231,7 +231,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // ── Optional AI re-ranking via Cortex ──
-    const AI_RERANK_URL = Deno.env.get("AI_RERANK_URL") || "";
+    const AI_RERANK_URL = Deno.env.get("AI_RERANK_URL") || "https://cortex.tzolak.com/api/recommend";
     let rerankedDiscoveries = discoveries;
     let rerankedCollectionMatches = collectionMatches;
 
