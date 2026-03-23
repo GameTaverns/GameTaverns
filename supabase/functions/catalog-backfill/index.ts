@@ -1348,9 +1348,14 @@ const handler = async (req: Request): Promise<Response> => {
 
       const VALID_GENRES = [
         "Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure",
-        "Economic", "Abstract", "Humor", "Nature", "War", "Political",
-        "Party", "Trivia", "Sports", "Educational", "Cooperative", "Other",
+        "Strategy", "Abstract", "Humor", "Nature", "War", "Political",
+        "Party", "Trivia", "Sports", "Educational", "Cooperative", "Family", "Other",
       ];
+
+      // Map legacy genres to new taxonomy
+      const GENRE_ALIASES: Record<string, string> = {
+        "Economic": "Strategy",
+      };
 
       // Fetch unclassified catalog entries
       const includeExpansions = body.include_expansions === true;
