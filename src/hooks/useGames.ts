@@ -447,7 +447,15 @@ export function useGame(slugOrId: string | undefined) {
           game.catalog_slug = catUpc.data.slug;
         }
         if (catMechanics.data && mechanics.length === 0) {
-          mechanics = catMechanics.data.map((cm: any) => cm.mechanic).filter(Boolean);
+          const seen = new Set<string>();
+          mechanics = catMechanics.data
+            .map((cm: any) => {
+              const name = cm.mechanic?.family?.name || cm.mechanic?.name;
+              if (!name || seen.has(name)) return null;
+              seen.add(name);
+              return { id: cm.mechanic.id, name };
+            })
+            .filter(Boolean) as Mechanic[];
         }
         if (catGenres.data && catGenres.data.length > 0 && !game.genre) {
           game.genre = catGenres.data.map((g: any) => g.genre).join(", ");
