@@ -56,14 +56,15 @@ export function CatalogDataEditor({ catalogId, currentData }: CatalogDataEditorP
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: existingGenres = [] } = useCatalogGenres(catalogId);
+  const { data: existingGenreEntries = [] } = useCatalogGenres(catalogId);
+  const existingGenreNames = existingGenreEntries.map(g => g.genre);
   const setGenresMutation = useSetCatalogGenres();
   const [selectedGenres, setSelectedGenres] = useState<string[] | null>(null);
   // Use selectedGenres if user has interacted, otherwise use fetched
-  const genres = selectedGenres ?? existingGenres;
+  const genres = selectedGenres ?? existingGenreNames;
   const toggleGenre = (g: string) => {
     setSelectedGenres(prev => {
-      const current = prev ?? existingGenres;
+      const current = prev ?? existingGenreNames;
       return current.includes(g) ? current.filter(x => x !== g) : [...current, g];
     });
   };

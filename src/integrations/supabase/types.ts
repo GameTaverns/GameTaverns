@@ -526,16 +526,19 @@ export type Database = {
       catalog_genres: {
         Row: {
           catalog_id: string
+          display_order: number
           genre: string
           id: string
         }
         Insert: {
           catalog_id: string
+          display_order?: number
           genre: string
           id?: string
         }
         Update: {
           catalog_id?: string
+          display_order?: number
           genre?: string
           id?: string
         }

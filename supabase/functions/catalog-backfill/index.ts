@@ -1358,23 +1358,38 @@ const handler = async (req: Request): Promise<Response> => {
         "Economic": "Strategy",
       };
 
-      // Fetch unclassified catalog entries
+      // Fetch unclassified catalog entries (those without any catalog_genres rows)
       const includeExpansions = body.include_expansions === true;
+      const offset = body.offset || 0;
+
+      // Find entries that have NO rows in catalog_genres yet
+      // Use a left join approach: get entries, then filter out those with existing genres
       let genreQuery = admin
         .from("game_catalog")
         .select("id, title, description")
-        .is("genre", null)
         .not("description", "is", null)
         .order("created_at", { ascending: true })
-        .limit(genreBatchSize);
+        .range(offset, offset + genreBatchSize - 1);
 
       if (!includeExpansions) {
         genreQuery = genreQuery.eq("is_expansion", false);
       }
 
-      const { data: entries, error: gFetchErr } = await genreQuery;
-
+      const { data: allEntries, error: gFetchErr } = await genreQuery;
       if (gFetchErr) throw gFetchErr;
+
+      // Filter out entries that already have genres in catalog_genres
+      let entries = allEntries || [];
+      if (entries.length > 0) {
+        const ids = entries.map((e: any) => e.id);
+        const { data: existingGenres } = await admin
+          .from("catalog_genres")
+          .select("catalog_id")
+          .in("catalog_id", ids);
+        const hasGenres = new Set((existingGenres || []).map((r: any) => r.catalog_id));
+        entries = entries.filter((e: any) => !hasGenres.has(e.id));
+      }
+
       if (!entries || entries.length === 0) {
         return new Response(JSON.stringify({
           success: true, mode: "classify-genres", classified: 0,
@@ -1450,35 +1465,61 @@ const handler = async (req: Request): Promise<Response> => {
 
           const cortexData = await cortexRes.json();
 
-          // Cortex batch returns { classified: [{id, genre}, ...], count }
-          const results: { id: string; genre: string }[] = cortexData.classified || [];
+          // Cortex returns { classified: [{id, genres: ["Sci-Fi","Horror"]}, ...], count }
+          // Also supports legacy single-genre format: {id, genre: "Sci-Fi"}
+          const results: { id: string; genres?: string[]; genre?: string }[] = cortexData.classified || [];
 
-          // Also handle single-game response format {id, genre}
-          if (!cortexData.classified && cortexData.id && cortexData.genre) {
-            results.push({ id: cortexData.id, genre: cortexData.genre });
+          // Handle single-game response format
+          if (!cortexData.classified && cortexData.id && (cortexData.genres || cortexData.genre)) {
+            results.push(cortexData);
           }
 
           for (const result of results) {
-            const rawGenre = (result.genre || "").trim();
-            // Check aliases first, then validate against canonical list
-            const aliased = GENRE_ALIASES[rawGenre] || rawGenre;
-            const matchedGenre = VALID_GENRES.find(
-              (g) => g.toLowerCase() === aliased.toLowerCase()
-            );
-            if (!matchedGenre) {
-              const entry = subBatch.find((e: any) => e.id === result.id);
-              genreErrors.push(`Invalid genre "${rawGenre}" for "${entry?.title || result.id}"`);
-              continue;
+            // Normalize: support both `genres` array and legacy `genre` string
+            const rawGenres: string[] = result.genres
+              ? result.genres.slice(0, 3)
+              : result.genre ? [result.genre] : [];
+
+            if (rawGenres.length === 0) continue;
+
+            // Validate and map each genre
+            const validGenres: string[] = [];
+            for (const rawGenre of rawGenres) {
+              const trimmed = (rawGenre || "").trim();
+              const aliased = GENRE_ALIASES[trimmed] || trimmed;
+              const matched = VALID_GENRES.find(
+                (g) => g.toLowerCase() === aliased.toLowerCase()
+              );
+              if (matched) {
+                // Deduplicate (e.g. if alias maps to something already in the list)
+                if (!validGenres.includes(matched)) validGenres.push(matched);
+              } else {
+                const entry = subBatch.find((e: any) => e.id === result.id);
+                genreErrors.push(`Invalid genre "${trimmed}" for "${entry?.title || result.id}"`);
+              }
             }
 
-            const { error: updateErr } = await admin
-              .from("game_catalog")
-              .update({ genre: matchedGenre })
-              .eq("id", result.id);
+            if (validGenres.length === 0) continue;
 
-            if (updateErr) {
-              genreErrors.push(`Update failed for ${result.id}: ${updateErr.message}`);
+            // Delete existing genres for this catalog entry (clean re-classification)
+            await admin.from("catalog_genres").delete().eq("catalog_id", result.id);
+
+            // Insert new genres with display_order
+            const genreRows = validGenres.map((genre, idx) => ({
+              catalog_id: result.id,
+              genre,
+              display_order: idx,
+            }));
+
+            const { error: insertErr } = await admin
+              .from("catalog_genres")
+              .insert(genreRows);
+
+            if (insertErr) {
+              genreErrors.push(`Insert failed for ${result.id}: ${insertErr.message}`);
             } else {
+              // Also update the legacy genre column with the primary genre
+              await admin.from("game_catalog").update({ genre: validGenres[0] }).eq("id", result.id);
               genreClassified++;
             }
           }
@@ -1489,7 +1530,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       const wasRateLimited = genreErrors.some((e) => e.toLowerCase().includes("rate limited"));
       const isStalled = genreClassified === 0;
-      const genreHasMore = entries.length === genreBatchSize && (genreClassified > 0 || wasRateLimited);
+      const genreHasMore = entries.length > 0 && (genreClassified > 0 || wasRateLimited);
       return new Response(JSON.stringify({
         success: true, mode: "classify-genres", classified: genreClassified,
         total: entries.length, hasMore: genreHasMore, stalled: isStalled,
