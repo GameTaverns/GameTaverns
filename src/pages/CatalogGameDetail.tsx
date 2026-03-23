@@ -168,7 +168,7 @@ export default function CatalogGameDetail() {
         ...data,
         designers: (designersRes.data || []).map((r: any) => r.designer?.name).filter(Boolean),
         artists: (artistsRes.data || []).map((r: any) => r.artist?.name).filter(Boolean),
-        mechanics: (mechanicsRes.data || []).map((r: any) => r.mechanic?.name).filter(Boolean),
+        mechanics: [...new Set((mechanicsRes.data || []).map((r: any) => r.mechanic?.family?.name || r.mechanic?.name).filter(Boolean))],
         publishers: (publishersRes.data || []).map((r: any) => r.publisher?.name).filter(Boolean),
         expansions: expansionsRes.data || [],
         parent: parentRes.data || null,
