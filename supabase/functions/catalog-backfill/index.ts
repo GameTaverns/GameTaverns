@@ -1348,9 +1348,14 @@ const handler = async (req: Request): Promise<Response> => {
 
       const VALID_GENRES = [
         "Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure",
-        "Economic", "Abstract", "Humor", "Nature", "War", "Political",
-        "Party", "Trivia", "Sports", "Educational", "Cooperative", "Other",
+        "Strategy", "Abstract", "Humor", "Nature", "War", "Political",
+        "Party", "Trivia", "Sports", "Educational", "Cooperative", "Family", "Other",
       ];
+
+      // Map legacy genres to new taxonomy
+      const GENRE_ALIASES: Record<string, string> = {
+        "Economic": "Strategy",
+      };
 
       // Fetch unclassified catalog entries
       const includeExpansions = body.include_expansions === true;
@@ -1454,9 +1459,10 @@ const handler = async (req: Request): Promise<Response> => {
 
           for (const result of results) {
             const rawGenre = (result.genre || "").trim();
-            // Validate against our canonical genre list
+            // Check aliases first, then validate against canonical list
+            const aliased = GENRE_ALIASES[rawGenre] || rawGenre;
             const matchedGenre = VALID_GENRES.find(
-              (g) => g.toLowerCase() === rawGenre.toLowerCase()
+              (g) => g.toLowerCase() === aliased.toLowerCase()
             );
             if (!matchedGenre) {
               const entry = subBatch.find((e: any) => e.id === result.id);
