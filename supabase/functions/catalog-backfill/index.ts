@@ -1361,34 +1361,50 @@ const handler = async (req: Request): Promise<Response> => {
       // Fetch unclassified catalog entries (those without any catalog_genres rows)
       const includeExpansions = body.include_expansions === true;
 
-      // Use RPC-style approach: fetch entries that have NO rows in catalog_genres
-      // First get a batch of candidate IDs, then filter out already-classified ones
-      let genreQuery = admin
-        .from("game_catalog")
-        .select("id, title, description")
-        .not("description", "is", null)
-        .order("created_at", { ascending: true })
-        .limit(genreBatchSize * 4); // Overfetch to account for filtering
-
-      if (!includeExpansions) {
-        genreQuery = genreQuery.eq("is_expansion", false);
-      }
-
-      const { data: allEntries, error: gFetchErr } = await genreQuery;
-      if (gFetchErr) throw gFetchErr;
-
-      // Filter out entries that already have genres in catalog_genres
-      let entries = allEntries || [];
-      if (entries.length > 0) {
-        const ids = entries.map((e: any) => e.id);
-        const { data: existingGenres } = await admin
-          .from("catalog_genres")
-          .select("catalog_id")
-          .in("catalog_id", ids);
-        const hasGenres = new Set((existingGenres || []).map((r: any) => r.catalog_id));
-        entries = entries.filter((e: any) => !hasGenres.has(e.id));
-        // Trim back to requested batch size
-        entries = entries.slice(0, genreBatchSize);
+      // Use a database-level approach to find unclassified entries
+      // We fetch in pages, skipping entries that already have catalog_genres rows
+      const expansionFilter = includeExpansions ? "" : "AND gc.is_expansion = false";
+      const { data: entries, error: gFetchErr } = await admin.rpc("get_catalog_entries_without_genres", {
+        p_limit: genreBatchSize,
+        p_include_expansions: includeExpansions,
+      });
+      if (gFetchErr) {
+        // Fallback: paginated JS filtering if RPC doesn't exist yet
+        console.warn("[classify-genres] RPC fallback:", gFetchErr.message);
+        // Fetch a larger window and filter in JS
+        const PAGE_SIZE = 1000;
+        let offset = 0;
+        let filteredEntries: any[] = [];
+        
+        while (filteredEntries.length < genreBatchSize) {
+          let q = admin
+            .from("game_catalog")
+            .select("id, title, description")
+            .not("description", "is", null)
+            .order("created_at", { ascending: true })
+            .range(offset, offset + PAGE_SIZE - 1);
+          if (!includeExpansions) q = q.eq("is_expansion", false);
+          
+          const { data: page, error: pageErr } = await q;
+          if (pageErr) throw pageErr;
+          if (!page || page.length === 0) break;
+          
+          const ids = page.map((e: any) => e.id);
+          const { data: existing } = await admin
+            .from("catalog_genres")
+            .select("catalog_id")
+            .in("catalog_id", ids);
+          const hasGenres = new Set((existing || []).map((r: any) => r.catalog_id));
+          const unclassified = page.filter((e: any) => !hasGenres.has(e.id));
+          filteredEntries.push(...unclassified);
+          
+          offset += PAGE_SIZE;
+          if (page.length < PAGE_SIZE) break; // No more pages
+        }
+        
+        var entries_fallback = filteredEntries.slice(0, genreBatchSize);
+        // Use fallback entries below
+        (entries as any) = entries_fallback;
       }
 
       if (!entries || entries.length === 0) {
