@@ -413,8 +413,41 @@ function labelToWeight(label: string): number | null {
     "medium heavy": 3.75,
     heavy: 4.5,
   };
-  return map[label.toLowerCase()] ?? null;
+/**
+ * Merge AI re-ranked results back onto the full game objects.
+ * AI returns ordered IDs with optional enhanced reasons.
+ * Falls back to original order for any IDs not in the AI response.
+ */
+function mergeAiResults(
+  originals: ScoredGame[],
+  aiList: Array<{ id: string; reason?: string }>
+): ScoredGame[] {
+  const origMap = new Map(originals.map((g) => [g.id, g]));
+  const merged: ScoredGame[] = [];
+  const seen = new Set<string>();
+
+  // First: AI-ordered items
+  for (const aiItem of aiList) {
+    const orig = origMap.get(aiItem.id);
+    if (orig) {
+      merged.push({
+        ...orig,
+        reason: aiItem.reason || orig.reason,
+      });
+      seen.add(aiItem.id);
+    }
+  }
+
+  // Then: any originals the AI didn't mention
+  for (const orig of originals) {
+    if (!seen.has(orig.id)) {
+      merged.push(orig);
+    }
+  }
+
+  return merged;
 }
+
 
 if (import.meta.main) {
   Deno.serve(handler);
