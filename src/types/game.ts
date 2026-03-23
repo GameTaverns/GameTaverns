@@ -2,7 +2,7 @@ export type DifficultyLevel = '1 - Light' | '2 - Medium Light' | '3 - Medium' | 
 export type GameType = 'Board Game' | 'Card Game' | 'Dice Game' | 'Party Game' | 'War Game' | 'Miniatures' | 'RPG' | 'Other';
 export type PlayTime = '0-15 Minutes' | '15-30 Minutes' | '30-45 Minutes' | '45-60 Minutes' | '60+ Minutes' | '2+ Hours' | '3+ Hours';
 export type SaleCondition = 'New/Sealed' | 'Like New' | 'Very Good' | 'Good' | 'Acceptable';
-export type Genre = 'Fantasy' | 'Sci-Fi' | 'Historical' | 'Horror' | 'Mystery' | 'Adventure' | 'Economic' | 'Abstract' | 'Humor' | 'Nature' | 'War' | 'Political' | 'Party' | 'Trivia' | 'Sports' | 'Educational' | 'Cooperative' | 'Other';
+export type Genre = 'Fantasy' | 'Sci-Fi' | 'Historical' | 'Horror' | 'Mystery' | 'Adventure' | 'Strategy' | 'Abstract' | 'Humor' | 'Nature' | 'War' | 'Political' | 'Party' | 'Trivia' | 'Sports' | 'Educational' | 'Cooperative' | 'Family' | 'Deck Building' | 'Other';
 
 export interface Mechanic {
   id: string;
