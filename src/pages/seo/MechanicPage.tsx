@@ -29,28 +29,30 @@ export default function MechanicPage() {
   });
 
   const { data: games = [], isLoading: gamesLoading } = useQuery({
-    queryKey: ["catalog-by-mechanic", mechanic?.id],
+    queryKey: ["catalog-by-mechanic", mechanic?.name],
     queryFn: async () => {
-      if (!mechanic?.id) return [];
-      const { data, error } = await supabase
-        .from("catalog_mechanics")
-        .select(`
-          game_catalog!inner(
-            id, title, slug, image_url, min_players, max_players,
-            play_time_minutes, is_expansion
-          )
-        `)
-        .eq("mechanic_id", mechanic.id)
-        .limit(48);
+      if (!mechanic?.name) return [];
+      const { data, error } = await supabase.rpc("search_catalog_by_mechanics", {
+        _mechanic_names: [mechanic.name],
+        _search: "",
+        _limit: 48,
+        _offset: 0,
+        _min_weight: null,
+        _max_weight: null,
+        _min_players: null,
+        _max_players: null,
+        _include_expansions: false,
+        _updated_since: null,
+      });
       if (error) throw error;
-      return data.map((r) => r.game_catalog).filter(Boolean) as Array<{
+      return ((data || []) as any[]).map(({ mechanic_match_count, total_count, ...game }) => game) as Array<{
         id: string; title: string; slug: string | null; image_url: string | null;
         min_players: number | null; max_players: number | null;
         play_time_minutes: number | null;
         is_expansion: boolean;
       }>;
     },
-    enabled: !!mechanic?.id,
+    enabled: !!mechanic?.name,
   });
 
   // Also fetch all mechanics for the sidebar nav

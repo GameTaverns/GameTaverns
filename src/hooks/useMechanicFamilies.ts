@@ -7,6 +7,11 @@ export interface MechanicFamily {
   slug: string;
 }
 
+function addFamily(map: Map<string, Set<string>>, key: string, familyName: string) {
+  if (!map.has(key)) map.set(key, new Set());
+  map.get(key)!.add(familyName);
+}
+
 /** Fetch all mechanic families ordered by display_order */
 export function useMechanicFamilies() {
   return useQuery({
@@ -19,25 +24,41 @@ export function useMechanicFamilies() {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 1000 * 60 * 30, // 30 min cache
+    staleTime: 1000 * 60 * 30,
   });
 }
 
 /**
  * Given a list of game IDs, returns a Map of game_id → Set<family_name>.
- * Uses the join path: game_mechanics → mechanics.family_id → mechanic_families.
+ * Falls back to catalog-linked mechanics when per-game mechanics are missing.
  */
 export function useGameMechanicFamilyMap(gameIds: string[], enabled = true) {
   return useQuery({
-    queryKey: ["game-mechanic-family-map", gameIds.sort().join(",")],
+    queryKey: ["game-mechanic-family-map", [...gameIds].sort().join(",")],
     queryFn: async (): Promise<Map<string, Set<string>>> => {
       if (gameIds.length === 0) return new Map();
 
+      const normalizedGameIds = [...gameIds];
       const map = new Map<string, Set<string>>();
+      const gameCatalogMap = new Map<string, string>();
+      const catalogFamilyMap = new Map<string, Set<string>>();
       const BATCH = 500;
 
-      for (let i = 0; i < gameIds.length; i += BATCH) {
-        const batch = gameIds.slice(i, i + BATCH);
+      for (let i = 0; i < normalizedGameIds.length; i += BATCH) {
+        const batch = normalizedGameIds.slice(i, i + BATCH);
+        const { data, error } = await supabase
+          .from("games")
+          .select("id, catalog_id")
+          .in("id", batch);
+        if (error) throw error;
+
+        for (const row of data || []) {
+          if (row.catalog_id) gameCatalogMap.set(row.id, row.catalog_id);
+        }
+      }
+
+      for (let i = 0; i < normalizedGameIds.length; i += BATCH) {
+        const batch = normalizedGameIds.slice(i, i + BATCH);
         const { data, error } = await supabase
           .from("game_mechanics")
           .select("game_id, mechanic:mechanics(family_id, family:mechanic_families(name))")
@@ -48,8 +69,35 @@ export function useGameMechanicFamilyMap(gameIds: string[], enabled = true) {
           const mechanic = row.mechanic as any;
           const familyName = mechanic?.family?.name;
           if (!familyName) continue;
-          if (!map.has(row.game_id)) map.set(row.game_id, new Set());
-          map.get(row.game_id)!.add(familyName);
+          addFamily(map, row.game_id, familyName);
+        }
+      }
+
+      const catalogIds = Array.from(new Set(Array.from(gameCatalogMap.values())));
+      for (let i = 0; i < catalogIds.length; i += BATCH) {
+        const batch = catalogIds.slice(i, i + BATCH);
+        const { data, error } = await supabase
+          .from("catalog_mechanics")
+          .select("catalog_id, mechanic:mechanics(family_id, family:mechanic_families(name))")
+          .in("catalog_id", batch);
+        if (error) throw error;
+
+        for (const row of data || []) {
+          const mechanic = row.mechanic as any;
+          const familyName = mechanic?.family?.name;
+          if (!familyName) continue;
+          addFamily(catalogFamilyMap, row.catalog_id, familyName);
+        }
+      }
+
+      for (const gameId of normalizedGameIds) {
+        const catalogId = gameCatalogMap.get(gameId);
+        if (!catalogId) continue;
+        const catalogFamilies = catalogFamilyMap.get(catalogId);
+        if (!catalogFamilies) continue;
+
+        for (const familyName of catalogFamilies) {
+          addFamily(map, gameId, familyName);
         }
       }
 

@@ -101,6 +101,43 @@ export default function CatalogBrowse() {
 
   // Build query with all server-side filters
   const buildQuery = useCallback(async (pageParam: number) => {
+    const from = pageParam * PAGE_SIZE;
+
+    if (sidebarFilter === "mechanic" && sidebarValue) {
+      const { data, error } = await supabase.rpc("search_catalog_by_mechanics", {
+        _mechanic_names: [sidebarValue],
+        _search: debouncedSearch,
+        _limit: PAGE_SIZE,
+        _offset: from,
+        _min_weight: showFilters ? weightRange[0] : null,
+        _max_weight: showFilters ? weightRange[1] : null,
+        _min_players: showFilters ? playerCount[0] : null,
+        _max_players: showFilters ? playerCount[0] : null,
+        _include_expansions: false,
+        _updated_since: null,
+      });
+
+      if (error) throw error;
+
+      const games = ((data || []) as any[]).map(({ mechanic_match_count, total_count, ...game }) => game);
+
+      if (sortBy === "weight") {
+        games.sort((a, b) => {
+          const aWeight = a.weight ?? Number.POSITIVE_INFINITY;
+          const bWeight = b.weight ?? Number.POSITIVE_INFINITY;
+          return aWeight - bWeight || a.title.localeCompare(b.title);
+        });
+      } else if (sortBy === "year") {
+        games.sort((a, b) => {
+          const aYear = a.year_published ?? Number.NEGATIVE_INFINITY;
+          const bYear = b.year_published ?? Number.NEGATIVE_INFINITY;
+          return bYear - aYear || a.title.localeCompare(b.title);
+        });
+      }
+
+      return { games, total: undefined, page: pageParam };
+    }
+
     let query = supabase
       .from("game_catalog")
       .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, suggested_age", { count: pageParam === 0 ? "exact" : undefined });
@@ -193,19 +230,6 @@ export default function CatalogBrowse() {
       }
     }
 
-    if (sidebarFilter === "mechanic" && sidebarValue) {
-      const { data: mechIds } = await (supabase as any)
-        .from("catalog_mechanics")
-        .select("catalog_id, mechanic:mechanics!inner(name)")
-        .eq("mechanic.name", sidebarValue);
-      const matchIds = (mechIds || []).map((d: any) => d.catalog_id);
-      if (matchIds.length > 0) {
-        query = query.in("id", matchIds);
-      } else {
-        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
-      }
-    }
-
     if (sidebarFilter === "year" && sidebarValue) {
       const range = parseYearFilterRange(sidebarValue);
       if (range) query = query.gte("year_published", range[0]).lte("year_published", range[1]);
@@ -225,7 +249,6 @@ export default function CatalogBrowse() {
       default: query = query.order("title", { ascending: true }); break;
     }
 
-    const from = pageParam * PAGE_SIZE;
     query = query.range(from, from + PAGE_SIZE - 1);
 
     const { data, error, count } = await query;
