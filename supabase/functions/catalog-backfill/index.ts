@@ -1576,8 +1576,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const wasRateLimited = genreErrors.some((e) => e.toLowerCase().includes("rate limited"));
-      const isStalled = genreClassified === 0;
-      const genreHasMore = entries.length > 0 && (genreClassified > 0 || wasRateLimited);
+      const hadErrors = genreErrors.length > 0;
+      // Keep going if: we classified some, OR we had retryable errors (entries still unclassified), OR rate limited
+      const genreHasMore = entries.length > 0 && (genreClassified > 0 || wasRateLimited || hadErrors);
       return new Response(JSON.stringify({
         success: true, mode: "classify-genres", classified: genreClassified,
         total: entries.length, hasMore: genreHasMore, stalled: isStalled,
