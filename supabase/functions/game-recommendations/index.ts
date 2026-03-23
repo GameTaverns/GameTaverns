@@ -235,10 +235,13 @@ export default async function handler(req: Request): Promise<Response> {
     let rerankedDiscoveries = discoveries;
     let rerankedCollectionMatches = collectionMatches;
 
+    console.log(`[recommendations] AI_RERANK_URL=${AI_RERANK_URL}, discoveries=${discoveries.length}, collection=${collectionMatches.length}`);
+
     if (AI_RERANK_URL && (discoveries.length > 0 || collectionMatches.length > 0)) {
       try {
+        console.log("[recommendations] Calling Cortex AI re-ranker...");
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
 
         const aiPayload = {
           source_game: {
@@ -281,8 +284,11 @@ export default async function handler(req: Request): Promise<Response> {
         });
         clearTimeout(timeoutId);
 
+        console.log(`[recommendations] Cortex responded: ${aiResponse.status}`);
+
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
+          console.log(`[recommendations] AI returned: discoveries=${aiData.discoveries?.length ?? 0}, collection=${aiData.collection_matches?.length ?? 0}`);
           if (aiData.discoveries && Array.isArray(aiData.discoveries)) {
             rerankedDiscoveries = mergeAiResults(discoveries, aiData.discoveries);
           }
@@ -291,11 +297,14 @@ export default async function handler(req: Request): Promise<Response> {
           }
           console.log("[recommendations] AI re-rank applied successfully");
         } else {
-          console.warn(`[recommendations] AI re-rank returned ${aiResponse.status}, using algorithmic results`);
+          const errText = await aiResponse.text();
+          console.warn(`[recommendations] AI re-rank returned ${aiResponse.status}: ${errText}`);
         }
       } catch (aiErr) {
-        console.warn("[recommendations] AI re-rank unavailable, using algorithmic results:", aiErr instanceof Error ? aiErr.message : aiErr);
+        console.warn("[recommendations] AI re-rank failed:", aiErr instanceof Error ? `${aiErr.name}: ${aiErr.message}` : aiErr);
       }
+    } else {
+      console.log("[recommendations] Skipping AI re-rank (no URL or no results)");
     }
 
     return new Response(
