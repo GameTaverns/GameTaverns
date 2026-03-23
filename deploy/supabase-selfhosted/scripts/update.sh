@@ -158,6 +158,7 @@ EXTERNAL_HANDLERS=(
   notify-feedback-closed
   fetch-news-feeds
   send-event-update
+  catalog-api
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   src="$FUNCTIONS_DIR/$handler"
