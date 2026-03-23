@@ -1349,7 +1349,8 @@ const handler = async (req: Request): Promise<Response> => {
       const VALID_GENRES = [
         "Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure",
         "Strategy", "Abstract", "Humor", "Nature", "War", "Political",
-        "Party", "Trivia", "Sports", "Educational", "Cooperative", "Family", "Other",
+        "Party", "Trivia", "Sports", "Educational", "Cooperative", "Family",
+        "Deck Building", "Other",
       ];
 
       // Map legacy genres to new taxonomy
