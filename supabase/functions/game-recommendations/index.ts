@@ -230,12 +230,79 @@ export default async function handler(req: Request): Promise<Response> {
       }
     }
 
+    // ── Optional AI re-ranking via Cortex ──
+    const AI_RERANK_URL = "https://cortex.tzolak.com/api/recommend";
+    let rerankedDiscoveries = discoveries;
+    let rerankedCollectionMatches = collectionMatches;
+
+    try {
+      const aiPayload = {
+        source_game: {
+          title: sourceGame.title,
+          description: sourceGame.description || null,
+          difficulty: sourceGame.difficulty,
+          play_time: sourceGame.play_time,
+          game_type: sourceGame.game_type,
+          min_players: sourceMinPlayers,
+          max_players: sourceMaxPlayers,
+          mechanics: sourceMechanics.map((m: any) => m.name),
+        },
+        discoveries: discoveries.map((g) => ({
+          id: g.id,
+          title: g.title,
+          difficulty: g.difficulty,
+          play_time: g.play_time,
+          min_players: g.min_players,
+          max_players: g.max_players,
+          reason: g.reason,
+          score: g.score,
+        })),
+        collection_matches: collectionMatches.map((g) => ({
+          id: g.id,
+          title: g.title,
+          difficulty: g.difficulty,
+          play_time: g.play_time,
+          min_players: g.min_players,
+          max_players: g.max_players,
+          reason: g.reason,
+          score: g.score,
+        })),
+      };
+
+      const aiResponse = await Promise.race([
+        fetch(AI_RERANK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(aiPayload),
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("AI rerank timeout")), 4000)
+        ),
+      ]);
+
+      if (aiResponse.ok) {
+        const aiData = await aiResponse.json();
+        // AI can return reordered lists with enhanced reasons
+        if (aiData.discoveries && Array.isArray(aiData.discoveries)) {
+          rerankedDiscoveries = mergeAiResults(discoveries, aiData.discoveries);
+        }
+        if (aiData.collection_matches && Array.isArray(aiData.collection_matches)) {
+          rerankedCollectionMatches = mergeAiResults(collectionMatches, aiData.collection_matches);
+        }
+        console.log("[recommendations] AI re-rank applied successfully");
+      } else {
+        console.warn(`[recommendations] AI re-rank returned ${aiResponse.status}, using algorithmic results`);
+      }
+    } catch (aiErr) {
+      // Graceful fallback — algorithmic results are already good
+      console.warn("[recommendations] AI re-rank unavailable, using algorithmic results:", aiErr instanceof Error ? aiErr.message : aiErr);
+    }
+
     return new Response(
       JSON.stringify({
-        discoveries,
-        collection_matches: collectionMatches,
-        // Legacy compat: also return as "recommendations" (union of both)
-        recommendations: [...discoveries, ...collectionMatches].slice(0, limit),
+        discoveries: rerankedDiscoveries,
+        collection_matches: rerankedCollectionMatches,
+        recommendations: [...rerankedDiscoveries, ...rerankedCollectionMatches].slice(0, limit),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
