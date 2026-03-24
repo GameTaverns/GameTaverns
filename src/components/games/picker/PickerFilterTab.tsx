@@ -1,5 +1,6 @@
 import { PickerChip } from "./PickerChip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { GENRE_OPTIONS } from "@/types/game";
 
 const GAME_TYPES = ["Board Game", "Card Game", "Dice Game", "Party Game", "War Game", "Miniatures", "RPG", "Other"];
 const PLAY_TIMES = ["0-15 Minutes", "15-30 Minutes", "30-45 Minutes", "45-60 Minutes", "60+ Minutes"];
@@ -7,6 +8,8 @@ const PLAY_TIMES = ["0-15 Minutes", "15-30 Minutes", "30-45 Minutes", "45-60 Min
 interface PickerFilterTabProps {
   selectedTypes: string[];
   toggleType: (t: string) => void;
+  selectedGenres: string[];
+  toggleGenre: (g: string) => void;
   selectedMechanics: string[];
   toggleMechanic: (m: string) => void;
   mechanicFamilyNames: string[];
@@ -18,6 +21,7 @@ interface PickerFilterTabProps {
 
 export function PickerFilterTab({
   selectedTypes, toggleType,
+  selectedGenres, toggleGenre,
   selectedMechanics, toggleMechanic, mechanicFamilyNames,
   selectedPlayTimes, togglePlayTime,
   playerCount, setPlayerCount,
@@ -29,6 +33,15 @@ export function PickerFilterTab({
         <div className="flex flex-wrap gap-1.5">
           {GAME_TYPES.map(t => (
             <PickerChip key={t} label={t} selected={selectedTypes.includes(t)} onClick={() => toggleType(t)} />
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-muted-foreground">Genre</p>
+        <div className="flex flex-wrap gap-1.5">
+          {GENRE_OPTIONS.map(g => (
+            <PickerChip key={g} label={g} selected={selectedGenres.includes(g)} onClick={() => toggleGenre(g)} />
           ))}
         </div>
       </div>

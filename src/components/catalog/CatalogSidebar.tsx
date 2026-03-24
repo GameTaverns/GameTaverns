@@ -26,7 +26,8 @@ import {
   Library,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DIFFICULTY_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
+import { DIFFICULTY_OPTIONS, PLAY_TIME_OPTIONS, GENRE_OPTIONS } from "@/types/game";
+import { Tag } from "lucide-react";
 import { YearFilterSection } from "@/components/filters/YearFilterSection";
 import logoImage from "@/assets/logo.png";
 
@@ -88,7 +89,7 @@ export function CatalogSidebar({ designers, artists, mechanics, publishers, isOp
   const activeFilter = searchParams.get("filter");
   const activeValue = searchParams.get("value");
 
-  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "year", "mechanic", "publisher", "designer", "artist"].includes(activeFilter || "");
+  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "year", "mechanic", "publisher", "designer", "artist", "genre"].includes(activeFilter || "");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(isAdvancedFilterActive);
 
   const setFilter = (filter: string, value: string) => {
@@ -262,6 +263,17 @@ export function CatalogSidebar({ designers, artists, mechanics, publishers, isOp
                   isActive={isActive}
                   onFilterClick={setFilter}
                   defaultOpen={activeFilter === "playtime"}
+                />
+
+                {/* Genre */}
+                <ChipFilterSection
+                  title="Genre"
+                  icon={<Tag className="h-3.5 w-3.5" />}
+                  options={GENRE_OPTIONS as unknown as string[]}
+                  filterKey="genre"
+                  isActive={isActive}
+                  onFilterClick={setFilter}
+                  defaultOpen={activeFilter === "genre"}
                 />
 
                 {/* Year Published */}

@@ -303,7 +303,10 @@ const Index = () => {
             });
             break;
           case "genre":
-            result = result.filter((g) => (g as any).genre === filterValue);
+            result = result.filter((g) => {
+              const genres: string[] = (g as any).genres || ((g as any).genre ? [(g as any).genre] : []);
+              return genres.includes(filterValue);
+            });
             break;
           case "designer":
             if (includeExpansions) {

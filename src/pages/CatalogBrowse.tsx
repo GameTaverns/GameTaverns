@@ -230,6 +230,19 @@ export default function CatalogBrowse() {
       }
     }
 
+    if (sidebarFilter === "genre" && sidebarValue) {
+      const { data: genreIds } = await (supabase as any)
+        .from("catalog_genres")
+        .select("catalog_id")
+        .eq("genre", sidebarValue);
+      const matchIds = (genreIds || []).map((d: any) => d.catalog_id);
+      if (matchIds.length > 0) {
+        query = query.in("id", matchIds);
+      } else {
+        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
+    }
+
     if (sidebarFilter === "year" && sidebarValue) {
       const range = parseYearFilterRange(sidebarValue);
       if (range) query = query.gte("year_published", range[0]).lte("year_published", range[1]);

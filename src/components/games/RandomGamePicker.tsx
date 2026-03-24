@@ -157,9 +157,12 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
         if (selectedTypes.length > 0 && game.game_type && !selectedTypes.includes(game.game_type)) {
           return false;
         }
-        // Genre filter (skip games with a genre not in selection; allow null genre through)
-        if (selectedGenres.length > 0 && game.genre && !selectedGenres.includes(game.genre)) {
-          return false;
+        // Genre filter (check genres array, fallback to legacy genre column)
+        if (selectedGenres.length > 0) {
+          const gameGenres: string[] = (game as any).genres || (game.genre ? [game.genre] : []);
+          if (gameGenres.length === 0 || !selectedGenres.some(sg => gameGenres.includes(sg))) {
+            return false;
+          }
         }
         // Play time filter
         if (selectedPlayTimes.length > 0 && game.play_time && !selectedPlayTimes.includes(game.play_time)) {
