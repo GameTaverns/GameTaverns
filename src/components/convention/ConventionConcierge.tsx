@@ -160,10 +160,10 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
       games = games.filter(g => g.title.toLowerCase().includes(searchQuery.toLowerCase()));
     }
     return games;
-  }, [gamesWithAvailability, mode, selectedTypes, selectedMechanics, selectedPlayTimes, playerCount, searchQuery, gameMechanicMap]);
+  }, [gamesWithAvailability, mode, selectedTypes, selectedGenres, selectedMechanics, selectedPlayTimes, playerCount, searchQuery, gameMechanicMap]);
 
   const availableGames = filteredGames.filter(g => g.available > 0);
-  const activeFilterCount = selectedTypes.length + selectedMechanics.length + selectedPlayTimes.length + (playerCount !== "any" ? 1 : 0);
+  const activeFilterCount = selectedTypes.length + selectedGenres.length + selectedMechanics.length + selectedPlayTimes.length + (playerCount !== "any" ? 1 : 0);
 
   const handleSpin = () => {
     if (availableGames.length === 0) return;
