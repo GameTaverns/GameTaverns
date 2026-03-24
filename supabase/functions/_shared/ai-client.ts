@@ -1,6 +1,6 @@
-// Shared AI client for edge functions - Google Gemini is the PRIMARY AI provider
-// Priority: Google Gemini (primary) > Perplexity (web search fallback) > Lovable AI (cloud)
-// Note: OpenAI, Anthropic are legacy options
+// Shared AI client for edge functions — Cortex is the SOLE AI provider
+// All AI requests route to the self-hosted Cortex engine at cortex.tzolak.com
+// No external AI services (Google, Perplexity, OpenAI, Anthropic) are used.
 
 export interface AIMessage {
   role: "system" | "user" | "assistant";
@@ -32,529 +32,143 @@ export interface AIResponse {
   rateLimited?: boolean;
 }
 
-async function safeReadJson(response: Response): Promise<any> {
-  const raw = await response.text();
-  if (!raw || raw.trim().length === 0) {
-    throw new Error(`Empty JSON response (status ${response.status})`);
-  }
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    throw new Error(
-      `Invalid JSON response (status ${response.status}): ${e instanceof Error ? e.message : String(e)}`
-    );
-  }
-}
+const CORTEX_ENDPOINT = "https://cortex.tzolak.com/api/lmstudio";
 
 /**
- * Get AI provider configuration
- * Priority: Google Gemini (primary) > Perplexity (web search only) > Lovable (cloud) > OpenAI/Anthropic (legacy)
- */
-function getAIConfig(): { endpoint: string; apiKey: string; model: string; provider: string } | null {
-  // Google AI / Gemini (PRIMARY - fast, cheap, great for structured output)
-  const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
-  if (googleKey) {
-    return {
-      endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-      apiKey: googleKey,
-      model: "gemini-2.0-flash",
-      provider: "google",
-    };
-  }
-
-  // Perplexity (FALLBACK - only useful when web search grounding is needed)
-  const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
-  if (perplexityKey) {
-    return {
-      endpoint: "https://api.perplexity.ai/chat/completions",
-      apiKey: perplexityKey,
-      model: "sonar",
-      provider: "perplexity",
-    };
-  }
-
-  // Lovable AI gateway (cloud deployments only)
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (lovableKey) {
-    return {
-      endpoint: "https://ai.gateway.lovable.dev/v1/chat/completions",
-      apiKey: lovableKey,
-      model: "google/gemini-2.5-flash",
-      provider: "lovable",
-    };
-  }
-
-  // Legacy: OpenAI (if configured)
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) {
-    return {
-      endpoint: "https://api.openai.com/v1/chat/completions",
-      apiKey: openaiKey,
-      model: "gpt-4o-mini",
-      provider: "openai",
-    };
-  }
-
-  // Legacy: Anthropic Claude
-  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (anthropicKey) {
-    return {
-      endpoint: "https://api.anthropic.com/v1/messages",
-      apiKey: anthropicKey,
-      model: "claude-3-haiku-20240307",
-      provider: "anthropic",
-    };
-  }
-
-  return null;
-}
-
-/**
- * Check if AI is configured
+ * Check if AI is configured — Cortex requires no API key, always available
  */
 export function isAIConfigured(): boolean {
-  return getAIConfig() !== null;
+  return true;
 }
 
 /**
  * Get AI provider name for logging
  */
 export function getAIProviderName(): string {
-  if (Deno.env.get("GOOGLE_AI_API_KEY")) return "Google Gemini (primary)";
-  if (Deno.env.get("PERPLEXITY_API_KEY")) return "Perplexity (web search)";
-  if (Deno.env.get("LOVABLE_API_KEY")) return "Lovable AI";
-  if (Deno.env.get("OPENAI_API_KEY")) return "OpenAI (legacy)";
-  if (Deno.env.get("ANTHROPIC_API_KEY")) return "Anthropic Claude (legacy)";
-  return "None";
+  return "Cortex (self-hosted qwen2.5-14b)";
 }
 
 /**
- * Get a specific AI provider config by name (for fallback logic)
- */
-function getSpecificAIConfig(provider: string): { endpoint: string; apiKey: string; model: string; provider: string } | null {
-  if (provider === "google") {
-    const key = Deno.env.get("GOOGLE_AI_API_KEY");
-    if (key) return { endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", apiKey: key, model: "gemini-2.0-flash", provider: "google" };
-  }
-  if (provider === "lovable") {
-    const key = Deno.env.get("LOVABLE_API_KEY");
-    if (key) return { endpoint: "https://ai.gateway.lovable.dev/v1/chat/completions", apiKey: key, model: "google/gemini-2.5-flash", provider: "lovable" };
-  }
-  return null;
-}
-
-/**
- * Make an AI completion request - handles different provider APIs
- * Includes automatic fallback: if primary provider fails, tries next available
+ * Make an AI completion request via Cortex
  */
 export async function aiComplete(options: AIRequestOptions): Promise<AIResponse> {
-  const config = getAIConfig();
-  
-  if (!config) {
-    return {
-      success: false,
-      error: "AI service not configured. Set GOOGLE_AI_API_KEY or PERPLEXITY_API_KEY.",
-    };
-  }
+  console.log(`[AI] Using provider: ${getAIProviderName()}`);
 
-  console.log(`Using AI provider: ${getAIProviderName()}`);
-
-  const result = await callProvider(config, options);
-
-  // If primary provider failed, try fallback providers
-  if (!result.success && !result.rateLimited) {
-    const fallbackOrder = ["google", "lovable"];
-    for (const fallbackName of fallbackOrder) {
-      if (fallbackName === config.provider) continue; // skip current
-      const fallbackConfig = getSpecificAIConfig(fallbackName);
-      if (!fallbackConfig) continue;
-      console.log(`[AI] Primary provider failed, falling back to ${fallbackName}`);
-      const fallbackResult = await callProvider(fallbackConfig, options);
-      if (fallbackResult.success) return fallbackResult;
-    }
-  }
-
-  return result;
-}
-
-/**
- * Call a specific AI provider
- */
-async function callProvider(
-  config: { endpoint: string; apiKey: string; model: string; provider: string },
-  options: AIRequestOptions
-): Promise<AIResponse> {
   try {
-    if (config.provider === "anthropic") {
-      return await anthropicComplete(config, options);
-    }
-    if (config.provider === "google") {
-      return await googleComplete(config, options);
-    }
-    // OpenAI-compatible APIs (OpenAI, Perplexity, Lovable)
-    return await openaiCompatibleComplete(config, options);
-  } catch (e) {
-    console.error(`AI request error (${config.provider}):`, e);
-    return {
-      success: false,
-      error: e instanceof Error ? e.message : "AI request failed",
-    };
-  }
-}
+    const wantsStructuredOutput = Boolean(options.tools && options.tools.length > 0);
 
-/**
- * OpenAI-compatible completion (OpenAI, Perplexity, Lovable gateway)
- *
- * IMPORTANT:
- * - Perplexity's sonar models do NOT support tool calling.
- * - Some gateway/provider model combos also reject tool calling.
- *
- * Strategy:
- * 1) If tools are requested and provider is Perplexity, always convert to response_format (json_schema).
- * 2) Otherwise, try tool-calling first; if the provider responds with a 400 indicating tools are unsupported,
- *    retry once using response_format (json_schema) and parse the assistant message JSON.
- */
-async function openaiCompatibleComplete(
-  config: { endpoint: string; apiKey: string; model: string; provider: string },
-  options: AIRequestOptions
-): Promise<AIResponse> {
-  const wantsStructuredOutput = Boolean(options.tools && options.tools.length > 0);
-  const isPerplexity = config.provider === "perplexity";
-
-  const buildRequestBody = ({ forceResponseFormat }: { forceResponseFormat: boolean }) => {
     const requestBody: Record<string, unknown> = {
-      model: options.model || config.model,
       messages: [...options.messages],
     };
 
     if (options.max_tokens) requestBody.max_tokens = options.max_tokens;
 
     if (wantsStructuredOutput) {
-      if (isPerplexity || forceResponseFormat) {
-        const tool = options.tools![0];
-        const schema = tool.function.parameters;
+      // Cortex/LM Studio may not support tool calling — use JSON instruction in prompt
+      const tool = options.tools![0];
+      const schema = tool.function.parameters;
+      const schemaStr = JSON.stringify(schema, null, 2);
+      const jsonInstruction =
+        `\n\nIMPORTANT: You MUST respond with valid JSON only. No markdown, no explanation, just the JSON object matching this schema:\n${schemaStr}`;
 
-        // Ensure the model returns strict JSON when we cannot rely on tool calling.
-        const messages = requestBody.messages as AIMessage[];
-        const systemIdx = messages.findIndex((m) => m.role === "system");
-        
-        // Include schema description in the prompt so the model knows what to return
-        const schemaStr = JSON.stringify(schema, null, 2);
-        const jsonInstruction =
-          `\n\nIMPORTANT: You MUST respond with valid JSON only. No markdown, no explanation, just the JSON object matching this schema:\n${schemaStr}`;
+      const messages = requestBody.messages as AIMessage[];
+      const systemIdx = messages.findIndex((m) => m.role === "system");
 
-        if (systemIdx >= 0) {
-          messages[systemIdx] = {
-            ...messages[systemIdx],
-            content: messages[systemIdx].content + jsonInstruction,
-          };
-        } else {
-          messages.unshift({
-            role: "system",
-            content: `You are a data extraction assistant. ${jsonInstruction}`,
-          });
-        }
-
-        requestBody.messages = messages;
-        
-        // Use json_schema format for all providers (Perplexity now requires it)
-        requestBody.response_format = {
-          type: "json_schema",
-          json_schema: {
-            name: tool.function.name,
-            schema,
-          },
+      if (systemIdx >= 0) {
+        messages[systemIdx] = {
+          ...messages[systemIdx],
+          content: messages[systemIdx].content + jsonInstruction,
         };
       } else {
-        // Standard tool calling path
-        requestBody.tools = options.tools;
-        if (options.tool_choice) requestBody.tool_choice = options.tool_choice;
+        messages.unshift({
+          role: "system",
+          content: `You are a data extraction assistant. ${jsonInstruction}`,
+        });
       }
-    } else {
-      // No structured output requested
-      // (tools/tool_choice omitted)
+
+      requestBody.messages = messages;
     }
 
-    return requestBody;
-  };
-
-  const doRequest = async (requestBody: Record<string, unknown>): Promise<{ ok: boolean; status: number; bodyText: string; json?: any }> => {
-    const response = await fetch(config.endpoint, {
+    const response = await fetch(CORTEX_ENDPOINT, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${config.apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
     });
 
-    const bodyText = await response.text();
     if (!response.ok) {
-      return { ok: false, status: response.status, bodyText };
+      const errorText = await response.text();
+      console.error(`[AI] Cortex error (${response.status}):`, errorText);
+
+      if (response.status === 429) {
+        return { success: false, error: "Rate limit exceeded. Please try again later.", rateLimited: true };
+      }
+
+      return { success: false, error: `AI request failed: ${response.status}` };
     }
 
+    let data: any;
     try {
-      const json = JSON.parse(bodyText);
-      return { ok: true, status: response.status, bodyText, json };
+      data = await response.json();
     } catch (e) {
-      console.error("AI JSON parse error:", e);
-      return { ok: false, status: response.status, bodyText: bodyText || "" };
-    }
-  };
-
-  // First attempt
-  const firstBody = buildRequestBody({ forceResponseFormat: isPerplexity });
-  const first = await doRequest(firstBody);
-
-  // If tool-calling was attempted and the provider rejects it, retry with response_format.
-  const shouldRetryWithResponseFormat =
-    wantsStructuredOutput &&
-    !isPerplexity &&
-    !first.ok &&
-    first.status === 400 &&
-    /tool calling is not supported/i.test(first.bodyText);
-
-  if (shouldRetryWithResponseFormat) {
-    console.log("AI provider rejected tool calling; retrying with response_format json_schema");
-    const retryBody = buildRequestBody({ forceResponseFormat: true });
-    const retry = await doRequest(retryBody);
-    if (!retry.ok || !retry.json) {
-      // Preserve original error details
-      console.error(`AI API error (${retry.status || first.status}):`, retry.bodyText || first.bodyText);
-      return {
-        success: false,
-        error: `AI request failed: ${retry.status || first.status}`,
-        rateLimited: retry.status === 429 || retry.status === 402 || first.status === 429 || first.status === 402,
-      };
+      console.error("[AI] JSON parse error:", e);
+      return { success: false, error: "AI service returned an invalid response. Please retry." };
     }
 
-    // With response_format we expect JSON inside message.content
-    return parsePerplexityJsonResponse(retry.json);
-  }
-
-  if (!first.ok || !first.json) {
-    console.error(`AI API error (${first.status}):`, first.bodyText);
-    if (first.status === 429 || first.status === 402) {
-      return { success: false, error: "Rate limit exceeded. Please try again later.", rateLimited: true };
+    // Parse OpenAI-compatible response
+    const choices = data.choices as Array<Record<string, unknown>> | undefined;
+    const choice = choices?.[0];
+    if (!choice) {
+      return { success: false, error: "No response from Cortex" };
     }
-    return { success: false, error: `AI request failed: ${first.status}` };
-  }
 
-  // If we used response_format (Perplexity path), parse content as JSON.
-  if (wantsStructuredOutput && isPerplexity) {
-    return parsePerplexityJsonResponse(first.json);
-  }
+    const message = choice.message as Record<string, unknown> | undefined;
 
-  return parseOpenAIResponse(first.json);
-}
-
-/**
- * Anthropic Claude completion
- */
-async function anthropicComplete(
-  config: { endpoint: string; apiKey: string; model: string },
-  options: AIRequestOptions
-): Promise<AIResponse> {
-  // Convert messages format - Anthropic uses different structure
-  const systemMessage = options.messages.find(m => m.role === "system");
-  const otherMessages = options.messages.filter(m => m.role !== "system");
-
-  const requestBody: Record<string, unknown> = {
-    model: options.model || config.model,
-    max_tokens: options.max_tokens || 4096,
-    messages: otherMessages.map(m => ({
-      role: m.role === "assistant" ? "assistant" : "user",
-      content: m.content,
-    })),
-  };
-
-  if (systemMessage) {
-    requestBody.system = systemMessage.content;
-  }
-
-  const response = await fetch(config.endpoint, {
-    method: "POST",
-    headers: {
-      "x-api-key": config.apiKey,
-      "Content-Type": "application/json",
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    return handleErrorResponse(response);
-  }
-
-  let data: any;
-  try {
-    data = await safeReadJson(response);
-  } catch (e) {
-    console.error("Anthropic JSON parse error:", e);
-    return { success: false, error: "AI service returned an invalid response. Please retry." };
-  }
-  
-  // Anthropic returns content as an array
-  const content = data.content?.[0]?.text;
-  if (content) {
-    return { success: true, content };
-  }
-
-  return { success: false, error: "Empty response from Anthropic" };
-}
-
-/**
- * Google AI (Gemini) completion
- */
-async function googleComplete(
-  config: { endpoint: string; apiKey: string; model: string },
-  options: AIRequestOptions
-): Promise<AIResponse> {
-  // Google uses a different endpoint format with API key in URL
-  const endpoint = `${config.endpoint}?key=${config.apiKey}`;
-
-  // Convert messages to Google's format
-  const contents = options.messages
-    .filter(m => m.role !== "system")
-    .map(m => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
-
-  const systemMessage = options.messages.find(m => m.role === "system");
-  
-  const requestBody: Record<string, unknown> = {
-    contents,
-    generationConfig: {
-      maxOutputTokens: options.max_tokens || 4096,
-    },
-  };
-
-  if (systemMessage) {
-    requestBody.systemInstruction = { parts: [{ text: systemMessage.content }] };
-  }
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    return handleErrorResponse(response);
-  }
-
-  let data: any;
-  try {
-    data = await safeReadJson(response);
-  } catch (e) {
-    console.error("Google AI JSON parse error:", e);
-    return { success: false, error: "AI service returned an invalid response. Please retry." };
-  }
-  
-  // Google returns candidates array
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (content) {
-    return { success: true, content };
-  }
-
-  return { success: false, error: "Empty response from Google AI" };
-}
-
-/**
- * Parse OpenAI-compatible response
- */
-function parseOpenAIResponse(data: Record<string, unknown>): AIResponse {
-  const choices = data.choices as Array<Record<string, unknown>> | undefined;
-  const choice = choices?.[0];
-  if (!choice) {
-    return { success: false, error: "No response from AI" };
-  }
-
-  const message = choice.message as Record<string, unknown> | undefined;
-  
-  // Check for tool calls
-  const toolCalls = message?.tool_calls as Array<Record<string, unknown>> | undefined;
-  const toolCall = toolCalls?.[0];
-  if (toolCall) {
-    const func = toolCall.function as Record<string, unknown> | undefined;
-    if (func?.arguments) {
-      try {
-        const args = JSON.parse(func.arguments as string);
-        return { success: true, toolCallArguments: args };
-      } catch {
-        return { success: false, error: "Failed to parse tool call arguments" };
+    // Check for tool calls (if Cortex supports them)
+    const toolCalls = message?.tool_calls as Array<Record<string, unknown>> | undefined;
+    const toolCall = toolCalls?.[0];
+    if (toolCall) {
+      const func = toolCall.function as Record<string, unknown> | undefined;
+      if (func?.arguments) {
+        try {
+          const args = JSON.parse(func.arguments as string);
+          return { success: true, toolCallArguments: args };
+        } catch {
+          return { success: false, error: "Failed to parse tool call arguments" };
+        }
       }
     }
-  }
 
-  // Regular content
-  const content = message?.content as string | undefined;
-  if (content) {
-    return { success: true, content };
-  }
+    const content = message?.content as string | undefined;
+    if (!content) {
+      return { success: false, error: "Empty response from Cortex" };
+    }
 
-  return { success: false, error: "Empty response from AI" };
-}
-
-/**
- * Parse Perplexity response when using response_format (structured JSON output)
- * Returns the parsed JSON as toolCallArguments for compatibility with existing code
- */
-function parsePerplexityJsonResponse(data: Record<string, unknown>): AIResponse {
-  const choices = data.choices as Array<Record<string, unknown>> | undefined;
-  const choice = choices?.[0];
-  if (!choice) {
-    return { success: false, error: "No response from Perplexity" };
-  }
-
-  const message = choice.message as Record<string, unknown> | undefined;
-  const content = message?.content as string | undefined;
-  
-  if (!content) {
-    return { success: false, error: "Empty response from Perplexity" };
-  }
-
-  try {
-    // Parse the JSON content - Perplexity returns the JSON directly in content
-    const parsed = JSON.parse(content);
-    console.log("Perplexity structured output parsed successfully");
-    return { success: true, toolCallArguments: parsed };
-  } catch (e) {
-    console.error("Failed to parse Perplexity JSON response:", e, "Content:", content.slice(0, 500));
-    // Try to extract JSON from markdown code blocks if present
-    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
+    // If structured output was requested via prompt injection, try to parse JSON from content
+    if (wantsStructuredOutput) {
       try {
-        const parsed = JSON.parse(jsonMatch[1].trim());
+        const parsed = JSON.parse(content);
         return { success: true, toolCallArguments: parsed };
       } catch {
-        // Fall through to error
+        // Try extracting from code blocks
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[1].trim());
+            return { success: true, toolCallArguments: parsed };
+          } catch {
+            // Fall through
+          }
+        }
+        return { success: false, error: "Failed to parse structured response from Cortex" };
       }
     }
-    return { success: false, error: "Failed to parse structured response from Perplexity" };
-  }
-}
 
-/**
- * Handle error responses consistently
- */
-async function handleErrorResponse(response: Response): Promise<AIResponse> {
-  const errorText = await response.text();
-  console.error(`AI API error (${response.status}):`, errorText);
-
-  if (response.status === 429 || response.status === 402) {
+    return { success: true, content };
+  } catch (e) {
+    console.error("[AI] Cortex request error:", e);
     return {
       success: false,
-      error: "Rate limit exceeded. Please try again later.",
-      rateLimited: true,
+      error: e instanceof Error ? e.message : "AI request failed",
     };
   }
-
-  return {
-    success: false,
-    error: `AI request failed: ${response.status}`,
-  };
 }

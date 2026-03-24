@@ -41,11 +41,6 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
     const languageNames: Record<string, string> = {
       es: "Spanish", fr: "French", de: "German", pt: "Portuguese",
       it: "Italian", ja: "Japanese", ko: "Korean", zh: "Chinese",
@@ -54,14 +49,12 @@ serve(async (req) => {
 
     const langName = languageNames[targetLanguage] || targetLanguage;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://cortex.tzolak.com/api/lmstudio", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
         messages: [
           {
             role: "system",
