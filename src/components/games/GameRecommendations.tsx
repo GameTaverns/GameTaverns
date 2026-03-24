@@ -169,7 +169,7 @@ export function GameRecommendations({ gameId, gameTitle }: GameRecommendationsPr
           {isLoading ? (
             <LoadingSkeleton count={3} />
           ) : (
-            <RecommendationGrid games={data!.collection_matches} buildGameUrl={buildGameUrl} />
+            <RecommendationGrid games={data!.collection_matches} buildGameUrl={buildLibraryGameUrl} />
           )}
         </CollapsibleSection>
       )}
