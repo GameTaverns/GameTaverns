@@ -5724,6 +5724,27 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          id: string
+          result: Json
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          id?: string
+          result: Json
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          id?: string
+          result?: Json
+        }
+        Relationships: []
+      }
       reengagement_email_events: {
         Row: {
           created_at: string
