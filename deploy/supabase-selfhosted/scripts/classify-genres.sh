@@ -19,6 +19,7 @@ BATCH_SIZE="${1:-100}"
 DELAY="${2:-2}"
 FUNC_URL="http://localhost:8000/functions/v1/catalog-backfill"
 MAX_CONSECUTIVE_ERRORS=5
+TIMEOUT_BACKOFF=15
 
 # Get service role key from DB settings
 SERVICE_ROLE_KEY=$(docker exec gametaverns-db psql -U postgres -d postgres -t -A -c "SELECT current_setting('app.settings.service_role_key', true);" | tr -d '[:space:]')
@@ -80,6 +81,12 @@ while true; do
     echo "❌ [Batch $BATCH_NUM] HTTP error: ${HTTP_STATUS:-unknown}"
     echo "   Response: $RESPONSE"
     TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+
+    if echo "$RESPONSE" | grep -qi "upstream server is timing out\|504\|gateway timeout"; then
+      echo "   ⏳ Upstream timeout detected. Backing off ${TIMEOUT_BACKOFF}s before retry..."
+      sleep "$TIMEOUT_BACKOFF"
+      continue
+    fi
 
     if [ $TOTAL_ERRORS -ge $MAX_CONSECUTIVE_ERRORS ]; then
       echo ""
