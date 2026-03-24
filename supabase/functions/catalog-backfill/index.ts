@@ -1217,48 +1217,11 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`[link-expansions] Processing ${expansions.length} orphaned expansions`);
 
-      // Load all base game titles into memory for matching
-      // Index by full title AND by every prefix (split on delimiters)
-      // so "Caverna: The Cave Farmers" is findable via "caverna" too
-      const baseGameMap = new Map<string, { id: string; title: string }[]>();
-      const addToMap = (key: string, bg: { id: string; title: string }) => {
-        if (!baseGameMap.has(key)) baseGameMap.set(key, []);
-        // Avoid duplicates
-        const arr = baseGameMap.get(key)!;
-        if (!arr.some(e => e.id === bg.id)) arr.push(bg);
-      };
-      const BG_DELIMITERS = [": ", " – ", " — ", " - "];
-      let bgOffset = 0;
-      const BG_PAGE = 1000;
-      while (true) {
-        const { data: bgPage } = await admin
-          .from("game_catalog")
-          .select("id, title")
-          .eq("is_expansion", false)
-          .range(bgOffset, bgOffset + BG_PAGE - 1);
-        if (!bgPage || bgPage.length === 0) break;
-        for (const bg of bgPage) {
-          const fullKey = bg.title.toLowerCase().trim();
-          addToMap(fullKey, bg);
-          // Also index by every prefix of the base game title
-          for (const delim of BG_DELIMITERS) {
-            let searchFrom = 0;
-            while (true) {
-              const idx = bg.title.indexOf(delim, searchFrom);
-              if (idx <= 0) break;
-              const prefix = bg.title.substring(0, idx).toLowerCase().trim();
-              addToMap(prefix, bg);
-              searchFrom = idx + delim.length;
-            }
-          }
-        }
-        if (bgPage.length < BG_PAGE) break;
-        bgOffset += BG_PAGE;
-      }
+      // Load all catalog titles into memory for matching.
+      // Prefer base games, but allow mis-flagged rows as fallback parents.
+      const catalogTitleMap = await loadCatalogTitleMap(admin);
 
-      console.log(`[link-expansions] Loaded ${baseGameMap.size} unique base game keys`);
-
-      const DELIMITERS = [": ", " – ", " — ", " - "];
+      console.log(`[link-expansions] Loaded ${catalogTitleMap.size} unique catalog title keys`);
 
       let linked = 0;
       let noMatch = 0;
@@ -1269,31 +1232,14 @@ const handler = async (req: Request): Promise<Response> => {
       for (const exp of expansions) {
         let matched = false;
 
-        // Collect ALL possible split points across all delimiters,
-        // then try from longest prefix to shortest
-        const splitPoints: number[] = [];
-        for (const delim of DELIMITERS) {
-          let searchFrom = 0;
-          while (true) {
-            const idx = exp.title.indexOf(delim, searchFrom);
-            if (idx <= 0) break;
-            splitPoints.push(idx);
-            searchFrom = idx + delim.length;
-          }
-        }
+        for (const prefixKey of getTitlePrefixKeys(exp.title)) {
+          const best = chooseBestCatalogCandidate(
+            catalogTitleMap.get(prefixKey),
+            exp.id,
+            prefixKey,
+          );
 
-        // Sort descending — try longest prefix first
-        splitPoints.sort((a, b) => b - a);
-
-        for (const splitIdx of splitPoints) {
-          const prefix = exp.title.substring(0, splitIdx).toLowerCase().trim();
-          const candidates = baseGameMap.get(prefix);
-
-          if (candidates && candidates.length > 0) {
-            // Prefer the best match — shortest title (most specific base game)
-            const best = candidates.reduce((a, b) =>
-              a.title.length <= b.title.length ? a : b
-            );
+          if (best) {
             updates.push({ id: exp.id, parent_catalog_id: best.id });
             if (samples.length < 20) {
               samples.push({ expansion: exp.title, parent: best.title });
