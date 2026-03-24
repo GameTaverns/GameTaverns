@@ -388,6 +388,7 @@ export default function CatalogBrowse() {
         artists: metadata?.artistMap.get(g.id) || [],
         mechanics: metadata?.mechanicMap.get(g.id) || [],
         publishers: metadata?.publisherMap.get(g.id) || [],
+        genres: metadata?.genreMap.get(g.id) || [],
         community_rating: r ? r.avg : null,
         community_rating_count: r?.count || 0,
       };

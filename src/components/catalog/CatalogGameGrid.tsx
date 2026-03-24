@@ -86,6 +86,12 @@ export function CatalogGameGrid({ games, isAuthenticated, addingId, isPending, o
 
                 {/* Tags - hidden on mobile for compactness, matching library */}
                 <div className="hidden sm:flex flex-wrap gap-1.5 mt-auto">
+                  {game.genres.slice(0, 2).map((genre) => (
+                    <Badge key={genre} variant="secondary" className="text-xs">
+                      <Tag className="h-3 w-3 mr-0.5" />
+                      {genre}
+                    </Badge>
+                  ))}
                   {(() => {
                     const complexity = getComplexity(game.weight);
                     return complexity ? (
