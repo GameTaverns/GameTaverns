@@ -803,8 +803,26 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
 
+        // Batch-insert new mechanics
+        if (newMechanicNames.size > 0) {
+          const rows = [...newMechanicNames].map(name => ({ name }));
+          for (let j = 0; j < rows.length; j += 500) {
+            const subBatch = rows.slice(j, j + 500);
+            const { data: inserted } = await admin.from("mechanics")
+              .upsert(subBatch, { onConflict: "name", ignoreDuplicates: true })
+              .select("id, name");
+            if (inserted) for (const m of inserted) mechanicCache.set(m.name, m.id);
+          }
+          const missing = [...newMechanicNames].filter(n => !mechanicCache.has(n));
+          if (missing.length > 0) {
+            const { data: existing } = await admin.from("mechanics").select("id, name").in("name", missing);
+            if (existing) for (const m of existing) mechanicCache.set(m.name, m.id);
+          }
+        }
+
         const allDesignerJunctions: { catalog_id: string; designer_id: string }[] = [];
         const allArtistJunctions: { catalog_id: string; artist_id: string }[] = [];
+        const allMechanicJunctions: { catalog_id: string; mechanic_id: string }[] = [];
 
         for (const item of parsed) {
           const entry = entryMap.get(item.bggId);
@@ -822,6 +840,10 @@ const handler = async (req: Request): Promise<Response> => {
           for (const name of item.artists) {
             const aId = artistCache.get(name);
             if (aId) allArtistJunctions.push({ catalog_id: entry.id, artist_id: aId });
+          }
+          for (const name of item.mechanics) {
+            const mId = mechanicCache.get(name);
+            if (mId) allMechanicJunctions.push({ catalog_id: entry.id, mechanic_id: mId });
           }
           processed++;
         }
@@ -843,6 +865,16 @@ const handler = async (req: Request): Promise<Response> => {
               .upsert(batch, { onConflict: "catalog_id,artist_id" });
             if (aErr) errors.push(`artist junctions: ${aErr.message}`);
             else artistsAdded += batch.length;
+          }
+        }
+
+        // Bulk upsert all mechanic junctions for this chunk
+        if (allMechanicJunctions.length > 0) {
+          for (let j = 0; j < allMechanicJunctions.length; j += 500) {
+            const batch = allMechanicJunctions.slice(j, j + 500);
+            const { error: mErr } = await admin.from("catalog_mechanics")
+              .upsert(batch, { onConflict: "catalog_id,mechanic_id" });
+            if (mErr) errors.push(`mechanic junctions: ${mErr.message}`);
           }
         }
 
