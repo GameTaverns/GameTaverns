@@ -1,16 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 
-// ─── Gaming Personality Archetypes ───
-// Each trigger has an optional weight multiplier (default 1).
-// Higher-weight triggers are stronger signals for that archetype.
+// ─── Gaming Personality Archetypes (v3: Genre + Mechanic Family) ───
+// Triggers support BOTH genre and mechanic family signals with equal weight.
+// Mechanic matching uses family names only (~30 families, not ~250 raw mechanics).
 interface TriggerDef {
-  mechanic: string;
-  weight: number; // 1 = normal, 2 = strong, 3 = definitive
+  signal: string;
+  type: "mechanic" | "genre";
+  weight: number;
 }
 
-function t(mechanic: string, weight = 1): TriggerDef {
-  return { mechanic, weight };
+function m(family: string, weight = 1): TriggerDef {
+  return { signal: family, type: "mechanic", weight };
+}
+function g(genre: string, weight = 1): TriggerDef {
+  return { signal: genre, type: "genre", weight };
 }
 
 export const ARCHETYPES = [
@@ -19,7 +23,7 @@ export const ARCHETYPES = [
     name: "The Grand Strategist",
     emoji: "🏰",
     description: "You thrive on deep strategy, resource management, and outmaneuvering opponents through careful planning.",
-    triggers: [t("Worker Placement", 3), t("Area Control", 2), t("Engine Building"), t("Resource Management"), t("Route Building", 2)],
+    triggers: [g("Strategy", 3), m("Worker Placement", 3), m("Area Control", 2), m("Engine Building"), m("Resource Management"), m("Route Building", 2)],
     minWeight: 3.0,
   },
   {
@@ -27,7 +31,7 @@ export const ARCHETYPES = [
     name: "The Social Butterfly",
     emoji: "🎭",
     description: "Games are about the people! You love negotiation, bluffing, and the chaos of social interaction.",
-    triggers: [t("Negotiation", 3), t("Bluffing", 2), t("Trading", 2), t("Voting"), t("Team-Based Game", 2), t("Communication Limits"), t("Roles with Asymmetric Information")],
+    triggers: [g("Party", 2), m("Negotiation", 3), m("Bluffing", 2), m("Trading", 2), m("Voting"), m("Team-Based Game", 2), m("Communication Limits"), m("Roles with Asymmetric Information")],
     minWeight: 0,
   },
   {
@@ -35,7 +39,7 @@ export const ARCHETYPES = [
     name: "The Adventurer",
     emoji: "🗺️",
     description: "You seek discovery and narrative. Every game is a journey into the unknown.",
-    triggers: [t("Exploration", 3), t("Narrative", 2), t("Campaign", 2), t("Legacy", 3), t("Storytelling"), t("Adventure"), t("Pick-up and Deliver")],
+    triggers: [g("Adventure", 3), m("Exploration", 3), m("Narrative", 2), m("Campaign", 2), m("Legacy", 3), m("Storytelling"), m("Pick-up and Deliver")],
     minWeight: 0,
   },
   {
@@ -43,7 +47,7 @@ export const ARCHETYPES = [
     name: "The Tactician",
     emoji: "⚔️",
     description: "Quick thinking and spatial awareness define your play style. You read the board like a battlefield.",
-    triggers: [t("Area Majority", 3), t("Grid Movement", 2), t("Dice Rolling"), t("Hand Management"), t("Modular Board", 2), t("Hexagon Grid", 2)],
+    triggers: [g("War", 2), m("Area Majority", 3), m("Grid Movement", 2), m("Dice", 2), m("Hand Management"), m("Modular Board", 2), m("Hexagon Grid", 2)],
     minWeight: 2.0,
   },
   {
@@ -51,7 +55,7 @@ export const ARCHETYPES = [
     name: "The Architect",
     emoji: "🏗️",
     description: "You love constructing complex systems and watching your engine purr. Efficiency is your art form.",
-    triggers: [t("Engine Building", 3), t("Deck Building", 2), t("Tableau Building", 2), t("Network Building", 2), t("Tile Placement"), t("Pattern Building")],
+    triggers: [g("Deck Building", 2), m("Engine Building", 3), m("Deck Building", 2), m("Tableau Building", 2), m("Network Building", 2), m("Tile Placement"), m("Pattern Building")],
     minWeight: 2.0,
   },
   {
@@ -59,7 +63,7 @@ export const ARCHETYPES = [
     name: "The Curator",
     emoji: "🎲",
     description: "Breadth over depth — your shelf is eclectic, wide-ranging, and full of surprises.",
-    triggers: [], // Fallback: many categories, low mechanic concentration
+    triggers: [], // Fallback: many genres/families, low concentration
     minWeight: 0,
   },
   {
@@ -67,7 +71,7 @@ export const ARCHETYPES = [
     name: "The Gladiator",
     emoji: "🏆",
     description: "You live for the thrill of competition. Head-to-head, winner-takes-all — bring it on.",
-    triggers: [t("Player Elimination", 2), t("Take That", 2), t("Racing", 2), t("Betting and Bluffing"), t("Auction/Bidding", 2)],
+    triggers: [g("Sports", 2), m("Player Elimination", 2), m("Take That", 2), m("Racing", 2), m("Betting and Bluffing"), m("Auction/Bidding", 2)],
     minWeight: 0,
   },
   {
@@ -75,7 +79,7 @@ export const ARCHETYPES = [
     name: "The Puzzle Master",
     emoji: "🧩",
     description: "Complex puzzles and optimization problems are your playground. You love the crunch.",
-    triggers: [t("Puzzle", 3), t("Deduction", 2), t("Logic", 2), t("Pattern Recognition"), t("Set Collection"), t("Connections")],
+    triggers: [g("Abstract", 2), m("Puzzle", 3), m("Deduction", 2), m("Logic", 2), m("Pattern Recognition"), m("Set Collection"), m("Connections")],
     minWeight: 2.5,
   },
   {
@@ -83,7 +87,7 @@ export const ARCHETYPES = [
     name: "The Diplomat",
     emoji: "🤝",
     description: "Cooperation over competition. You believe the best games are won together, not against each other.",
-    triggers: [t("Cooperative Game", 3), t("Solo / Cooperative Mode", 2), t("Team-Based Game", 2), t("Variable Player Powers"), t("Communication Limits")],
+    triggers: [g("Cooperative", 3), m("Cooperative Game", 3), m("Solo / Cooperative Mode", 2), m("Team-Based Game", 2), m("Variable Player Powers"), m("Communication Limits")],
     minWeight: 0,
   },
   {
@@ -91,7 +95,7 @@ export const ARCHETYPES = [
     name: "The Entertainer",
     emoji: "🎪",
     description: "You bring the fun! Party games, real-time chaos, and laugh-out-loud moments are your specialty.",
-    triggers: [t("Party Game", 3), t("Real-Time", 2), t("Dexterity", 2), t("Acting", 2), t("Singing", 2), t("Trivia")],
+    triggers: [g("Party", 3), g("Humor", 2), g("Trivia", 2), m("Party Game", 3), m("Real-Time", 2), m("Dexterity", 2), m("Acting", 2)],
     minWeight: 0,
   },
   {
@@ -99,7 +103,7 @@ export const ARCHETYPES = [
     name: "The Euro Purist",
     emoji: "⚗️",
     description: "Low luck, tight economies, and elegant mechanisms. You appreciate the craft of game design at its finest.",
-    triggers: [t("Action Drafting", 3), t("Market", 2), t("Income", 2), t("Variable Phase Order", 2), t("Rondel", 3), t("Action Points")],
+    triggers: [g("Strategy", 2), m("Action Drafting", 3), m("Market", 2), m("Income", 2), m("Variable Phase Order", 2), m("Rondel", 3), m("Action Points")],
     minWeight: 3.5,
   },
   {
@@ -107,7 +111,39 @@ export const ARCHETYPES = [
     name: "The Cozy Gamer",
     emoji: "☕",
     description: "You gravitate toward gentle, relaxing games with beautiful art and low-stress gameplay. Game night is about warmth, not war.",
-    triggers: [t("Pattern Building", 2), t("Tile Placement", 2), t("Set Collection", 2), t("Drafting"), t("Hand Management"), t("Solo / Cooperative Mode"), t("Cooperative Game"), t("Grid Coverage", 2), t("Layering")],
+    triggers: [g("Family", 2), g("Nature", 2), m("Pattern Building", 2), m("Tile Placement", 2), m("Set Collection", 2), m("Drafting"), m("Grid Coverage", 2), m("Layering")],
+    minWeight: 0,
+  },
+  {
+    id: "thrillseeker",
+    name: "The Thrill Seeker",
+    emoji: "🎃",
+    description: "Suspense, hidden information, and the unknown keep you on the edge of your seat. You love the tension.",
+    triggers: [g("Horror", 3), g("Mystery", 3), m("Deduction", 3), m("Hidden Roles", 2), m("Bluffing", 2), m("Traitor Game", 3), m("Memory")],
+    minWeight: 0,
+  },
+  {
+    id: "naturalist",
+    name: "The Naturalist",
+    emoji: "🌿",
+    description: "Beautiful art, peaceful themes, and spatial puzzles draw you in. Your games are as pretty as they are clever.",
+    triggers: [g("Nature", 3), g("Family"), m("Tile Placement", 3), m("Pattern Building", 2), m("Set Collection", 2), m("Grid Coverage", 2), m("Drafting")],
+    minWeight: 0,
+  },
+  {
+    id: "historian",
+    name: "The Historian",
+    emoji: "📚",
+    description: "You're drawn to games rooted in real history and conflict. Every session is a lesson wrapped in strategy.",
+    triggers: [g("Historical", 3), g("War", 3), g("Political", 2), m("Area Control", 2), m("Simulation", 2), m("Campaign", 2), m("Dice")],
+    minWeight: 2.5,
+  },
+  {
+    id: "worldbuilder",
+    name: "The Worldbuilder",
+    emoji: "🧙",
+    description: "Epic worlds, evolving campaigns, and rich lore define your collection. You don't play games — you live them.",
+    triggers: [g("Fantasy", 3), g("Sci-Fi", 3), m("Campaign", 3), m("Legacy", 3), m("Narrative", 2), m("Variable Player Powers", 2), m("Exploration")],
     minWeight: 0,
   },
 ] as const;
@@ -115,6 +151,12 @@ export const ARCHETYPES = [
 export type ArchetypeId = typeof ARCHETYPES[number]["id"];
 
 export interface MechanicDNA {
+  name: string;
+  count: number;
+  percentage: number;
+}
+
+export interface GenreDNA {
   name: string;
   count: number;
   percentage: number;
@@ -151,6 +193,7 @@ export interface CollectionIntelligence {
   personality: GamingPersonality;
   personalitySplit: PersonalitySplit;
   mechanicDNA: MechanicDNA[];
+  genreDNA: GenreDNA[];
   avgWeight: number;
   weightLabel: string;
   topCategories: { name: string; count: number; percentage: number }[];
@@ -169,17 +212,26 @@ export interface CollectionIntelligence {
 // ─── Scoring engine ───
 function scoreArchetypes(
   mechanicDNA: MechanicDNA[],
+  genreDNA: GenreDNA[],
   avgWeight: number,
 ): { primary: typeof ARCHETYPES[number]; secondary: typeof ARCHETYPES[number] | null; confidence: number; scores: Map<string, number> } {
   const archetypeScores = ARCHETYPES.map(arch => {
     let score = 0;
     arch.triggers.forEach((trigger: TriggerDef) => {
-      const tLower = trigger.mechanic.toLowerCase();
-      mechanicDNA.forEach(m => {
-        if (m.name.toLowerCase().includes(tLower) || tLower.includes(m.name.toLowerCase())) {
-          score += m.count * trigger.weight;
-        }
-      });
+      const tLower = trigger.signal.toLowerCase();
+      if (trigger.type === "mechanic") {
+        mechanicDNA.forEach(md => {
+          if (md.name.toLowerCase() === tLower) {
+            score += md.count * trigger.weight;
+          }
+        });
+      } else {
+        genreDNA.forEach(gd => {
+          if (gd.name.toLowerCase() === tLower) {
+            score += gd.count * trigger.weight;
+          }
+        });
+      }
     });
     return { archetype: arch, score };
   });
@@ -196,8 +248,8 @@ function scoreArchetypes(
   const topScore = archetypeScores[0]?.score || 0;
   const primary = topScore > 0 ? archetypeScores[0].archetype : ARCHETYPES.find(a => a.id === "collector")!;
   const secondary = archetypeScores[1]?.score > 0 ? archetypeScores[1].archetype : null;
-  const totalMechanics = mechanicDNA.reduce((s, m) => s + m.count, 0) || 1;
-  const confidence = Math.min(100, Math.round((topScore / Math.max(totalMechanics, 1)) * 100));
+  const totalSignals = (mechanicDNA.reduce((s, md) => s + md.count, 0) + genreDNA.reduce((s, gd) => s + gd.count, 0)) || 1;
+  const confidence = Math.min(100, Math.round((topScore / Math.max(totalSignals, 1)) * 100));
 
   const scores = new Map<string, number>();
   archetypeScores.forEach(as => scores.set(as.archetype.id, as.score));
@@ -234,16 +286,16 @@ export function useCollectionIntelligence(libraryId: string | null) {
       const baseGames = games.filter((g: any) => !g.is_expansion);
       const expansions = games.filter((g: any) => g.is_expansion);
 
-      // 2. Fetch mechanics for base games
+      // 2. Fetch mechanics (with family) for base games
       const gameIds = baseGames.map((g: any) => g.id);
       const BATCH = 50;
-      const allMechanics: { game_id: string; mechanic: { id: string; name: string } | null }[] = [];
+      const allMechanics: { game_id: string; mechanic: { id: string; name: string; family_id: string | null } | null }[] = [];
 
       for (let i = 0; i < gameIds.length; i += BATCH) {
         const batch = gameIds.slice(i, i + BATCH);
         const { data } = await supabase
           .from("game_mechanics")
-          .select("game_id, mechanic:mechanics(id, name)")
+          .select("game_id, mechanic:mechanics(id, name, family_id)")
           .in("game_id", batch);
         if (data) allMechanics.push(...(data as any));
       }
@@ -265,45 +317,120 @@ export function useCollectionIntelligence(libraryId: string | null) {
 
       const hasPlayData = sessionCounts.size > 0;
 
-      // 4. Compute mechanic DNA — shelf-based (all games equal)
-      const shelfMechanicCounts = new Map<string, number>();
+      // 3b. Fetch genres for base games (via catalog_genres)
+      const catalogIds = baseGames.map((g: any) => g.catalog_id).filter((c: any): c is string => !!c);
+      const allGenres: { catalog_id: string; genre: string }[] = [];
+      for (let i = 0; i < catalogIds.length; i += BATCH) {
+        const batch = catalogIds.slice(i, i + BATCH);
+        const { data } = await supabase
+          .from("catalog_genres")
+          .select("catalog_id, genre")
+          .in("catalog_id", batch);
+        if (data) allGenres.push(...(data as any));
+      }
+
+      // Build catalog_id -> game_id mapping for genre->game resolution
+      const catalogToGameIds = new Map<string, string[]>();
+      baseGames.forEach((g: any) => {
+        if (g.catalog_id) {
+          const arr = catalogToGameIds.get(g.catalog_id) || [];
+          arr.push(g.id);
+          catalogToGameIds.set(g.catalog_id, arr);
+        }
+      });
+
+      // Resolve mechanic family names
+      const uniqueFamilyIds = Array.from(new Set(
+        allMechanics.map(gm => gm.mechanic?.family_id).filter(Boolean) as string[]
+      ));
+      const familyIdToName = new Map<string, string>();
+      if (uniqueFamilyIds.length > 0) {
+        for (let i = 0; i < uniqueFamilyIds.length; i += BATCH) {
+          const batch = uniqueFamilyIds.slice(i, i + BATCH);
+          const { data: familyMechanics } = await supabase
+            .from("mechanics")
+            .select("id, name")
+            .in("id", batch);
+          if (familyMechanics) {
+            familyMechanics.forEach((fm: any) => familyIdToName.set(fm.id, fm.name));
+          }
+        }
+      }
+
+      // 4. Compute mechanic DNA — shelf-based, using FAMILY names
+      const shelfFamilyCounts = new Map<string, number>();
       allMechanics.forEach(gm => {
-        if (gm.mechanic?.name) {
-          shelfMechanicCounts.set(gm.mechanic.name, (shelfMechanicCounts.get(gm.mechanic.name) || 0) + 1);
+        if (gm.mechanic) {
+          const familyName = gm.mechanic.family_id
+            ? (familyIdToName.get(gm.mechanic.family_id) || gm.mechanic.name)
+            : gm.mechanic.name;
+          shelfFamilyCounts.set(familyName, (shelfFamilyCounts.get(familyName) || 0) + 1);
         }
       });
       const shelfMechanicDNA = buildMechanicDNA(
-        Array.from(shelfMechanicCounts.entries()).map(([name, count]) => ({ name, count })),
+        Array.from(shelfFamilyCounts.entries()).map(([name, count]) => ({ name, count })),
         baseGames.length
       );
 
-      // 5. Compute play-weighted mechanic DNA
-      // Games with sessions get multiplied: base 1 + log2(sessions) bonus
-      // Unplayed games get 0.5x penalty
-      const playMechanicCounts = new Map<string, number>();
-      const playOnlyMechanicCounts = new Map<string, number>(); // only played games
-      allMechanics.forEach(gm => {
-        if (gm.mechanic?.name) {
-          const sessions = sessionCounts.get(gm.game_id) || 0;
-          const playMultiplier = sessions > 0
-            ? 1 + Math.log2(sessions + 1) // e.g. 1 session=2x, 3 sessions=2.6x, 10 sessions=3.5x
-            : 0.5; // unplayed penalty
-          const weighted = playMultiplier;
-          playMechanicCounts.set(gm.mechanic.name, (playMechanicCounts.get(gm.mechanic.name) || 0) + weighted);
+      // 4b. Compute genre DNA — shelf-based
+      const shelfGenreCounts = new Map<string, number>();
+      allGenres.forEach(row => {
+        const gids = catalogToGameIds.get(row.catalog_id) || [];
+        gids.forEach(() => {
+          shelfGenreCounts.set(row.genre, (shelfGenreCounts.get(row.genre) || 0) + 1);
+        });
+      });
+      const shelfGenreDNA: GenreDNA[] = Array.from(shelfGenreCounts.entries())
+        .map(([name, count]) => ({ name, count, percentage: Math.round((count / Math.max(baseGames.length, 1)) * 100) }))
+        .sort((a, b) => b.count - a.count);
 
+      // 4c. Compute genre DNA — blended (play-weighted)
+      const blendedGenreCounts = new Map<string, number>();
+      const playOnlyGenreCounts = new Map<string, number>();
+      allGenres.forEach(row => {
+        const gids = catalogToGameIds.get(row.catalog_id) || [];
+        gids.forEach(gid => {
+          const sessions = sessionCounts.get(gid) || 0;
+          const playMultiplier = sessions > 0 ? 1 + Math.log2(sessions + 1) : 0.5;
+          blendedGenreCounts.set(row.genre, (blendedGenreCounts.get(row.genre) || 0) + playMultiplier);
           if (sessions > 0) {
-            playOnlyMechanicCounts.set(gm.mechanic.name, (playOnlyMechanicCounts.get(gm.mechanic.name) || 0) + sessions);
+            playOnlyGenreCounts.set(row.genre, (playOnlyGenreCounts.get(row.genre) || 0) + sessions);
+          }
+        });
+      });
+      const blendedGenreDNA: GenreDNA[] = Array.from(blendedGenreCounts.entries())
+        .map(([name, count]) => ({ name, count: Math.round(count), percentage: Math.round((Math.round(count) / Math.max(baseGames.length, 1)) * 100) }))
+        .sort((a, b) => b.count - a.count);
+      const playOnlyGenreDNA: GenreDNA[] = Array.from(playOnlyGenreCounts.entries())
+        .map(([name, count]) => ({ name, count, percentage: Math.round((count / Math.max(sessionCounts.size, 1)) * 100) }))
+        .sort((a, b) => b.count - a.count);
+
+      const genreDNA = blendedGenreDNA.slice(0, 12);
+
+      // 5. Compute play-weighted mechanic DNA (family-based)
+      const playFamilyCounts = new Map<string, number>();
+      const playOnlyFamilyCounts = new Map<string, number>();
+      allMechanics.forEach(gm => {
+        if (gm.mechanic) {
+          const familyName = gm.mechanic.family_id
+            ? (familyIdToName.get(gm.mechanic.family_id) || gm.mechanic.name)
+            : gm.mechanic.name;
+          const sessions = sessionCounts.get(gm.game_id) || 0;
+          const playMultiplier = sessions > 0 ? 1 + Math.log2(sessions + 1) : 0.5;
+          playFamilyCounts.set(familyName, (playFamilyCounts.get(familyName) || 0) + playMultiplier);
+          if (sessions > 0) {
+            playOnlyFamilyCounts.set(familyName, (playOnlyFamilyCounts.get(familyName) || 0) + sessions);
           }
         }
       });
 
       const blendedMechanicDNA = buildMechanicDNA(
-        Array.from(playMechanicCounts.entries()).map(([name, count]) => ({ name, count: Math.round(count) })),
+        Array.from(playFamilyCounts.entries()).map(([name, count]) => ({ name, count: Math.round(count) })),
         baseGames.length
       );
 
       const playOnlyDNA = buildMechanicDNA(
-        Array.from(playOnlyMechanicCounts.entries()).map(([name, count]) => ({ name, count })),
+        Array.from(playOnlyFamilyCounts.entries()).map(([name, count]) => ({ name, count })),
         sessionCounts.size || 1
       );
 
@@ -312,9 +439,9 @@ export function useCollectionIntelligence(libraryId: string | null) {
       const avgWeight = weights.length > 0 ? weights.reduce((s: number, w: number) => s + w, 0) / weights.length : 0;
 
       // 7. Score all three perspectives
-      const shelfResult = scoreArchetypes(shelfMechanicDNA, avgWeight);
-      const blendedResult = scoreArchetypes(blendedMechanicDNA, avgWeight);
-      const playResult = hasPlayData ? scoreArchetypes(playOnlyDNA, avgWeight) : null;
+      const shelfResult = scoreArchetypes(shelfMechanicDNA, shelfGenreDNA, avgWeight);
+      const blendedResult = scoreArchetypes(blendedMechanicDNA, blendedGenreDNA, avgWeight);
+      const playResult = hasPlayData ? scoreArchetypes(playOnlyDNA, playOnlyGenreDNA, avgWeight) : null;
 
       const personalitySplit: PersonalitySplit = {
         blended: { archetype: blendedResult.primary, secondaryArchetype: blendedResult.secondary, confidence: blendedResult.confidence },
@@ -410,9 +537,8 @@ export function useCollectionIntelligence(libraryId: string | null) {
       const oldestGame = withYears.length > 0 ? { title: withYears[0].title, year: withYears[0].year_published! } : null;
       const newestGame = withYears.length > 0 ? { title: withYears[withYears.length - 1].title, year: withYears[withYears.length - 1].year_published! } : null;
 
-      // 15. Rarity score
+      // 15. Rarity score (catalogIds already computed above)
       let rarity: CollectionRarity | null = null;
-      const catalogIds = baseGames.map((g: any) => g.catalog_id).filter((c: any): c is string => !!c);
 
       if (catalogIds.length > 0) {
         const RARITY_BATCH = 50;
@@ -477,6 +603,7 @@ export function useCollectionIntelligence(libraryId: string | null) {
         personality,
         personalitySplit,
         mechanicDNA: blendedMechanicDNA.slice(0, 12),
+        genreDNA,
         avgWeight,
         weightLabel,
         topCategories,

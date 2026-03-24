@@ -174,9 +174,11 @@ export function CollectionInsightsCard({ libraryId, libraryName }: Props) {
     );
   }
 
-  const { personality, mechanicDNA, avgWeight, weightLabel, shelfOfShamePercent, shelfOfShameCount, totalGames, totalExpansions, sweetSpotPlayers, decadeSpread, rarity } = intelligence;
+  const { personality, mechanicDNA, genreDNA, avgWeight, weightLabel, shelfOfShamePercent, shelfOfShameCount, totalGames, totalExpansions, sweetSpotPlayers, decadeSpread, rarity } = intelligence;
   const topMechanics = mechanicDNA.slice(0, 8);
   const maxMechanicPct = topMechanics.length > 0 ? Math.max(...topMechanics.map(m => m.percentage)) : 1;
+  const topGenres = (genreDNA || []).slice(0, 6);
+  const maxGenrePct = topGenres.length > 0 ? Math.max(...topGenres.map(g => g.percentage)) : 1;
 
   return (
     <Card>
@@ -229,10 +231,40 @@ export function CollectionInsightsCard({ libraryId, libraryName }: Props) {
             <StatPill icon="⚖️" value={weightLabel || "—"} label="Complexity" theme={theme} />
           </div>
 
-          {/* Mechanic DNA bars */}
+          {/* Genre DNA bars */}
+          {topGenres.length > 0 && (
+            <div className="px-4 py-2">
+              <p className="text-[9px] font-bold tracking-widest uppercase mb-2" style={{ color: theme.textMuted }}>
+                GENRE DNA
+              </p>
+              <div className="space-y-1">
+                {topGenres.map((gItem) => (
+                  <div key={gItem.name} className="flex items-center gap-2">
+                    <span className="text-[9px] w-[100px] truncate text-right flex-shrink-0" style={{ color: theme.textSub }}>
+                      {gItem.name}
+                    </span>
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: theme.barBg }}>
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.max(4, (gItem.percentage / maxGenrePct) * 100)}%`,
+                          backgroundColor: theme.accent,
+                        }}
+                      />
+                    </div>
+                    <span className="text-[9px] font-bold w-[28px] text-right tabular-nums" style={{ color: theme.text }}>
+                      {gItem.percentage}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Mechanic Family DNA bars */}
           <div className="px-4 py-2">
             <p className="text-[9px] font-bold tracking-widest uppercase mb-2" style={{ color: theme.textMuted }}>
-              MECHANIC DNA
+              MECHANIC FAMILY DNA
             </p>
             <div className="space-y-1">
               {topMechanics.map((m) => (
