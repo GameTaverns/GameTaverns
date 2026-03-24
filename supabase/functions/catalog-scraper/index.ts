@@ -938,6 +938,11 @@ const handler = async (req: Request): Promise<Response> => {
           if (a?.id) await admin.from("catalog_artists").upsert({ catalog_id: entry.id, artist_id: a.id }, { onConflict: "catalog_id,artist_id" });
         }
         totalAdded++;
+        // Track the first BGG ID where we found a genuinely new game
+        const gameBggIdNum = parseInt(game.bggId, 10);
+        if (firstNewGameBggId === null || gameBggIdNum < firstNewGameBggId) {
+          firstNewGameBggId = gameBggIdNum;
+        }
       } catch (e) {
         totalErrors++;
         lastError = `${game.bggId} (${game.title}): ${e instanceof Error ? e.message : String(e)}`;
@@ -948,8 +953,26 @@ const handler = async (req: Request): Promise<Response> => {
     if (batch < BATCHES_PER_RUN - 1) await sleep(1500);
   }
 
+  // Smart position logic:
+  // - If we found new games, anchor next_bgg_id to just after the last new game found
+  //   so subsequent runs continue from where real data exists
+  // - If no new games found and we've gone past the ceiling, wrap around to 1
+  // - Otherwise just continue from where we left off
+  let finalNextBggId: number;
+  if (totalAdded > 0) {
+    // Continue from where we are — the new games anchor the position
+    finalNextBggId = currentId;
+    console.log(`[catalog-scraper] Found ${totalAdded} new games, continuing from ${finalNextBggId}`);
+  } else if (currentId >= MAX_BGG_ID_CEILING) {
+    // We've scanned past the ceiling with no new finds — wrap to start
+    finalNextBggId = 1;
+    console.log(`[catalog-scraper] Reached ceiling ${MAX_BGG_ID_CEILING} with no new games, wrapping to BGG ID 1`);
+  } else {
+    finalNextBggId = currentId;
+  }
+
   const updatePayload = {
-    next_bgg_id: currentId,
+    next_bgg_id: finalNextBggId,
     total_processed: state.total_processed + (currentId - startBggId),
     total_added: state.total_added + totalAdded,
     total_skipped: state.total_skipped + totalSkipped,
