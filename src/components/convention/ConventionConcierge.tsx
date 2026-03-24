@@ -19,6 +19,7 @@ import { PickerChip } from "@/components/games/picker/PickerChip";
 import { useMechanicFamilies, useGameMechanicFamilyMap } from "@/hooks/useMechanicFamilies";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { GENRE_OPTIONS } from "@/types/game";
 
 const GAME_TYPES = ["Board Game", "Card Game", "Dice Game", "Party Game", "War Game", "Miniatures", "RPG", "Other"];
 const PLAY_TIMES = ["0-15 Minutes", "15-30 Minutes", "30-45 Minutes", "45-60 Minutes", "60+ Minutes"];
