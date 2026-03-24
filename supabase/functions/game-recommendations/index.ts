@@ -6,7 +6,6 @@ const corsHeaders = {
 };
 
 const CORTEX_ENDPOINT = "https://cortex.tzolak.com/api/lmstudio";
-const CACHE_TTL_MINUTES = 60; // 1 hour cache
 
 interface ScoredGame {
   id: string;
@@ -62,31 +61,6 @@ export default async function handler(req: Request): Promise<Response> {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // ── 0. Check cache ──
-    const cacheKey = `rec:${game_id}:${library_id}`;
-    try {
-      const { data: cached } = await supabase
-        .from("recommendation_cache")
-        .select("result, created_at")
-        .eq("cache_key", cacheKey)
-        .single();
-
-      if (cached) {
-        const age = Date.now() - new Date(cached.created_at).getTime();
-        if (age < CACHE_TTL_MINUTES * 60 * 1000) {
-          console.log(`[rec-v2] Cache hit for ${cacheKey} (age: ${Math.round(age / 60000)}min)`);
-          return new Response(
-            JSON.stringify(cached.result),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        // Stale — delete and recompute
-        supabase.from("recommendation_cache").delete().eq("cache_key", cacheKey).then(() => {});
-      }
-    } catch {
-      // Cache miss — proceed
-    }
 
     // ── 1. Fetch source game with mechanics ──
     const { data: sourceGame, error: sourceError } = await supabase
@@ -450,18 +424,7 @@ export default async function handler(req: Request): Promise<Response> {
       recommendations: [...discoveries, ...collectionMatches].slice(0, limit),
     };
 
-    // ── 11. Cache result ──
-    try {
-      await supabase.from("recommendation_cache").upsert({
-        cache_key: cacheKey,
-        result,
-        created_at: new Date().toISOString(),
-      }, { onConflict: "cache_key" });
-    } catch (cacheErr) {
-      console.warn("[rec-v2] Failed to cache result:", cacheErr);
-    }
-
-    // ── 12. Logging ──
+    // ── 11. Logging ──
     try {
       const avgPop = discoveries.length > 0
         ? discoveries.reduce((s, g) => s + (g.library_count || 0), 0) / discoveries.length
