@@ -261,66 +261,81 @@ export default async function handler(req: Request): Promise<Response> {
 
     console.log(`[rec-v2] Found ${candidateCatalogIds.size} unique candidates from all signal pools`);
 
-    // ── 6. Fetch candidate details (batch, capped) ──
+    // ── 6. Fetch candidate details (batched to avoid PostgREST URL length limits) ──
     const candidateIds = Array.from(candidateCatalogIds).slice(0, 300);
     let allDiscoveryScored: ScoredGame[] = [];
+    const BATCH_SIZE = 40; // Self-hosted PostgREST has URL length limits
 
     if (candidateIds.length > 0) {
-      const [catalogResult, genresResult, mechanicsResult] = await Promise.all([
-        supabase
-          .from("game_catalog")
-          .select("id, title, slug, image_url, weight, play_time_minutes, min_players, max_players, description, is_expansion")
-          .in("id", candidateIds)
-          .eq("is_expansion", false)
-          .limit(300),
-        supabase
-          .from("catalog_genres")
-          .select("catalog_id, genre, display_order")
-          .in("catalog_id", candidateIds)
-          .order("display_order")
-          .limit(1000),
-        supabase
-          .from("catalog_mechanics")
-          .select("catalog_id, mechanic:mechanics(id, name, family_id)")
-          .in("catalog_id", candidateIds)
-          .limit(1000),
-      ]);
-
+      // Batch fetch all candidate data in chunks of BATCH_SIZE
+      const allCatalogData: any[] = [];
       const candidateGenreMap = new Map<string, string[]>();
-      if (genresResult.data) {
-        for (const row of genresResult.data) {
-          const arr = candidateGenreMap.get(row.catalog_id) || [];
-          arr.push(row.genre);
-          candidateGenreMap.set(row.catalog_id, arr);
-        }
-      }
-
       const candidateMechanicMap = new Map<string, any[]>();
-      if (mechanicsResult.data) {
-        for (const row of mechanicsResult.data as any[]) {
-          if (!row.mechanic) continue;
-          const arr = candidateMechanicMap.get(row.catalog_id) || [];
-          arr.push(row.mechanic);
-          candidateMechanicMap.set(row.catalog_id, arr);
-        }
+
+      const batches: string[][] = [];
+      for (let i = 0; i < candidateIds.length; i += BATCH_SIZE) {
+        batches.push(candidateIds.slice(i, i + BATCH_SIZE));
       }
 
-      if (catalogResult.data) {
-        allDiscoveryScored = catalogResult.data.map((cg: any) => {
-          const genres = candidateGenreMap.get(cg.id) || [];
-          const mechanics = candidateMechanicMap.get(cg.id) || [];
-          return scoreCandidate(
-            cg, genres, mechanics,
-            sourceGenres, sourceFamilyIds, sourceMechanicIds,
-            sourceWeight, sourcePlayTimeMinutes, sourceMinPlayers, sourceMaxPlayers,
-            popularityMap, maxCount,
-            platformSessionMap, maxSessions,
-            false, // isLibrary
-            0      // sessionCount (not applicable for discoveries)
-          );
-        }).filter((g) => g.score > 0)
-          .sort((a, b) => b.score - a.score);
-      }
+      console.log(`[rec-v2] Fetching ${candidateIds.length} candidates in ${batches.length} batches of ${BATCH_SIZE}`);
+
+      await Promise.all(batches.map(async (batchIds) => {
+        const [catalogResult, genresResult, mechanicsResult] = await Promise.all([
+          supabase
+            .from("game_catalog")
+            .select("id, title, slug, image_url, weight, play_time_minutes, min_players, max_players, description, is_expansion")
+            .in("id", batchIds)
+            .eq("is_expansion", false)
+            .limit(BATCH_SIZE),
+          supabase
+            .from("catalog_genres")
+            .select("catalog_id, genre, display_order")
+            .in("catalog_id", batchIds)
+            .order("display_order")
+            .limit(BATCH_SIZE * 4),
+          supabase
+            .from("catalog_mechanics")
+            .select("catalog_id, mechanic:mechanics(id, name, family_id)")
+            .in("catalog_id", batchIds)
+            .limit(BATCH_SIZE * 6),
+        ]);
+
+        if (catalogResult.data) allCatalogData.push(...catalogResult.data);
+
+        if (genresResult.data) {
+          for (const row of genresResult.data) {
+            const arr = candidateGenreMap.get(row.catalog_id) || [];
+            arr.push(row.genre);
+            candidateGenreMap.set(row.catalog_id, arr);
+          }
+        }
+
+        if (mechanicsResult.data) {
+          for (const row of mechanicsResult.data as any[]) {
+            if (!row.mechanic) continue;
+            const arr = candidateMechanicMap.get(row.catalog_id) || [];
+            arr.push(row.mechanic);
+            candidateMechanicMap.set(row.catalog_id, arr);
+          }
+        }
+      }));
+
+      console.log(`[rec-v2] Fetched ${allCatalogData.length} catalog entries from batches`);
+
+      allDiscoveryScored = allCatalogData.map((cg: any) => {
+        const genres = candidateGenreMap.get(cg.id) || [];
+        const mechanics = candidateMechanicMap.get(cg.id) || [];
+        return scoreCandidate(
+          cg, genres, mechanics,
+          sourceGenres, sourceFamilyIds, sourceMechanicIds,
+          sourceWeight, sourcePlayTimeMinutes, sourceMinPlayers, sourceMaxPlayers,
+          popularityMap, maxCount,
+          platformSessionMap, maxSessions,
+          false, // isLibrary
+          0      // sessionCount (not applicable for discoveries)
+        );
+      }).filter((g) => g.score > 0)
+        .sort((a, b) => b.score - a.score);
     }
 
     console.log(`[rec-v2] Scored ${allDiscoveryScored.length} viable discoveries`);
