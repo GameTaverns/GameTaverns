@@ -22,39 +22,53 @@ function RecommendationGrid({
   games: GameRecommendation[];
   buildGameUrl: (slug: string | null, id: string) => string;
 }) {
+  const [showAll, setShowAll] = useState(false);
   if (!games || games.length === 0) return null;
 
+  const visible = showAll ? games : games.slice(0, 5);
+  const hasMore = games.length > 5;
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-      {games.map((game) => (
-        <Link key={game.id} to={buildGameUrl(game.slug, game.id)} className="group">
-          <div className="aspect-square rounded-lg overflow-hidden bg-muted mb-2 relative">
-            {game.image_url ? (
-              <GameImage
-                imageUrl={game.image_url}
-                alt={game.title}
-                loading="lazy"
-                className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                fallback={
-                  <div className="h-full w-full flex items-center justify-center">
-                    <span className="text-4xl">🎲</span>
-                  </div>
-                }
-              />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center">
-                <span className="text-4xl">🎲</span>
-              </div>
-            )}
-          </div>
-          <h4 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-            {game.title}
-          </h4>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-            {game.reason}
-          </p>
-        </Link>
-      ))}
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {visible.map((game) => (
+          <Link key={game.id} to={buildGameUrl(game.slug, game.id)} className="group">
+            <div className="aspect-square rounded-lg overflow-hidden bg-muted mb-2 relative">
+              {game.image_url ? (
+                <GameImage
+                  imageUrl={game.image_url}
+                  alt={game.title}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                  fallback={
+                    <div className="h-full w-full flex items-center justify-center">
+                      <span className="text-4xl">🎲</span>
+                    </div>
+                  }
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center">
+                  <span className="text-4xl">🎲</span>
+                </div>
+              )}
+            </div>
+            <h4 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
+              {game.title}
+            </h4>
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+              {game.reason}
+            </p>
+          </Link>
+        ))}
+      </div>
+      {hasMore && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+        >
+          {showAll ? "Show Less" : `Show ${games.length - 5} More`}
+        </button>
+      )}
     </div>
   );
 }
