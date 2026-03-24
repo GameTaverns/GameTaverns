@@ -267,6 +267,16 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
                   </div>
                 </div>
 
+                {/* Genre */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">Genre</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {GENRE_OPTIONS.map(g => (
+                      <PickerChip key={g} label={g} selected={selectedGenres.includes(g)} onClick={() => setSelectedGenres(prev => toggleArrayItem(prev, g))} />
+                    ))}
+                  </div>
+                </div>
+
                 {/* Mechanic */}
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">Mechanic</p>
