@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Clock, PenTool, Plus, Loader2, Heart, Calendar, Tag } from "lucide-react";
+import { Users, Clock, PenTool, Plus, Loader2, Heart, Calendar, Sparkles } from "lucide-react";
 import { getComplexity } from "@/lib/complexity";
 import { decodeHtmlEntities } from "@/lib/utils";
 
