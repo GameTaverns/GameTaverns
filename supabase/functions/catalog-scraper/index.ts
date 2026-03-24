@@ -802,12 +802,16 @@ const handler = async (req: Request): Promise<Response> => {
 
   const BATCH_SIZE = 20;
   const BATCHES_PER_RUN = body.batches || 10;
+  const MAX_BGG_ID_CEILING = 500000; // Wrap around after this
   const startBggId = state.next_bgg_id;
   let currentId = startBggId;
   let totalAdded = 0;
   let totalSkipped = 0;
   let totalErrors = 0;
   let lastError: string | null = null;
+  let firstNewGameBggId: number | null = null; // Track where we first found a new game
+  let consecutiveEmptyBatches = 0;
+  const MAX_CONSECUTIVE_EMPTY = 50; // Stop after 50 empty batches (1000 IDs)
 
   console.log(`[catalog-scraper] Starting from BGG ID ${startBggId}, ${BATCHES_PER_RUN} batches of ${BATCH_SIZE}`);
 
