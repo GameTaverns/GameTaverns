@@ -175,7 +175,7 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
   return results;
 }
 
-/** Max items per single AI call — keeps response within Perplexity sonar token limits */
+/** Max items per single AI call — keeps response within token limits */
 const AI_CALL_CHUNK_SIZE = 20;
 
 /** Process a single chunk of games through AI (max AI_CALL_CHUNK_SIZE items) */

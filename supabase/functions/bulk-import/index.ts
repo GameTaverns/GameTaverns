@@ -2439,7 +2439,7 @@ export default async function handler(req: Request): Promise<Response> {
                 }
 
                 // FINAL FALLBACK: If we still have no description after all enrichment,
-                // use Perplexity/AI to generate one from the game title
+                // use Cortex AI to generate one from the game title
                 if ((!gameData.description || gameData.description.length < 50) && isAIConfigured()) {
                   const gameTitle = gameData.title || `BGG ID ${gameInput.bgg_id}`;
                   console.log(`[BulkImport] Final AI description generation for: "${gameTitle}" (${getAIProviderName()})`);
