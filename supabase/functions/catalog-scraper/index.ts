@@ -838,8 +838,17 @@ const handler = async (req: Request): Promise<Response> => {
     if (newIds.length === 0) {
       totalSkipped += BATCH_SIZE;
       currentId += BATCH_SIZE;
+      consecutiveEmptyBatches++;
+      // If we've hit too many consecutive empty batches, stop early
+      if (consecutiveEmptyBatches >= MAX_CONSECUTIVE_EMPTY) {
+        console.log(`[catalog-scraper] ${MAX_CONSECUTIVE_EMPTY} consecutive empty batches, stopping early`);
+        break;
+      }
       continue;
     }
+
+    // Reset empty counter when we find IDs to process
+    consecutiveEmptyBatches = 0;
 
     const url = `https://boardgamegeek.com/xmlapi2/thing?id=${idStr}&type=boardgame,boardgameexpansion&stats=1`;
     let xml: string | null = null;
