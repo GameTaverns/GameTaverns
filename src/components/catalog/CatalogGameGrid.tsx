@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Clock, Weight, BookOpen, PenTool, Plus, Loader2, Heart, Calendar } from "lucide-react";
+import { Users, Clock, PenTool, Plus, Loader2, Heart, Calendar, Tag } from "lucide-react";
 import { getComplexity } from "@/lib/complexity";
 import { decodeHtmlEntities } from "@/lib/utils";
 
@@ -18,6 +18,7 @@ export interface CatalogGameItem {
   weight: number | null;
   year_published: number | null;
   designers: string[];
+  genres: string[];
   community_rating: number | null;
   community_rating_count: number;
 }
