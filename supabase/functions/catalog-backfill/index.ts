@@ -330,9 +330,11 @@ const handler = async (req: Request): Promise<Response> => {
         // ── Collect ALL new designer/artist names from this chunk to batch-insert ──
         const newDesignerNames = new Set<string>();
         const newArtistNames = new Set<string>();
+        const newMechanicNames = new Set<string>();
         for (const item of parsed) {
           for (const n of item.designers) if (!designerCache.has(n)) newDesignerNames.add(n);
           for (const n of item.artists) if (!artistCache.has(n)) newArtistNames.add(n);
+          for (const n of item.mechanics) if (!mechanicCache.has(n)) newMechanicNames.add(n);
         }
 
         // Batch-insert new designers
