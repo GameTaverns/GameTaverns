@@ -136,6 +136,25 @@ export function useGames(enabled = true) {
         }
       });
 
+      // Batch-fetch genres from catalog_genres via catalog_id
+      const catalogIds = [...new Set((games || []).filter((g) => (g as any).catalog_id).map((g) => (g as any).catalog_id as string))];
+      const allGenreLinks: any[] = [];
+      for (let i = 0; i < catalogIds.length; i += BATCH_SIZE) {
+        const batch = catalogIds.slice(i, i + BATCH_SIZE);
+        const { data } = await (supabase as any)
+          .from("catalog_genres")
+          .select("catalog_id, genre, display_order")
+          .in("catalog_id", batch)
+          .order("display_order");
+        if (data) allGenreLinks.push(...data);
+      }
+      const genresMap = new Map<string, string[]>();
+      allGenreLinks.forEach((cg: any) => {
+        const existing = genresMap.get(cg.catalog_id) || [];
+        if (!existing.includes(cg.genre)) existing.push(cg.genre);
+        genresMap.set(cg.catalog_id, existing);
+      });
+
       const gamesWithRelations = (games || []).map((game) => ({
         ...game,
         // Location fields are excluded from public view for security
@@ -149,6 +168,8 @@ export function useGames(enabled = true) {
         play_time: game.play_time as PlayTime,
         additional_images: game.additional_images || [],
         copies_owned: (game as any).copies_owned ?? 1,
+        // Genres from catalog_genres, fallback to legacy genre column
+        genres: (game as any).catalog_id ? (genresMap.get((game as any).catalog_id) || ((game as any).genre ? [(game as any).genre] : [])) : ((game as any).genre ? [(game as any).genre] : []),
         // Ensure boolean fields are properly cast from nullable view columns
         is_expansion: game.is_expansion === true,
         is_coming_soon: game.is_coming_soon === true,
