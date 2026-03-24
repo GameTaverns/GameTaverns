@@ -144,43 +144,93 @@ export default async function handler(req: Request): Promise<Response> {
     const p25 = allCounts[Math.floor(allCounts.length * 0.25)] || 1;
     const maxCount = allCounts[allCounts.length - 1] || 1;
 
-    // ── 5. Find candidates: genre-first + mechanic-supplemented ──
-    // Strategy: find catalog entries sharing at least one genre OR one mechanic family
+    // ── 5. Find candidates via ALL signals simultaneously ──
+    // Cast a wide net: genre overlap, mechanic overlap, AND weight/player similarity
+    // All three pools merge into one set — every candidate gets scored on ALL signals
     const candidateCatalogIds = new Set<string>();
 
-    // 5a. Genre-based candidates (primary discovery path)
+    const candidateQueries: Promise<void>[] = [];
+
+    // 5a. Genre-based candidates
     if (sourceGenres.length > 0) {
-      const { data: genreMatches } = await supabase
-        .from("catalog_genres")
-        .select("catalog_id")
-        .in("genre", sourceGenres)
-        .limit(500);
-      if (genreMatches) {
-        for (const gm of genreMatches) {
-          if (gm.catalog_id !== sourceGame.catalog_id && !ownedCatalogIds.has(gm.catalog_id)) {
-            candidateCatalogIds.add(gm.catalog_id);
-          }
-        }
-      }
+      candidateQueries.push(
+        supabase
+          .from("catalog_genres")
+          .select("catalog_id")
+          .in("genre", sourceGenres)
+          .limit(500)
+          .then(({ data }) => {
+            if (data) for (const row of data) {
+              if (row.catalog_id !== sourceGame.catalog_id && !ownedCatalogIds.has(row.catalog_id))
+                candidateCatalogIds.add(row.catalog_id);
+            }
+          })
+      );
     }
 
-    // 5b. Mechanic-based candidates (supplement)
+    // 5b. Mechanic-based candidates
     if (sourceMechanicIds.size > 0) {
-      const { data: mechMatches } = await supabase
-        .from("catalog_mechanics")
-        .select("catalog_id")
-        .in("mechanic_id", Array.from(sourceMechanicIds))
-        .limit(300);
-      if (mechMatches) {
-        for (const mm of mechMatches) {
-          if (mm.catalog_id !== sourceGame.catalog_id && !ownedCatalogIds.has(mm.catalog_id)) {
-            candidateCatalogIds.add(mm.catalog_id);
-          }
-        }
-      }
+      candidateQueries.push(
+        supabase
+          .from("catalog_mechanics")
+          .select("catalog_id")
+          .in("mechanic_id", Array.from(sourceMechanicIds))
+          .limit(500)
+          .then(({ data }) => {
+            if (data) for (const row of data) {
+              if (row.catalog_id !== sourceGame.catalog_id && !ownedCatalogIds.has(row.catalog_id))
+                candidateCatalogIds.add(row.catalog_id);
+            }
+          })
+      );
     }
 
-    console.log(`[rec-v2] Found ${candidateCatalogIds.size} unique candidates`);
+    // 5c. Weight/complexity-based candidates (catches thematic mismatches with similar feel)
+    if (sourceWeight !== null) {
+      const weightQuery = supabase
+        .from("game_catalog")
+        .select("id")
+        .eq("is_expansion", false)
+        .gte("weight", Math.max(0.5, sourceWeight - 0.75))
+        .lte("weight", sourceWeight + 0.75);
+
+      // Also constrain by player range for relevance
+      if (sourceMinPlayers > 1) weightQuery.gte("min_players", Math.max(1, sourceMinPlayers - 1));
+      weightQuery.lte("max_players", sourceMaxPlayers + 2);
+
+      candidateQueries.push(
+        weightQuery.limit(200).then(({ data }) => {
+          if (data) for (const row of data) {
+            if (row.id !== sourceGame.catalog_id && !ownedCatalogIds.has(row.id))
+              candidateCatalogIds.add(row.id);
+          }
+        })
+      );
+    }
+
+    // 5d. Play time similarity candidates
+    if (sourcePlayTimeMinutes !== null) {
+      candidateQueries.push(
+        supabase
+          .from("game_catalog")
+          .select("id")
+          .eq("is_expansion", false)
+          .gte("play_time_minutes", Math.max(5, sourcePlayTimeMinutes - 20))
+          .lte("play_time_minutes", sourcePlayTimeMinutes + 20)
+          .limit(150)
+          .then(({ data }) => {
+            if (data) for (const row of data) {
+              if (row.id !== sourceGame.catalog_id && !ownedCatalogIds.has(row.id))
+                candidateCatalogIds.add(row.id);
+            }
+          })
+      );
+    }
+
+    // Run all candidate queries in parallel
+    await Promise.all(candidateQueries);
+
+    console.log(`[rec-v2] Found ${candidateCatalogIds.size} unique candidates from all signal pools`);
 
     // ── 6. Fetch candidate details (batch, capped) ──
     const candidateIds = Array.from(candidateCatalogIds).slice(0, 300);
