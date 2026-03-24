@@ -1332,6 +1332,15 @@ const handler = async (req: Request): Promise<Response> => {
       let apiErrors = 0;
       const samples: { expansion: string; parent: string }[] = [];
       const noMatchSamples: string[] = [];
+      let catalogTitleMap: Map<string, CatalogMatchCandidate[]> | null = null;
+
+      const ensureCatalogTitleMap = async () => {
+        if (!catalogTitleMap) {
+          catalogTitleMap = await loadCatalogTitleMap(admin);
+          console.log(`[link-expansions-bgg] Loaded ${catalogTitleMap.size} catalog title keys for fallback matching`);
+        }
+        return catalogTitleMap;
+      };
 
       try {
         const url = `https://boardgamegeek.com/xmlapi2/thing?id=${bggIds}&stats=1`;
@@ -1398,24 +1407,22 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           // Find all inbound expansion links (these point to parent games)
-          const parentBggIds: string[] = [];
-          const linkRegex = /<link[^>]*type="boardgameexpansion"[^>]*id="(\d+)"[^>]*inbound="true"[^>]*\/?>/g;
-          const linkRegex2 = /<link[^>]*inbound="true"[^>]*type="boardgameexpansion"[^>]*id="(\d+)"[^>]*\/?>/g;
-          let linkMatch;
-          while ((linkMatch = linkRegex.exec(itemXml)) !== null) {
-            parentBggIds.push(linkMatch[1]);
-          }
-          if (parentBggIds.length === 0) {
-            while ((linkMatch = linkRegex2.exec(itemXml)) !== null) {
-              parentBggIds.push(linkMatch[1]);
-            }
+          const parentLinks: { bggId?: string; title?: string }[] = [];
+          for (const linkMatch of itemXml.matchAll(/<link\b[^>]*\/?>/g)) {
+            const tag = linkMatch[0];
+            const typeMatch = tag.match(/\btype="([^"]+)"/);
+            const inboundMatch = tag.match(/\binbound="([^"]+)"/);
+            if (typeMatch?.[1] !== "boardgameexpansion" || inboundMatch?.[1] !== "true") continue;
+
+            const idMatch = tag.match(/\bid="(\d+)"/);
+            const valueMatch = tag.match(/\bvalue="([^"]+)"/);
+            parentLinks.push({
+              bggId: idMatch?.[1],
+              title: valueMatch?.[1] ? decodeHtmlEntities(valueMatch[1]).trim() : undefined,
+            });
           }
 
-          if (parentBggIds.length === 0) {
-            noMatch++;
-            if (noMatchSamples.length < 10) noMatchSamples.push(exp.title);
-            continue;
-          }
+          const parentBggIds = [...new Set(parentLinks.map((link) => link.bggId).filter(Boolean))] as string[];
 
           // Find parent in catalog by bgg_id.
           // Self-hosted/legacy data can have the true parent row mis-flagged
@@ -1443,6 +1450,41 @@ const handler = async (req: Request): Promise<Response> => {
                   parent: parentCatalog.is_expansion
                     ? `${parentCatalog.title} [mis-flagged parent]`
                     : parentCatalog.title,
+                });
+              }
+              parentFound = true;
+              break;
+            }
+          }
+
+          if (!parentFound) {
+            const titleMap = await ensureCatalogTitleMap();
+            const parentTitleKeys = [...new Set(
+              parentLinks.flatMap((link) => link.title ? getTitleMatchKeys(link.title) : [])
+            )].sort((a, b) => b.length - a.length);
+
+            for (const parentTitleKey of parentTitleKeys) {
+              const best = chooseBestCatalogCandidate(
+                titleMap.get(parentTitleKey),
+                exp.id,
+                parentTitleKey,
+              );
+
+              if (!best) continue;
+
+              if (!dryRun) {
+                await admin
+                  .from("game_catalog")
+                  .update({ parent_catalog_id: best.id })
+                  .eq("id", exp.id);
+              }
+              linked++;
+              if (samples.length < 20) {
+                samples.push({
+                  expansion: exp.title,
+                  parent: best.is_expansion
+                    ? `${best.title} [mis-flagged parent via title fallback]`
+                    : `${best.title} [title fallback]`,
                 });
               }
               parentFound = true;
