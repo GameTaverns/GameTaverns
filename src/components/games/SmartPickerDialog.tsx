@@ -107,6 +107,10 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
     if (mode === "filter") {
       return games.filter(game => {
         if (selectedTypes.length > 0 && (!game.game_type || !selectedTypes.includes(game.game_type))) return false;
+        if (selectedGenres.length > 0) {
+          const gameGenres: string[] = (game as any).genres || (game.genre ? [game.genre] : []);
+          if (gameGenres.length === 0 || !selectedGenres.some(sg => gameGenres.includes(sg))) return false;
+        }
         if (selectedMechanics.length > 0 && gameMechanicMap) {
           const families = gameMechanicMap.get(game.id);
           if (!families || !selectedMechanics.some(m => families.has(m))) return false;
