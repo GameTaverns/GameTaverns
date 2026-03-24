@@ -108,7 +108,7 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
     cleaned = cleaned.replace(/^```(?:json|markdown)?\n?/, "").replace(/\n?```$/, "").trim();
   }
 
-  // Find the JSON array (may have preamble text from Perplexity)
+  // Find the JSON array (may have preamble text from AI)
   const arrayStart = cleaned.indexOf("[");
   const arrayEnd = cleaned.lastIndexOf("]");
   if (arrayStart === -1) {
