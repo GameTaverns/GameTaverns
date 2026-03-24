@@ -76,6 +76,115 @@ function parseBggXmlBatch(xml: string): ParsedEnrichment[] {
   return results;
 }
 
+type CatalogMatchCandidate = {
+  id: string;
+  title: string;
+  is_expansion?: boolean | null;
+  bgg_id?: string | null;
+};
+
+const TITLE_DELIMITERS = [": ", " – ", " — ", " - "];
+
+const normalizeTitleForMatch = (input: string) =>
+  decodeHtmlEntities(input)
+    .normalize("NFKD")
+    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/[\u2018\u2019\u201B\u2032]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/&/g, " and ")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+
+const getTitlePrefixKeys = (title: string) => {
+  const rawTitle = decodeHtmlEntities(title).trim();
+  const keys = new Set<string>();
+
+  for (const delim of TITLE_DELIMITERS) {
+    let searchFrom = 0;
+    while (true) {
+      const idx = rawTitle.indexOf(delim, searchFrom);
+      if (idx <= 0) break;
+      const normalized = normalizeTitleForMatch(rawTitle.substring(0, idx));
+      if (normalized) keys.add(normalized);
+      searchFrom = idx + delim.length;
+    }
+  }
+
+  return [...keys].sort((a, b) => b.length - a.length);
+};
+
+const getTitleMatchKeys = (title: string) => {
+  const keys = new Set<string>();
+  const full = normalizeTitleForMatch(title);
+  if (full) keys.add(full);
+  for (const key of getTitlePrefixKeys(title)) keys.add(key);
+  return [...keys];
+};
+
+const addCandidateToMap = (
+  map: Map<string, CatalogMatchCandidate[]>,
+  key: string,
+  candidate: CatalogMatchCandidate,
+) => {
+  if (!key) return;
+  if (!map.has(key)) map.set(key, []);
+  const entries = map.get(key)!;
+  if (!entries.some((entry) => entry.id === candidate.id)) entries.push(candidate);
+};
+
+const chooseBestCatalogCandidate = (
+  candidates: CatalogMatchCandidate[] | undefined,
+  expansionId: string,
+  preferredTitle?: string,
+) => {
+  if (!candidates || candidates.length === 0) return null;
+
+  const preferredKey = preferredTitle ? normalizeTitleForMatch(preferredTitle) : "";
+
+  return candidates
+    .filter((candidate) => candidate.id !== expansionId)
+    .sort((a, b) => {
+      const aExact = preferredKey && normalizeTitleForMatch(a.title) === preferredKey ? 1 : 0;
+      const bExact = preferredKey && normalizeTitleForMatch(b.title) === preferredKey ? 1 : 0;
+      if (aExact !== bExact) return bExact - aExact;
+
+      const aBaseGame = a.is_expansion === false ? 1 : 0;
+      const bBaseGame = b.is_expansion === false ? 1 : 0;
+      if (aBaseGame !== bBaseGame) return bBaseGame - aBaseGame;
+
+      return a.title.length - b.title.length;
+    })[0] ?? null;
+};
+
+const loadCatalogTitleMap = async (admin: any) => {
+  const titleMap = new Map<string, CatalogMatchCandidate[]>();
+  const pageSize = 1000;
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await admin
+      .from("game_catalog")
+      .select("id, title, is_expansion, bgg_id")
+      .range(offset, offset + pageSize - 1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    for (const row of data) {
+      for (const key of getTitleMatchKeys(row.title)) {
+        addCandidateToMap(titleMap, key, row);
+      }
+    }
+
+    if (data.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return titleMap;
+};
+
 /**
  * Catalog Backfill — populates game_catalog with designers, artists,
  * and enriched descriptions from BGG.
