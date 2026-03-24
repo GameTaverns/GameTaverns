@@ -130,7 +130,7 @@ router.post('/import-game', authMiddleware, async (req: Request, res: Response) 
     // Check AI config
     const aiConfig = getAIConfig();
     if (!aiConfig.hasAI) {
-      res.status(503).json({ success: false, error: 'AI service not configured (missing PERPLEXITY_API_KEY or OPENAI_API_KEY)' });
+      res.status(503).json({ success: false, error: 'AI service not available' });
       return;
     }
     
