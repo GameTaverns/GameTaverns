@@ -28,7 +28,7 @@ export function useGameRecommendations(gameId: string | undefined, enabled = tru
     queryFn: async (): Promise<GameRecommendationsResult> => {
       if (!gameId || !library?.id) return { discoveries: [], collection_matches: [] };
 
-      const payload = { game_id: gameId, library_id: library.id, limit: 5 };
+      const payload = { game_id: gameId, library_id: library.id, limit: 10 };
 
       if (isSelfHostedMode()) {
         try {
