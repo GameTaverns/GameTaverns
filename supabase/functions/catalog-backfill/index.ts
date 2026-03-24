@@ -1893,12 +1893,6 @@ const handler = async (req: Request): Promise<Response> => {
     // =====================================================================
     if (mode === "classify-mechanics") {
       const mechBatchSize = Math.min(body.batch_size || 30, 80);
-      const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
-      if (!googleKey) {
-        return new Response(JSON.stringify({ error: "GOOGLE_AI_API_KEY not configured" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
 
       // Load all mechanic families and their child mechanic IDs
       const familyNameToChildIds = new Map<string, string[]>();
