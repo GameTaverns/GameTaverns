@@ -49,7 +49,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { game_id, library_id, limit = 5 } = await req.json();
+    const { game_id, library_id, limit = 10 } = await req.json();
 
     if (!game_id || !library_id) {
       return new Response(
