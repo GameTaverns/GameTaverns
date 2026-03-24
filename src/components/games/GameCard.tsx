@@ -101,10 +101,8 @@ export function GameCard({ game, priority = false }: GameCardProps) {
               <div className="hidden sm:flex flex-wrap gap-1.5 mt-auto">
                 {/* Genre badges */}
                 {(() => {
-                  const genreStr = (game as any).genre as string | null;
-                  if (!genreStr) return null;
-                  const genres = genreStr.split(",").map(g => g.trim()).filter(Boolean).slice(0, 2);
-                  return genres.map(g => (
+                  const genres = ((game as any).genres as string[] | undefined) || [];
+                  return genres.slice(0, 2).map(g => (
                     <Badge key={g} variant="secondary" className="text-xs">
                       <Tag className="h-3 w-3 mr-0.5" />
                       {g}

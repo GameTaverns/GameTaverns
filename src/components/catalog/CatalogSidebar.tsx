@@ -265,6 +265,17 @@ export function CatalogSidebar({ designers, artists, mechanics, publishers, isOp
                   defaultOpen={activeFilter === "playtime"}
                 />
 
+                {/* Genre */}
+                <ChipFilterSection
+                  title="Genre"
+                  icon={<Tag className="h-3.5 w-3.5" />}
+                  options={GENRE_OPTIONS as unknown as string[]}
+                  filterKey="genre"
+                  isActive={isActive}
+                  onFilterClick={setFilter}
+                  defaultOpen={activeFilter === "genre"}
+                />
+
                 {/* Year Published */}
                 <YearFilterSection
                   icon={<Calendar className="h-3.5 w-3.5" />}
