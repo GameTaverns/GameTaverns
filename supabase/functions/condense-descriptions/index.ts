@@ -89,7 +89,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     if (!isAIConfigured()) {
       return new Response(
-        JSON.stringify({ success: false, error: "AI service not configured. Set PERPLEXITY_API_KEY or OPENAI_API_KEY." }),
+        JSON.stringify({ success: false, error: "AI service not available." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

@@ -1893,12 +1893,6 @@ const handler = async (req: Request): Promise<Response> => {
     // =====================================================================
     if (mode === "classify-mechanics") {
       const mechBatchSize = Math.min(body.batch_size || 30, 80);
-      const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
-      if (!googleKey) {
-        return new Response(JSON.stringify({ error: "GOOGLE_AI_API_KEY not configured" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
 
       // Load all mechanic families and their child mechanic IDs
       const familyNameToChildIds = new Map<string, string[]>();
@@ -1982,7 +1976,7 @@ const handler = async (req: Request): Promise<Response> => {
       let mechInserted = 0;
       const mechErrors: string[] = [];
 
-      // Process in sub-batches of 8 for Gemini
+      // Process in sub-batches of 8 for Cortex
       const MECH_SUB_BATCH = 8;
       for (let i = 0; i < entriesToProcess.length; i += MECH_SUB_BATCH) {
         const subBatch = entriesToProcess.slice(i, i + MECH_SUB_BATCH);
@@ -2012,32 +2006,28 @@ Return ONLY a JSON array: [{"idx":0,"families":["Worker Placement","Resource Man
 Do NOT include any other text.`;
 
         try {
-          const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${googleKey}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: classifyPrompt }] }],
-                generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
-              }),
-            }
-          );
+          const cortexRes = await fetch("https://cortex.tzolak.com/api/lmstudio", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: [{ role: "user", content: classifyPrompt }],
+            }),
+          });
 
-          if (geminiRes.status === 429) {
+          if (cortexRes.status === 429) {
             console.warn("[classify-mechanics] Rate limited, stopping batch early");
             mechErrors.push("Rate limited — stopping early");
             break;
           }
 
-          if (!geminiRes.ok) {
-            const errText = await geminiRes.text();
-            mechErrors.push(`Gemini API error ${geminiRes.status}: ${errText.slice(0, 200)}`);
+          if (!cortexRes.ok) {
+            const errText = await cortexRes.text();
+            mechErrors.push(`Cortex API error ${cortexRes.status}: ${errText.slice(0, 200)}`);
             continue;
           }
 
-          const geminiData = await geminiRes.json();
-          const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          const cortexData = await cortexRes.json();
+          const rawText = cortexData?.choices?.[0]?.message?.content || "";
 
           const jsonMatch = rawText.match(/\[[\s\S]*?\]/);
           if (!jsonMatch) {

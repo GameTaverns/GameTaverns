@@ -12,71 +12,34 @@ const router = Router();
 // =====================
 
 function getAIConfig() {
-  const perplexityKey = config.perplexityApiKey;
-  const openaiKey = config.openaiApiKey;
-  const firecrawlKey = config.firecrawlApiKey;
-  
   return {
-    hasAI: !!(perplexityKey || openaiKey),
-    hasFirecrawl: !!firecrawlKey,
-    provider: perplexityKey ? 'perplexity' : openaiKey ? 'openai' : null,
+    hasAI: true, // Cortex is always available (self-hosted, no API key needed)
+    hasFirecrawl: !!config.firecrawlApiKey,
+    provider: 'cortex' as const,
   };
 }
 
 async function aiComplete(messages: Array<{ role: string; content: string }>, maxTokens = 1000): Promise<{ success: boolean; content?: string; error?: string }> {
-  const { hasAI, provider } = getAIConfig();
-  
-  if (!hasAI) {
-    return { success: false, error: 'AI service not configured' };
-  }
-  
   try {
-    if (provider === 'perplexity') {
-      const response = await fetch('https://api.perplexity.ai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${config.perplexityApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
-          messages,
-          max_tokens: maxTokens,
-        }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.text();
-        console.error('Perplexity API error:', response.status, error);
-        return { success: false, error: `AI request failed: ${response.status}` };
-      }
-      
-      const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return { success: true, content: data.choices?.[0]?.message?.content };
-    } else {
-      // OpenAI
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${config.openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages,
-          max_tokens: maxTokens,
-        }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.text();
-        console.error('OpenAI API error:', response.status, error);
-        return { success: false, error: `AI request failed: ${response.status}` };
-      }
-      
-      const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return { success: true, content: data.choices?.[0]?.message?.content };
+    const response = await fetch('https://cortex.tzolak.com/api/lmstudio', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages,
+        max_tokens: maxTokens,
+      }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Cortex API error:', response.status, error);
+      return { success: false, error: `AI request failed: ${response.status}` };
     }
+    
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+    return { success: true, content: data.choices?.[0]?.message?.content };
   } catch (error) {
     console.error('AI request error:', error);
     return { success: false, error: 'AI request failed' };
@@ -167,7 +130,7 @@ router.post('/import-game', authMiddleware, async (req: Request, res: Response) 
     // Check AI config
     const aiConfig = getAIConfig();
     if (!aiConfig.hasAI) {
-      res.status(503).json({ success: false, error: 'AI service not configured (missing PERPLEXITY_API_KEY or OPENAI_API_KEY)' });
+      res.status(503).json({ success: false, error: 'AI service not available' });
       return;
     }
     

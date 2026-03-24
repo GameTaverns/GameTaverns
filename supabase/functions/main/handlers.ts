@@ -46,47 +46,33 @@ interface AIResponse {
   rateLimited?: boolean;
 }
 
-function getAIConfig(): { endpoint: string; apiKey: string; model: string; provider: string } | null {
-  const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
-  if (perplexityKey) {
-    return { endpoint: "https://api.perplexity.ai/chat/completions", apiKey: perplexityKey, model: "sonar", provider: "perplexity" };
-  }
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (lovableKey) {
-    return { endpoint: "https://ai.gateway.lovable.dev/v1/chat/completions", apiKey: lovableKey, model: "google/gemini-2.5-flash", provider: "lovable" };
-  }
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) {
-    return { endpoint: "https://api.openai.com/v1/chat/completions", apiKey: openaiKey, model: "gpt-4o-mini", provider: "openai" };
-  }
-  return null;
+function getAIConfig(): { endpoint: string; model: string; provider: string } {
+  return {
+    endpoint: "https://cortex.tzolak.com/api/lmstudio",
+    model: "qwen2.5-14b-instruct",
+    provider: "cortex",
+  };
 }
 
 function isAIConfigured(): boolean {
-  return getAIConfig() !== null;
+  return true;
 }
 
 function getAIProviderName(): string {
-  if (Deno.env.get("PERPLEXITY_API_KEY")) return "Perplexity";
-  if (Deno.env.get("LOVABLE_API_KEY")) return "Lovable AI";
-  if (Deno.env.get("OPENAI_API_KEY")) return "OpenAI";
-  return "None";
+  return "Cortex (self-hosted)";
 }
 
 async function aiComplete(options: AIRequestOptions): Promise<AIResponse> {
   const config = getAIConfig();
-  if (!config) {
-    return { success: false, error: "AI service not configured." };
-  }
   try {
-    const requestBody: Record<string, unknown> = { model: options.model || config.model, messages: options.messages };
+    const requestBody: Record<string, unknown> = { messages: options.messages };
     if (options.max_tokens) requestBody.max_tokens = options.max_tokens;
     if (options.tools) requestBody.tools = options.tools;
     if (options.tool_choice) requestBody.tool_choice = options.tool_choice;
 
     const response = await fetch(config.endpoint, {
       method: "POST",
-      headers: { "Authorization": `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
     });
     if (!response.ok) {

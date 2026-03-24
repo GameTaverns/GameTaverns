@@ -280,39 +280,16 @@ router.post('/condense', async (req: Request, res: Response) => {
     
     for (const game of gamesResult.rows) {
       try {
-        const apiUrl = config.aiProvider === 'gemini'
-          ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash:generateContent'
-          : 'https://api.openai.com/v1/chat/completions';
-        
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
-        
-        let body: any;
-        
-        if (config.aiProvider === 'gemini') {
-          headers['x-goog-api-key'] = config.aiApiKey!;
-          body = {
-            contents: [{
-              parts: [{ text: `Condense this game description for "${game.title}" to 150-200 words:\n\n${game.description}` }]
-            }]
-          };
-        } else {
-          headers['Authorization'] = `Bearer ${config.aiApiKey}`;
-          body = {
-            model: 'gpt-3.5-turbo',
+        const response = await fetch('https://cortex.tzolak.com/api/lmstudio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             messages: [
               { role: 'system', content: 'You are a board game description editor. Condense descriptions to 150-200 words while keeping essential gameplay info.' },
               { role: 'user', content: `Condense this description for "${game.title}":\n\n${game.description}` }
             ],
             max_tokens: 500,
-          };
-        }
-        
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
+          }),
         });
         
         if (!response.ok) {
@@ -324,13 +301,7 @@ router.post('/condense', async (req: Request, res: Response) => {
         }
         
         const data = await response.json() as any;
-        
-        let newDescription: string;
-        if (config.aiProvider === 'gemini') {
-          newDescription = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        } else {
-          newDescription = data.choices?.[0]?.message?.content;
-        }
+        const newDescription: string = data.choices?.[0]?.message?.content;
         
         if (newDescription) {
           await pool.query(

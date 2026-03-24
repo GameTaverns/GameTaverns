@@ -1842,9 +1842,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Step 2: Use AI to extract structured game data
     if (!isAIConfigured()) {
-      console.error("No AI provider configured (set PERPLEXITY_API_KEY or LOVABLE_API_KEY)");
+      console.error("AI provider not available");
       return new Response(
-        JSON.stringify({ success: false, error: "AI service not configured. Set PERPLEXITY_API_KEY in your environment." }),
+        JSON.stringify({ success: false, error: "AI service not available." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
