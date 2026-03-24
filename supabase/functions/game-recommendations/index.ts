@@ -6,6 +6,7 @@ const corsHeaders = {
 };
 
 const CORTEX_ENDPOINT = "https://cortex.tzolak.com/api/lmstudio";
+const CACHE_TTL_MINUTES = 60; // 1 hour cache
 
 interface ScoredGame {
   id: string;
@@ -20,6 +21,7 @@ interface ScoredGame {
   reason: string;
   score: number;
   library_count?: number;
+  session_count?: number;
   signal_breakdown?: Record<string, number>;
 }
 
@@ -36,6 +38,10 @@ const WEIGHTS = {
   PLAYTIME_CLOSE:    3,   // Play time within 15 min
   PLAYTIME_NEAR:     1,   // Play time within 30 min
   INVERSE_POP_MAX:   4,   // Max bonus for rare/hidden gem games
+  SESSION_POP_MAX:   5,   // Max bonus for frequently-played games
+  UNPLAYED_BOOST:    8,   // Bonus for unplayed library games (shelf of shame)
+  UNDERPLAYED_BOOST: 4,   // Bonus for games with < 3 plays
+  OVERPLAYED_PENALTY: -6, // Penalty for heavily played library games (20+ sessions)
 };
 
 export default async function handler(req: Request): Promise<Response> {
@@ -56,6 +62,31 @@ export default async function handler(req: Request): Promise<Response> {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // ── 0. Check cache ──
+    const cacheKey = `rec:${game_id}:${library_id}`;
+    try {
+      const { data: cached } = await supabase
+        .from("recommendation_cache")
+        .select("result, created_at")
+        .eq("cache_key", cacheKey)
+        .single();
+
+      if (cached) {
+        const age = Date.now() - new Date(cached.created_at).getTime();
+        if (age < CACHE_TTL_MINUTES * 60 * 1000) {
+          console.log(`[rec-v2] Cache hit for ${cacheKey} (age: ${Math.round(age / 60000)}min)`);
+          return new Response(
+            JSON.stringify(cached.result),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        // Stale — delete and recompute
+        supabase.from("recommendation_cache").delete().eq("cache_key", cacheKey).then(() => {});
+      }
+    } catch {
+      // Cache miss — proceed
+    }
 
     // ── 1. Fetch source game with mechanics ──
     const { data: sourceGame, error: sourceError } = await supabase
@@ -89,7 +120,6 @@ export default async function handler(req: Request): Promise<Response> {
     let sourceCatalogDescription: string | null = null;
 
     if (sourceGame.catalog_id) {
-      // Parallel: catalog entry + genres
       const [catalogResult, genreResult] = await Promise.all([
         supabase
           .from("game_catalog")
@@ -119,24 +149,44 @@ export default async function handler(req: Request): Promise<Response> {
 
     console.log(`[rec-v2] Source: "${sourceGame.title}" genres=[${sourceGenres}] mechanics=[${sourceMechanicNames.slice(0, 5)}] weight=${sourceWeight}`);
 
-    // ── 3. Get owned catalog IDs to exclude ──
-    const { data: ownedGames } = await supabase
-      .from("games")
-      .select("catalog_id")
-      .eq("library_id", library_id)
-      .not("catalog_id", "is", null);
-    const ownedCatalogIds = new Set((ownedGames || []).map((g: any) => g.catalog_id));
+    // ── 3. Get owned catalog IDs to exclude + session counts for library games ──
+    const [ownedResult, sessionCountsResult] = await Promise.all([
+      supabase
+        .from("games")
+        .select("id, catalog_id")
+        .eq("library_id", library_id)
+        .not("catalog_id", "is", null),
+      supabase
+        .from("game_sessions")
+        .select("game_id")
+        .eq("library_id", library_id),
+    ]);
 
-    // ── 4. Get popularity data ──
+    const ownedCatalogIds = new Set((ownedResult.data || []).map((g: any) => g.catalog_id));
+
+    // Build session count map for library games
+    const librarySessionCounts = new Map<string, number>();
+    if (sessionCountsResult.data) {
+      for (const row of sessionCountsResult.data) {
+        librarySessionCounts.set(row.game_id, (librarySessionCounts.get(row.game_id) || 0) + 1);
+      }
+    }
+
+    // ── 4. Get popularity data + platform-wide session counts ──
+    const [popResult, platformSessionsResult] = await Promise.all([
+      supabase
+        .from("catalog_popularity")
+        .select("catalog_id, library_count")
+        .not("catalog_id", "is", null)
+        .gt("library_count", 0)
+        .limit(1000),
+      // Aggregate session counts by catalog_id across the platform
+      supabase.rpc("get_catalog_session_counts").catch(() => ({ data: null })),
+    ]);
+
     const popularityMap = new Map<string, number>();
-    const { data: popData } = await supabase
-      .from("catalog_popularity")
-      .select("catalog_id, library_count")
-      .not("catalog_id", "is", null)
-      .gt("library_count", 0)
-      .limit(1000);
-    if (popData) {
-      for (const row of popData) {
+    if (popResult.data) {
+      for (const row of popResult.data) {
         if (row.catalog_id) popularityMap.set(row.catalog_id, row.library_count || 0);
       }
     }
@@ -144,11 +194,18 @@ export default async function handler(req: Request): Promise<Response> {
     const p25 = allCounts[Math.floor(allCounts.length * 0.25)] || 1;
     const maxCount = allCounts[allCounts.length - 1] || 1;
 
-    // ── 5. Find candidates via ALL signals simultaneously ──
-    // Cast a wide net: genre overlap, mechanic overlap, AND weight/player similarity
-    // All three pools merge into one set — every candidate gets scored on ALL signals
-    const candidateCatalogIds = new Set<string>();
+    // Platform session popularity map (catalog_id -> total sessions across all users)
+    const platformSessionMap = new Map<string, number>();
+    if (platformSessionsResult.data) {
+      for (const row of platformSessionsResult.data as any[]) {
+        if (row.catalog_id) platformSessionMap.set(row.catalog_id, row.session_count || 0);
+      }
+    }
+    const sessionCounts = Array.from(platformSessionMap.values()).sort((a, b) => a - b);
+    const maxSessions = sessionCounts[sessionCounts.length - 1] || 1;
 
+    // ── 5. Find candidates via ALL signals simultaneously ──
+    const candidateCatalogIds = new Set<string>();
     const candidateQueries: Promise<void>[] = [];
 
     // 5a. Genre-based candidates
@@ -185,7 +242,7 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // 5c. Weight/complexity-based candidates (catches thematic mismatches with similar feel)
+    // 5c. Weight/complexity-based candidates
     if (sourceWeight !== null) {
       const weightQuery = supabase
         .from("game_catalog")
@@ -194,7 +251,6 @@ export default async function handler(req: Request): Promise<Response> {
         .gte("weight", Math.max(0.5, sourceWeight - 0.75))
         .lte("weight", sourceWeight + 0.75);
 
-      // Also constrain by player range for relevance
       if (sourceMinPlayers > 1) weightQuery.gte("min_players", Math.max(1, sourceMinPlayers - 1));
       weightQuery.lte("max_players", sourceMaxPlayers + 2);
 
@@ -227,7 +283,6 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Run all candidate queries in parallel
     await Promise.all(candidateQueries);
 
     console.log(`[rec-v2] Found ${candidateCatalogIds.size} unique candidates from all signal pools`);
@@ -237,7 +292,6 @@ export default async function handler(req: Request): Promise<Response> {
     let allDiscoveryScored: ScoredGame[] = [];
 
     if (candidateIds.length > 0) {
-      // Parallel: catalog entries + their genres + their mechanics
       const [catalogResult, genresResult, mechanicsResult] = await Promise.all([
         supabase
           .from("game_catalog")
@@ -258,7 +312,6 @@ export default async function handler(req: Request): Promise<Response> {
           .limit(1000),
       ]);
 
-      // Build lookup maps
       const candidateGenreMap = new Map<string, string[]>();
       if (genresResult.data) {
         for (const row of genresResult.data) {
@@ -278,7 +331,6 @@ export default async function handler(req: Request): Promise<Response> {
         }
       }
 
-      // Score each candidate
       if (catalogResult.data) {
         allDiscoveryScored = catalogResult.data.map((cg: any) => {
           const genres = candidateGenreMap.get(cg.id) || [];
@@ -287,7 +339,10 @@ export default async function handler(req: Request): Promise<Response> {
             cg, genres, mechanics,
             sourceGenres, sourceFamilyIds, sourceMechanicIds,
             sourceWeight, sourcePlayTimeMinutes, sourceMinPlayers, sourceMaxPlayers,
-            popularityMap, maxCount
+            popularityMap, maxCount,
+            platformSessionMap, maxSessions,
+            false, // isLibrary
+            0      // sessionCount (not applicable for discoveries)
           );
         }).filter((g) => g.score > 0)
           .sort((a, b) => b.score - a.score);
@@ -296,7 +351,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     console.log(`[rec-v2] Scored ${allDiscoveryScored.length} viable discoveries`);
 
-    // ── 7. Collection matches (games in user's library) ──
+    // ── 7. Collection matches (games in user's library) — play-history aware ──
     const { data: libraryGames } = await supabase
       .from("games")
       .select(`
@@ -310,7 +365,7 @@ export default async function handler(req: Request): Promise<Response> {
       .eq("is_coming_soon", false)
       .limit(200);
 
-    // Fetch genres for library games that have catalog_ids
+    // Fetch genres for library games
     const libraryCatalogIds = (libraryGames || [])
       .map((g: any) => g.catalog_id)
       .filter(Boolean);
@@ -335,13 +390,17 @@ export default async function handler(req: Request): Promise<Response> {
     const allCollectionScored = (libraryGames || []).map((g: any) => {
       const mechanics = (g.game_mechanics || []).map((gm: any) => gm.mechanic).filter(Boolean);
       const genres = g.catalog_id ? (libGenreMap.get(g.catalog_id) || []) : [];
+      const sessionCount = librarySessionCounts.get(g.id) || 0;
+
       return scoreCandidate(
         { ...g, weight: labelToWeight(g.difficulty), play_time_minutes: null },
         genres, mechanics,
         sourceGenres, sourceFamilyIds, sourceMechanicIds,
         sourceWeight, sourcePlayTimeMinutes, sourceMinPlayers, sourceMaxPlayers,
         popularityMap, maxCount,
-        true // isLibrary — skip inverse popularity
+        platformSessionMap, maxSessions,
+        true,       // isLibrary
+        sessionCount // play history for this specific user
       );
     }).filter((g) => g.score > 0)
       .sort((a, b) => b.score - a.score);
@@ -374,7 +433,6 @@ export default async function handler(req: Request): Promise<Response> {
 
         if (aiResults) {
           discoveries = applyAIReasons(discoveries, aiResults.discoveries || []);
-          // Also apply to collection matches if returned
           if (aiResults.collection_matches) {
             const enhancedCollection = applyAIReasons(collectionMatches, aiResults.collection_matches);
             collectionMatches.splice(0, collectionMatches.length, ...enhancedCollection);
@@ -385,7 +443,25 @@ export default async function handler(req: Request): Promise<Response> {
       }
     }
 
-    // ── 10. Logging ──
+    // ── 10. Build result ──
+    const result = {
+      discoveries,
+      collection_matches: collectionMatches,
+      recommendations: [...discoveries, ...collectionMatches].slice(0, limit),
+    };
+
+    // ── 11. Cache result ──
+    try {
+      await supabase.from("recommendation_cache").upsert({
+        cache_key: cacheKey,
+        result,
+        created_at: new Date().toISOString(),
+      }, { onConflict: "cache_key" });
+    } catch (cacheErr) {
+      console.warn("[rec-v2] Failed to cache result:", cacheErr);
+    }
+
+    // ── 12. Logging ──
     try {
       const avgPop = discoveries.length > 0
         ? discoveries.reduce((s, g) => s + (g.library_count || 0), 0) / discoveries.length
@@ -402,18 +478,19 @@ export default async function handler(req: Request): Promise<Response> {
           scored_viable: allDiscoveryScored.length,
           avg_discovery_popularity: Math.round(avgPop * 10) / 10,
           discovery_titles: discoveries.map((g) => ({ title: g.title, score: g.score, genres: g.genres })),
-          collection_titles: collectionMatches.map((g) => ({ title: g.title, score: g.score, genres: g.genres })),
+          collection_titles: collectionMatches.map((g) => ({
+            title: g.title,
+            score: g.score,
+            genres: g.genres,
+            sessions: g.session_count,
+          })),
         },
         library_id,
       }).then(() => {});
     } catch {}
 
     return new Response(
-      JSON.stringify({
-        discoveries,
-        collection_matches: collectionMatches,
-        recommendations: [...discoveries, ...collectionMatches].slice(0, limit),
-      }),
+      JSON.stringify(result),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
@@ -426,7 +503,7 @@ export default async function handler(req: Request): Promise<Response> {
 }
 
 // ══════════════════════════════════════════════════
-// Scoring: Genre-first, mechanic-supplemented
+// Scoring: Genre-first, mechanic-supplemented, play-history aware
 // ══════════════════════════════════════════════════
 
 function scoreCandidate(
@@ -442,7 +519,10 @@ function scoreCandidate(
   sourceMaxPlayers: number,
   popularityMap: Map<string, number>,
   maxCount: number,
-  isLibrary = false
+  platformSessionMap: Map<string, number>,
+  maxSessions: number,
+  isLibrary = false,
+  sessionCount = 0
 ): ScoredGame {
   const signals: Record<string, number> = {};
 
@@ -452,7 +532,6 @@ function scoreCandidate(
   for (let i = 0; i < candidateGenres.length; i++) {
     if (sourceGenres.includes(candidateGenres[i])) {
       sharedGenres.push(candidateGenres[i]);
-      // Primary genre match (index 0) is worth more
       const isSourcePrimary = sourceGenres.indexOf(candidateGenres[i]) === 0;
       const isCandidatePrimary = i === 0;
       if (isSourcePrimary || isCandidatePrimary) {
@@ -478,7 +557,6 @@ function scoreCandidate(
     if (sourceMechanicIds.has(mid)) mechOverlap++;
   }
 
-  // Normalized: prevent well-tagged games from dominating
   const totalMechs = candidateMechIds.size || 1;
   const mechanicScore = ((familyOverlap * WEIGHTS.MECHANIC_FAMILY) + (mechOverlap * WEIGHTS.MECHANIC_EXACT)) / Math.max(1, Math.sqrt(totalMechs));
   signals.mechanic = Math.round(mechanicScore * 10) / 10;
@@ -509,7 +587,7 @@ function scoreCandidate(
   const playerOverlap = Math.max(0, Math.min(3, overlapMax - overlapMin + 1));
   signals.players = playerOverlap * WEIGHTS.PLAYER_OVERLAP;
 
-  // ── Inverse popularity ──
+  // ── Inverse popularity (discoveries only) ──
   const catalogId = candidate.catalog_id || candidate.id;
   const libCount = popularityMap.get(catalogId) || 0;
   let popBonus = 0;
@@ -519,11 +597,46 @@ function scoreCandidate(
   }
   signals.rarity = popBonus;
 
+  // ── Session popularity signal (discoveries only) ──
+  // Games that are frequently PLAYED (not just owned) get a boost
+  let sessionPopBonus = 0;
+  if (!isLibrary && maxSessions > 0) {
+    const catalogSessions = platformSessionMap.get(catalogId) || 0;
+    if (catalogSessions > 0) {
+      // Logarithmic scale so mega-popular games don't dominate
+      sessionPopBonus = Math.round(WEIGHTS.SESSION_POP_MAX * Math.log(1 + catalogSessions) / Math.log(1 + maxSessions));
+    }
+  }
+  signals.session_pop = sessionPopBonus;
+
+  // ── Play history signal (library games only) ──
+  // Boost unplayed/underplayed, penalize overplayed
+  let playHistoryScore = 0;
+  if (isLibrary) {
+    if (sessionCount === 0) {
+      playHistoryScore = WEIGHTS.UNPLAYED_BOOST; // Shelf of shame — surface these!
+    } else if (sessionCount <= 2) {
+      playHistoryScore = WEIGHTS.UNDERPLAYED_BOOST; // Tried once, forgotten
+    } else if (sessionCount >= 20) {
+      playHistoryScore = WEIGHTS.OVERPLAYED_PENALTY; // Already well-loved, don't need reminding
+    }
+    // 3-19 plays = neutral (no bonus or penalty)
+  }
+  signals.play_history = playHistoryScore;
+
   // ── Total ──
   const totalScore = Object.values(signals).reduce((a, b) => a + b, 0);
 
   // ── Build deterministic reason (Cortex will override if available) ──
   const reasons: string[] = [];
+
+  // For library games, lead with play status
+  if (isLibrary && sessionCount === 0) {
+    reasons.push("Unplayed — time to try it!");
+  } else if (isLibrary && sessionCount <= 2) {
+    reasons.push("Only played once — give it another go");
+  }
+
   if (sharedGenres.length > 0) reasons.push(`${sharedGenres.join(", ")}`);
 
   const sharedMechNames = candidateMechanics
@@ -534,6 +647,7 @@ function scoreCandidate(
   if (weightScore >= WEIGHTS.WEIGHT_NEAR) reasons.push("Similar complexity");
   if (playerOverlap >= 2) reasons.push("Similar player count");
   if (popBonus >= 3) reasons.push("Hidden gem");
+  if (sessionPopBonus >= 3) reasons.push("Frequently played");
   if (reasons.length === 0) reasons.push("Related game");
 
   return {
@@ -549,6 +663,7 @@ function scoreCandidate(
     reason: reasons.join(" · "),
     score: Math.round(totalScore),
     library_count: libCount,
+    session_count: sessionCount,
     signal_breakdown: signals,
   };
 }
@@ -577,6 +692,7 @@ Rules:
 - Be specific about what connects the games emotionally/thematically
 - Never start with "Both" or "Also"
 - Use language a board gamer would use casually
+- For collection_matches with 0 sessions played, ALWAYS mention it's unplayed and encourage trying it
 - If you can't find a genuine connection, say "Worth exploring"
 
 Respond with valid JSON only. Schema:
@@ -595,7 +711,7 @@ Discoveries to explain:
 ${discoveries.map((g) => `- ID: ${g.id} | "${g.title}" | Genres: ${g.genres.join(", ")} | Deterministic: ${g.reason}`).join("\n")}
 
 Collection matches to explain:
-${collectionMatches.map((g) => `- ID: ${g.id} | "${g.title}" | Genres: ${g.genres.join(", ")} | Deterministic: ${g.reason}`).join("\n")}`;
+${collectionMatches.map((g) => `- ID: ${g.id} | "${g.title}" | Genres: ${g.genres.join(", ")} | Sessions: ${g.session_count ?? "?"} | Deterministic: ${g.reason}`).join("\n")}`;
 
     const response = await fetch(CORTEX_ENDPOINT, {
       method: "POST",
@@ -620,7 +736,6 @@ ${collectionMatches.map((g) => `- ID: ${g.id} | "${g.title}" | Genres: ${g.genre
     const content = data.choices?.[0]?.message?.content;
     if (!content) return null;
 
-    // Parse JSON from response
     try {
       return JSON.parse(content);
     } catch {
@@ -628,7 +743,6 @@ ${collectionMatches.map((g) => `- ID: ${g.id} | "${g.title}" | Genres: ${g.genre
       if (jsonMatch) {
         return JSON.parse(jsonMatch[1].trim());
       }
-      // Try finding JSON object in the text
       const objMatch = content.match(/\{[\s\S]*\}/);
       if (objMatch) {
         return JSON.parse(objMatch[0]);
@@ -697,10 +811,12 @@ function weightToLabel(weight: number | null): string | null {
 
 function labelToWeight(label: string | null): number | null {
   if (!label) return null;
+  // Handle both "Medium" and "3 - Medium" formats
+  const cleaned = label.replace(/^\d+\s*-\s*/, "").trim().toLowerCase();
   const map: Record<string, number> = {
     light: 1.0, "medium light": 2.0, medium: 3.0, "medium heavy": 3.75, heavy: 4.5,
   };
-  return map[label.toLowerCase()] ?? null;
+  return map[cleaned] ?? null;
 }
 
 if (import.meta.main) {

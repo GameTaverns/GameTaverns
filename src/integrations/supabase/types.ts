@@ -5724,6 +5724,27 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          id: string
+          result: Json
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          id?: string
+          result: Json
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          id?: string
+          result?: Json
+        }
+        Relationships: []
+      }
       reengagement_email_events: {
         Row: {
           created_at: string
@@ -7512,6 +7533,13 @@ export type Database = {
         }[]
       }
       get_catalog_filter_options: { Args: never; Returns: Json }
+      get_catalog_session_counts: {
+        Args: never
+        Returns: {
+          catalog_id: string
+          session_count: number
+        }[]
+      }
       get_cron_job_runs: {
         Args: never
         Returns: {
