@@ -609,14 +609,13 @@ async function fetchBGGXMLData(bggId: string): Promise<{
 }
 
 /**
- * Strip Perplexity/Sonar citation markers like [1], [2][3], [1][3][4] from text
+ * Strip citation markers like [1], [2][3], [1][3][4] from text
  */
 function stripCitationBrackets(text: string): string {
   return text.replace(/\[\d+\]/g, "").replace(/  +/g, " ").trim();
 }
 
 // Format a BGG description into structured markdown using AI
-// Uses response_format instead of tool calling (Perplexity doesn't support tools)
 async function formatDescriptionWithAI(rawContent: string, bggId: string): Promise<string | null> {
   if (!isAIConfigured()) {
     console.log(`[BulkImport] AI not configured, skipping description formatting for ${bggId}`);
