@@ -1345,6 +1345,10 @@ const handler = async (req: Request): Promise<Response> => {
     if (mode === "classify-genres") {
       const CORTEX_URL = "https://cortex.tzolak.com/api/classify-genre";
       const genreBatchSize = Math.min(body.batch_size || 50, 200);
+      const SUB_BATCH = Math.min(body.sub_batch_size || 6, 10);
+      const CORTEX_TIMEOUT_MS = Math.min(Math.max(body.cortex_timeout_ms || 6000, 3000), 12000);
+      const SINGLE_ITEM_TIMEOUT_MS = Math.min(Math.max(body.single_item_timeout_ms || 2500, 1500), 6000);
+      const MAX_CORTEX_RETRIES = 2;
 
       const VALID_GENRES = [
         "Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure",
@@ -1356,6 +1360,106 @@ const handler = async (req: Request): Promise<Response> => {
       // Map legacy genres to new taxonomy
       const GENRE_ALIASES: Record<string, string> = {
         "Economic": "Strategy",
+      };
+
+      const heuristicGenreRules: Array<{ genre: string; keywords: string[] }> = [
+        { genre: "Fantasy", keywords: ["fantasy", "dragon", "wizard", "magic", "orc", "elf", "dungeon"] },
+        { genre: "Sci-Fi", keywords: ["sci-fi", "science fiction", "space", "alien", "galaxy", "robot", "cyber"] },
+        { genre: "Historical", keywords: ["historical", "history", "medieval", "renaissance", "ancient", "victorian"] },
+        { genre: "Horror", keywords: ["horror", "zombie", "vampire", "monster", "haunted", "terror", "eldritch"] },
+        { genre: "Mystery", keywords: ["mystery", "detective", "murder", "investigation", "whodunit", "crime"] },
+        { genre: "Adventure", keywords: ["adventure", "explore", "exploration", "journey", "expedition", "quest"] },
+        { genre: "War", keywords: ["war", "battle", "military", "combat", "army", "naval", "wwii"] },
+        { genre: "Political", keywords: ["politic", "election", "government", "senate", "diplomacy", "negotiation"] },
+        { genre: "Party", keywords: ["party", "charades", "social", "laugh", "drawing", "guessing"] },
+        { genre: "Trivia", keywords: ["trivia", "quiz", "knowledge", "facts"] },
+        { genre: "Sports", keywords: ["sports", "soccer", "football", "baseball", "basketball", "racing"] },
+        { genre: "Educational", keywords: ["educational", "learn", "teaching", "math", "spelling", "science"] },
+        { genre: "Nature", keywords: ["nature", "animal", "wildlife", "forest", "ocean", "ecosystem"] },
+        { genre: "Humor", keywords: ["humor", "funny", "comedy", "joke", "silly"] },
+        { genre: "Deck Building", keywords: ["deck building", "deckbuilder", "cards in deck", "card drafting"] },
+        { genre: "Cooperative", keywords: ["cooperative", "co-op", "team up", "work together"] },
+        { genre: "Family", keywords: ["family", "kids", "children", "all ages"] },
+        { genre: "Abstract", keywords: ["abstract", "pattern", "spatial", "tile placement"] },
+        { genre: "Strategy", keywords: ["strategy", "economic", "engine building", "resource management", "area control"] },
+      ];
+
+      const classifyGenresHeuristically = (entry: any, mechanics: string[] = []) => {
+        const corpus = `${entry.title || ""} ${entry.description || ""} ${mechanics.join(" ")}`.toLowerCase();
+        const matches = heuristicGenreRules
+          .filter(({ keywords }) => keywords.some((keyword) => corpus.includes(keyword)))
+          .map(({ genre }) => genre);
+
+        if (matches.length === 0) return ["Other"];
+        return [...new Set(matches)].slice(0, 3);
+      };
+
+      const normalizeGenreResults = (cortexData: any) => {
+        const results: { id: string; genres?: string[]; genre?: string }[] = cortexData?.classified || [];
+        if (!cortexData?.classified && cortexData?.id && (cortexData?.genres || cortexData?.genre)) {
+          results.push(cortexData);
+        }
+        return results;
+      };
+
+      const callCortex = async (
+        payload: Array<{ id: string; title: string; description: string; mechanics: string[] }>,
+        timeoutMs: number,
+        retries: number,
+      ) => {
+        let lastError = "Unknown Cortex error";
+
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort("cortex-timeout"), timeoutMs);
+
+          try {
+            const cortexRes = await fetch(CORTEX_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+              signal: controller.signal,
+            });
+
+            if (cortexRes.status === 429) {
+              await cortexRes.text();
+              return { results: [], error: "Rate limited — stopping early", rateLimited: true };
+            }
+
+            if (cortexRes.status === 502 || cortexRes.status === 503 || cortexRes.status === 504) {
+              const errText = await cortexRes.text();
+              lastError = `Cortex API error ${cortexRes.status}: ${errText.slice(0, 200)}`;
+              console.warn(`[classify-genres] Cortex ${cortexRes.status}, attempt ${attempt}/${retries}, payload=${payload.length}`);
+              if (attempt < retries) {
+                await sleep(attempt * 1000);
+                continue;
+              }
+            } else if (!cortexRes.ok) {
+              const errText = await cortexRes.text();
+              lastError = `Cortex API error ${cortexRes.status}: ${errText.slice(0, 200)}`;
+            } else {
+              const cortexData = await cortexRes.json();
+              return {
+                results: normalizeGenreResults(cortexData),
+                error: null,
+                rateLimited: false,
+              };
+            }
+          } catch (fetchErr) {
+            const errMsg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+            const timedOut = fetchErr instanceof Error && errMsg.toLowerCase().includes("abort");
+            lastError = timedOut ? `Cortex timeout after ${timeoutMs}ms` : `Cortex connection failed: ${errMsg}`;
+            console.warn(`[classify-genres] Cortex fetch error, attempt ${attempt}/${retries}, payload=${payload.length}:`, fetchErr);
+            if (attempt < retries) {
+              await sleep(attempt * 1000);
+              continue;
+            }
+          } finally {
+            clearTimeout(timeoutId);
+          }
+        }
+
+        return { results: [], error: lastError, rateLimited: false };
       };
 
       // Fetch unclassified catalog entries (those without any catalog_genres rows)
@@ -1447,8 +1551,6 @@ const handler = async (req: Request): Promise<Response> => {
       let genreClassified = 0;
       const genreErrors: string[] = [];
 
-      // Process in sub-batches of 15 for Cortex
-      const SUB_BATCH = 15;
       for (let i = 0; i < entries.length; i += SUB_BATCH) {
         const subBatch = entries.slice(i, i + SUB_BATCH);
 
@@ -1460,65 +1562,44 @@ const handler = async (req: Request): Promise<Response> => {
         }));
 
         try {
-          // Retry Cortex calls on 502/503/timeout (up to 3 attempts)
-          let cortexRes: Response | null = null;
-          let cortexAttempts = 0;
-          const MAX_CORTEX_RETRIES = 3;
-          while (cortexAttempts < MAX_CORTEX_RETRIES) {
-            cortexAttempts++;
-            try {
-              cortexRes = await fetch(CORTEX_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(cortexPayload),
-              });
-              if (cortexRes.status === 502 || cortexRes.status === 503) {
-                const errText = await cortexRes.text();
-                console.warn(`[classify-genres] Cortex ${cortexRes.status}, attempt ${cortexAttempts}/${MAX_CORTEX_RETRIES}`);
-                if (cortexAttempts < MAX_CORTEX_RETRIES) {
-                  await sleep(cortexAttempts * 2000);
-                  cortexRes = null;
-                  continue;
-                }
-                genreErrors.push(`Cortex API error ${cortexRes.status} after ${MAX_CORTEX_RETRIES} retries: ${errText.slice(0, 200)}`);
-                cortexRes = null;
-                break;
-              }
-              break; // success or non-retryable error
-            } catch (fetchErr) {
-              console.warn(`[classify-genres] Cortex fetch error, attempt ${cortexAttempts}/${MAX_CORTEX_RETRIES}:`, fetchErr);
-              if (cortexAttempts < MAX_CORTEX_RETRIES) {
-                await sleep(cortexAttempts * 2000);
-              } else {
-                genreErrors.push(`Cortex connection failed after ${MAX_CORTEX_RETRIES} retries: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
-              }
-              cortexRes = null;
-            }
-          }
+          const batchResponse = await callCortex(cortexPayload, CORTEX_TIMEOUT_MS, MAX_CORTEX_RETRIES);
+          let results = batchResponse.results;
 
-          if (!cortexRes) continue;
-
-          if (cortexRes.status === 429) {
+          if (batchResponse.rateLimited) {
             console.warn("[classify-genres] Cortex rate limited, stopping batch early");
-            genreErrors.push("Rate limited — stopping early");
+            genreErrors.push(batchResponse.error || "Rate limited — stopping early");
             break;
           }
 
-          if (!cortexRes.ok) {
-            const errText = await cortexRes.text();
-            genreErrors.push(`Cortex API error ${cortexRes.status}: ${errText.slice(0, 200)}`);
-            continue;
-          }
+          if (batchResponse.error) {
+            console.warn(`[classify-genres] Falling back to single-item mode for ${subBatch.length} entries: ${batchResponse.error}`);
+            genreErrors.push(`Sub-batch fallback (${subBatch.length} entries): ${batchResponse.error}`);
+            results = [];
 
-          const cortexData = await cortexRes.json();
+            for (const entry of subBatch) {
+              const singlePayload = [{
+                id: entry.id,
+                title: entry.title,
+                description: (entry.description || "").slice(0, 500),
+                mechanics: catalogMechanics[entry.id] || [],
+              }];
 
-          // Cortex returns { classified: [{id, genres: ["Sci-Fi","Horror"]}, ...], count }
-          // Also supports legacy single-genre format: {id, genre: "Sci-Fi"}
-          const results: { id: string; genres?: string[]; genre?: string }[] = cortexData.classified || [];
+              const singleResponse = await callCortex(singlePayload, SINGLE_ITEM_TIMEOUT_MS, 1);
 
-          // Handle single-game response format
-          if (!cortexData.classified && cortexData.id && (cortexData.genres || cortexData.genre)) {
-            results.push(cortexData);
+              if (singleResponse.rateLimited) {
+                genreErrors.push(singleResponse.error || `Rate limited while classifying ${entry.title}`);
+                break;
+              }
+
+              if (singleResponse.results.length > 0) {
+                results.push(...singleResponse.results);
+                continue;
+              }
+
+              const fallbackGenres = classifyGenresHeuristically(entry, catalogMechanics[entry.id] || []);
+              results.push({ id: entry.id, genres: fallbackGenres });
+              genreErrors.push(`Used heuristic fallback for "${entry.title}": ${singleResponse.error || batchResponse.error}`);
+            }
           }
 
           for (const result of results) {
