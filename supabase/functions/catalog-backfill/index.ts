@@ -1362,14 +1362,16 @@ const handler = async (req: Request): Promise<Response> => {
             continue;
           }
 
-          // Find parent in catalog by bgg_id
+          // Find parent in catalog by bgg_id.
+          // Self-hosted/legacy data can have the true parent row mis-flagged
+          // as an expansion, so do not require is_expansion=false here.
           let parentFound = false;
           for (const parentBggId of parentBggIds) {
             const { data: parentCatalog } = await admin
               .from("game_catalog")
-              .select("id, title")
+              .select("id, title, is_expansion")
               .eq("bgg_id", parentBggId)
-              .eq("is_expansion", false)
+              .neq("id", exp.id)
               .maybeSingle();
 
             if (parentCatalog) {
@@ -1381,7 +1383,12 @@ const handler = async (req: Request): Promise<Response> => {
               }
               linked++;
               if (samples.length < 20) {
-                samples.push({ expansion: exp.title, parent: parentCatalog.title });
+                samples.push({
+                  expansion: exp.title,
+                  parent: parentCatalog.is_expansion
+                    ? `${parentCatalog.title} [mis-flagged parent]`
+                    : parentCatalog.title,
+                });
               }
               parentFound = true;
               break;
