@@ -211,6 +211,8 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
             <PickerFilterTab
               selectedTypes={selectedTypes}
               toggleType={t => setSelectedTypes(prev => toggleArrayItem(prev, t))}
+              selectedGenres={selectedGenres}
+              toggleGenre={g => setSelectedGenres(prev => toggleArrayItem(prev, g))}
               selectedMechanics={selectedMechanics}
               toggleMechanic={m => setSelectedMechanics(prev => toggleArrayItem(prev, m))}
               mechanicFamilyNames={mechanicFamilyNames}
