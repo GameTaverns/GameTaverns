@@ -45,6 +45,7 @@ interface CatalogGame {
   artists: string[];
   mechanics: string[];
   publishers: string[];
+  genres: string[];
   community_rating: number | null;
   community_rating_count: number;
 }
@@ -329,18 +330,18 @@ export default function CatalogBrowse() {
         return results;
       };
 
-      const [designersRows, artistsRows, mechanicsRows, publishersRows, ratingsRows] = await Promise.all([
+      const [designersRows, artistsRows, mechanicsRows, publishersRows, genresRows, ratingsRows] = await Promise.all([
         batchFetch("catalog_designers", "catalog_id, designer:designers(name)"),
         batchFetch("catalog_artists", "catalog_id, artist:artists(name)"),
         batchFetch("catalog_mechanics", "catalog_id, mechanic:mechanics(name, family:mechanic_families(name))"),
         batchFetch("catalog_publishers", "catalog_id, publisher:publishers(name)"),
+        batchFetch("catalog_genres", "catalog_id, genre, display_order"),
         batchFetch("catalog_ratings_summary", "catalog_id, visitor_average, visitor_count"),
       ]);
 
       const buildMap = (rows: any[], key: string) => {
         const map = new Map<string, string[]>();
         for (const row of rows || []) {
-          // For mechanics, prefer family name over granular name
           const name = row[key]?.family?.name || row[key]?.name;
           if (name) {
             const list = map.get(row.catalog_id) || [];
@@ -350,6 +351,13 @@ export default function CatalogBrowse() {
         }
         return map;
       };
+
+      const genreMap = new Map<string, string[]>();
+      for (const row of (genresRows || []).sort((a: any, b: any) => (a.display_order ?? 999) - (b.display_order ?? 999))) {
+        const list = genreMap.get(row.catalog_id) || [];
+        if (row.genre && !list.includes(row.genre)) list.push(row.genre);
+        genreMap.set(row.catalog_id, list);
+      }
 
       const ratingMap = new Map<string, { avg: number; count: number }>();
       for (const row of ratingsRows || []) {
@@ -363,6 +371,7 @@ export default function CatalogBrowse() {
         artistMap: buildMap(artistsRows, "artist"),
         mechanicMap: buildMap(mechanicsRows, "mechanic"),
         publisherMap: buildMap(publishersRows, "publisher"),
+        genreMap,
         ratingMap,
       };
     },
@@ -380,6 +389,7 @@ export default function CatalogBrowse() {
         artists: metadata?.artistMap.get(g.id) || [],
         mechanics: metadata?.mechanicMap.get(g.id) || [],
         publishers: metadata?.publisherMap.get(g.id) || [],
+        genres: metadata?.genreMap.get(g.id) || [],
         community_rating: r ? r.avg : null,
         community_rating_count: r?.count || 0,
       };
