@@ -26,7 +26,8 @@ import {
   Library,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DIFFICULTY_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
+import { DIFFICULTY_OPTIONS, PLAY_TIME_OPTIONS, GENRE_OPTIONS } from "@/types/game";
+import { Tag } from "lucide-react";
 import { YearFilterSection } from "@/components/filters/YearFilterSection";
 import logoImage from "@/assets/logo.png";
 
