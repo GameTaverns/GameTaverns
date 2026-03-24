@@ -59,7 +59,7 @@ while true; do
     -H "Content-Type: application/json" \
     -H "apikey: $SERVICE_ROLE_KEY" \
     -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-    -d "{\"mode\": \"classify-genres\", \"batch_size\": $BATCH_SIZE, \"include_expansions\": true}" 2>&1)
+    -d "{\"mode\": \"classify-genres\", \"batch_size\": $BATCH_SIZE, \"include_expansions\": true, \"cortex_timeout_ms\": 12000, \"single_item_timeout_ms\": 6000, \"sub_batch_size\": 4}" 2>&1)
 
   CURL_EXIT=$?
   if [ $CURL_EXIT -ne 0 ]; then
