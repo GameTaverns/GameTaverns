@@ -187,7 +187,7 @@ export function GameRecommendations({ gameId, gameTitle }: GameRecommendationsPr
             Unable to load recommendations right now.
           </p>
         ) : hasDiscoveries ? (
-          <RecommendationGrid games={data!.discoveries} buildGameUrl={buildGameUrl} />
+          <RecommendationGrid games={data!.discoveries} buildGameUrl={buildCatalogUrl} />
         ) : (
           <p className="text-sm text-muted-foreground">
             No new discoveries found for this game yet.
