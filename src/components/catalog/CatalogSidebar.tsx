@@ -89,7 +89,7 @@ export function CatalogSidebar({ designers, artists, mechanics, publishers, isOp
   const activeFilter = searchParams.get("filter");
   const activeValue = searchParams.get("value");
 
-  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "year", "mechanic", "publisher", "designer", "artist"].includes(activeFilter || "");
+  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "year", "mechanic", "publisher", "designer", "artist", "genre"].includes(activeFilter || "");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(isAdvancedFilterActive);
 
   const setFilter = (filter: string, value: string) => {
