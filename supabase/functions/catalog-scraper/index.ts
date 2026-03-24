@@ -1013,7 +1013,9 @@ const handler = async (req: Request): Promise<Response> => {
     added: totalAdded,
     skipped: totalSkipped,
     errors: totalErrors,
-    next_bgg_id: currentId,
+    next_bgg_id: finalNextBggId,
+    wrapped: finalNextBggId < currentId,
+    first_new_game_bgg_id: firstNewGameBggId,
     last_error: lastError,
   };
 
