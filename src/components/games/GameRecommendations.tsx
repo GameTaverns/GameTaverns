@@ -1,12 +1,14 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, BookOpen } from "lucide-react";
+import { Sparkles, BookOpen, ChevronDown } from "lucide-react";
 import { useGameRecommendations, GameRecommendation } from "@/hooks/useGameRecommendations";
 import { useTenant } from "@/contexts/TenantContext";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { GameImage } from "./GameImage";
+import { cn } from "@/lib/utils";
 
 interface GameRecommendationsProps {
   gameId: string;
@@ -57,6 +59,66 @@ function RecommendationGrid({
   );
 }
 
+function LoadingSkeleton({ count = 5 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      {[...Array(count)].map((_, i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="aspect-square rounded-lg" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CollapsibleSection({
+  icon: Icon,
+  title,
+  subtitle,
+  children,
+  defaultOpen = true,
+}: {
+  icon: React.ElementType;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div className="border border-border/50 rounded-xl bg-card overflow-hidden">
+        <CollapsibleTrigger className="w-full">
+          <div className="flex items-center justify-between px-4 py-3 sm:px-5 sm:py-4 hover:bg-accent/5 transition-colors cursor-pointer">
+            <div className="flex items-center gap-2.5 text-left">
+              <Icon className="h-5 w-5 text-primary shrink-0" />
+              <div>
+                <h3 className="text-base font-semibold text-foreground">{title}</h3>
+                {subtitle && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+                )}
+              </div>
+            </div>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                isOpen && "rotate-180"
+              )}
+            />
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+            {children}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
 export function GameRecommendations({ gameId, gameTitle }: GameRecommendationsProps) {
   const { tenantSlug } = useTenant();
   const { isDemoMode } = useDemoMode();
@@ -78,67 +140,42 @@ export function GameRecommendations({ gameId, gameTitle }: GameRecommendationsPr
   };
 
   return (
-    <div className="mt-8 space-y-6">
-      {/* Discoveries - games NOT in collection */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="h-5 w-5 text-primary" />
-            Games You Might Like
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Based on mechanics and play style of {gameTitle}
-          </p>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="aspect-square rounded-lg" />
-                  <Skeleton className="h-4 w-3/4" />
-                </div>
-              ))}
-            </div>
-          ) : error ? (
-            <p className="text-sm text-muted-foreground">
-              Unable to load recommendations right now.
-            </p>
-          ) : hasDiscoveries ? (
-            <RecommendationGrid games={data!.discoveries} buildGameUrl={buildGameUrl} />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No new discoveries found for this game yet.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Collection Matches - similar games user already owns */}
+    <div className="mt-8 space-y-4">
+      {/* Row 1: Rediscover Your Shelf — similar games the user already owns */}
       {(isLoading || hasCollectionMatches) && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <BookOpen className="h-5 w-5 text-primary" />
-              Similar in Your Collection
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="space-y-2">
-                    <Skeleton className="aspect-square rounded-lg" />
-                    <Skeleton className="h-4 w-3/4" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <RecommendationGrid games={data!.collection_matches} buildGameUrl={buildGameUrl} />
-            )}
-          </CardContent>
-        </Card>
+        <CollapsibleSection
+          icon={BookOpen}
+          title="Rediscover Your Shelf"
+          subtitle={`Games in your collection similar to ${gameTitle}`}
+        >
+          {isLoading ? (
+            <LoadingSkeleton count={3} />
+          ) : (
+            <RecommendationGrid games={data!.collection_matches} buildGameUrl={buildGameUrl} />
+          )}
+        </CollapsibleSection>
       )}
+
+      {/* Row 2: New Discoveries — games NOT in collection */}
+      <CollapsibleSection
+        icon={Sparkles}
+        title="New Discoveries"
+        subtitle={`Games you might love based on ${gameTitle}`}
+      >
+        {isLoading ? (
+          <LoadingSkeleton count={5} />
+        ) : error ? (
+          <p className="text-sm text-muted-foreground">
+            Unable to load recommendations right now.
+          </p>
+        ) : hasDiscoveries ? (
+          <RecommendationGrid games={data!.discoveries} buildGameUrl={buildGameUrl} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No new discoveries found for this game yet.
+          </p>
+        )}
+      </CollapsibleSection>
     </div>
   );
 }
