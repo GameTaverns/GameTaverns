@@ -7533,6 +7533,13 @@ export type Database = {
         }[]
       }
       get_catalog_filter_options: { Args: never; Returns: Json }
+      get_catalog_session_counts: {
+        Args: never
+        Returns: {
+          catalog_id: string
+          session_count: number
+        }[]
+      }
       get_cron_job_runs: {
         Args: never
         Returns: {
