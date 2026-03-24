@@ -273,6 +273,8 @@ function processGames(games: any[]): GameWithRelations[] {
     game_type: game.game_type as GameType,
     play_time: game.play_time as PlayTime,
     additional_images: game.additional_images || [],
+    // Genres: will be enriched after processGames for admin path
+    genres: game.genre ? [game.genre] : [],
     mechanics: (() => {
       const seen = new Set<string>();
       return (game.game_mechanics || [])
