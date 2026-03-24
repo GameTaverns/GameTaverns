@@ -135,6 +135,12 @@ export function ConventionConcierge({ event, libraryGames, activeLoans, conventi
       if (selectedTypes.length > 0) {
         games = games.filter(g => g.game_type && selectedTypes.includes(g.game_type));
       }
+      if (selectedGenres.length > 0) {
+        games = games.filter(g => {
+          const gameGenres: string[] = (g as any).genres || (g.genre ? [g.genre] : []);
+          return gameGenres.length > 0 && selectedGenres.some(sg => gameGenres.includes(sg));
+        });
+      }
       if (selectedMechanics.length > 0 && gameMechanicMap) {
         games = games.filter(g => {
           const families = gameMechanicMap.get(g.id);
