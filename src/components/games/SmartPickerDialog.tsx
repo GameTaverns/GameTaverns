@@ -52,6 +52,7 @@ export function SmartPickerDialog({ children, open: controlledOpen, onOpenChange
 
   // Filter state
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedMechanics, setSelectedMechanics] = useState<string[]>([]);
   const [selectedPlayTimes, setSelectedPlayTimes] = useState<string[]>([]);
   const [playerCount, setPlayerCount] = useState("any");
