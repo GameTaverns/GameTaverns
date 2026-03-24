@@ -44,7 +44,34 @@ export function useGames(enabled = true) {
 
         if (gamesError) throw gamesError;
 
-        return processGames(games || []);
+        const processed = processGames(games || []);
+        
+        // Enrich with catalog_genres
+        const BATCH_SIZE_ADMIN = 50;
+        const catalogIdsAdmin = [...new Set(processed.filter((g) => (g as any).catalog_id).map((g) => (g as any).catalog_id as string))];
+        const allGenreLinksAdmin: any[] = [];
+        for (let i = 0; i < catalogIdsAdmin.length; i += BATCH_SIZE_ADMIN) {
+          const batch = catalogIdsAdmin.slice(i, i + BATCH_SIZE_ADMIN);
+          const { data } = await (supabase as any)
+            .from("catalog_genres")
+            .select("catalog_id, genre, display_order")
+            .in("catalog_id", batch)
+            .order("display_order");
+          if (data) allGenreLinksAdmin.push(...data);
+        }
+        const genresMapAdmin = new Map<string, string[]>();
+        allGenreLinksAdmin.forEach((cg: any) => {
+          const existing = genresMapAdmin.get(cg.catalog_id) || [];
+          if (!existing.includes(cg.genre)) existing.push(cg.genre);
+          genresMapAdmin.set(cg.catalog_id, existing);
+        });
+        processed.forEach((g: any) => {
+          if (g.catalog_id && genresMapAdmin.has(g.catalog_id)) {
+            g.genres = genresMapAdmin.get(g.catalog_id);
+          }
+        });
+
+        return processed;
       }
 
       // Public: use games_public view (no sensitive admin_data)
