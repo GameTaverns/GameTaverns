@@ -1537,10 +1537,16 @@ const handler = async (req: Request): Promise<Response> => {
     if (mode === "classify-genres") {
       const CORTEX_URL = "https://cortex.tzolak.com/api/classify-genre";
       const genreBatchSize = Math.min(body.batch_size || 50, 200);
-      const SUB_BATCH = Math.min(body.sub_batch_size || 6, 10);
+      const SUB_BATCH = Math.min(Math.max(body.sub_batch_size || 6, 1), 10);
       const CORTEX_TIMEOUT_MS = Math.min(Math.max(body.cortex_timeout_ms || 6000, 3000), 12000);
       const SINGLE_ITEM_TIMEOUT_MS = Math.min(Math.max(body.single_item_timeout_ms || 2500, 1500), 6000);
       const MAX_CORTEX_RETRIES = 2;
+      const REQUEST_BUDGET_MS = Math.min(Math.max(body.request_budget_ms || 45000, 10000), 110000);
+      const MAX_SINGLE_FALLBACKS_PER_SUB_BATCH = Math.min(
+        Math.max(body.max_single_fallbacks_per_sub_batch ?? 2, 0),
+        SUB_BATCH,
+      );
+      const requestStartedAt = Date.now();
 
       const VALID_GENRES = [
         "Fantasy", "Sci-Fi", "Historical", "Horror", "Mystery", "Adventure",
@@ -1741,9 +1747,17 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       let genreClassified = 0;
+      let budgetExceeded = false;
       const genreErrors: string[] = [];
 
       for (let i = 0; i < entries.length; i += SUB_BATCH) {
+        if (Date.now() - requestStartedAt >= REQUEST_BUDGET_MS) {
+          budgetExceeded = true;
+          genreErrors.push(`Stopped early after ${REQUEST_BUDGET_MS}ms request budget to avoid upstream timeout`);
+          console.warn(`[classify-genres] Request budget reached after ${Date.now() - requestStartedAt}ms; stopping early`);
+          break;
+        }
+
         const subBatch = entries.slice(i, i + SUB_BATCH);
 
         const cortexPayload = subBatch.map((e: any) => ({
@@ -1767,8 +1781,21 @@ const handler = async (req: Request): Promise<Response> => {
             console.warn(`[classify-genres] Falling back to single-item mode for ${subBatch.length} entries: ${batchResponse.error}`);
             genreErrors.push(`Sub-batch fallback (${subBatch.length} entries): ${batchResponse.error}`);
             results = [];
+            let singleFallbacksUsed = 0;
 
             for (const entry of subBatch) {
+              const canAttemptSingleFallback =
+                singleFallbacksUsed < MAX_SINGLE_FALLBACKS_PER_SUB_BATCH &&
+                Date.now() - requestStartedAt + SINGLE_ITEM_TIMEOUT_MS < REQUEST_BUDGET_MS;
+
+              if (!canAttemptSingleFallback) {
+                const fallbackGenres = classifyGenresHeuristically(entry, catalogMechanics[entry.id] || []);
+                results.push({ id: entry.id, genres: fallbackGenres });
+                genreErrors.push(`Used heuristic fallback for "${entry.title}": request budget guard`);
+                continue;
+              }
+
+              singleFallbacksUsed++;
               const singlePayload = [{
                 id: entry.id,
                 title: entry.title,
@@ -1851,10 +1878,10 @@ const handler = async (req: Request): Promise<Response> => {
       const wasRateLimited = genreErrors.some((e) => e.toLowerCase().includes("rate limited"));
       const hadErrors = genreErrors.length > 0;
       // Keep going if: we classified some, OR we had retryable errors (entries still unclassified), OR rate limited
-      const genreHasMore = entries.length > 0 && (genreClassified > 0 || wasRateLimited || hadErrors);
+      const genreHasMore = entries.length > 0 && (genreClassified > 0 || wasRateLimited || hadErrors || budgetExceeded);
       return new Response(JSON.stringify({
         success: true, mode: "classify-genres", classified: genreClassified,
-        total: entries.length, hasMore: genreHasMore,
+        total: entries.length, hasMore: genreHasMore, budgetExceeded,
         errors: genreErrors.slice(0, 20),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
