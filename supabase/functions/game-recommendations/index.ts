@@ -361,19 +361,26 @@ export default async function handler(req: Request): Promise<Response> {
 
     const libGenreMap = new Map<string, string[]>();
     if (libraryCatalogIds.length > 0) {
-      const { data: libGenres } = await supabase
-        .from("catalog_genres")
-        .select("catalog_id, genre, display_order")
-        .in("catalog_id", libraryCatalogIds)
-        .order("display_order")
-        .limit(1000);
-      if (libGenres) {
-        for (const row of libGenres) {
-          const arr = libGenreMap.get(row.catalog_id) || [];
-          arr.push(row.genre);
-          libGenreMap.set(row.catalog_id, arr);
-        }
+      // Batch library genre lookups too
+      const libBatches: string[][] = [];
+      for (let i = 0; i < libraryCatalogIds.length; i += BATCH_SIZE) {
+        libBatches.push(libraryCatalogIds.slice(i, i + BATCH_SIZE));
       }
+      await Promise.all(libBatches.map(async (batchIds) => {
+        const { data: libGenres } = await supabase
+          .from("catalog_genres")
+          .select("catalog_id, genre, display_order")
+          .in("catalog_id", batchIds)
+          .order("display_order")
+          .limit(BATCH_SIZE * 4);
+        if (libGenres) {
+          for (const row of libGenres) {
+            const arr = libGenreMap.get(row.catalog_id) || [];
+            arr.push(row.genre);
+            libGenreMap.set(row.catalog_id, arr);
+          }
+        }
+      }));
     }
 
     const allCollectionScored = (libraryGames || []).map((g: any) => {
