@@ -155,7 +155,7 @@ export default async function handler(req: Request): Promise<Response> {
         .gt("library_count", 0)
         .limit(1000),
       // Aggregate session counts by catalog_id across the platform
-      supabase.rpc("get_catalog_session_counts").catch(() => ({ data: null })),
+      Promise.resolve().then(() => supabase.rpc("get_catalog_session_counts")).catch(() => ({ data: null })),
     ]);
 
     const popularityMap = new Map<string, number>();
