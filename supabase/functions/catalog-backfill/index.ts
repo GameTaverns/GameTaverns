@@ -76,6 +76,115 @@ function parseBggXmlBatch(xml: string): ParsedEnrichment[] {
   return results;
 }
 
+type CatalogMatchCandidate = {
+  id: string;
+  title: string;
+  is_expansion?: boolean | null;
+  bgg_id?: string | null;
+};
+
+const TITLE_DELIMITERS = [": ", " – ", " — ", " - "];
+
+const normalizeTitleForMatch = (input: string) =>
+  decodeHtmlEntities(input)
+    .normalize("NFKD")
+    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/[\u2018\u2019\u201B\u2032]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/&/g, " and ")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+
+const getTitlePrefixKeys = (title: string) => {
+  const rawTitle = decodeHtmlEntities(title).trim();
+  const keys = new Set<string>();
+
+  for (const delim of TITLE_DELIMITERS) {
+    let searchFrom = 0;
+    while (true) {
+      const idx = rawTitle.indexOf(delim, searchFrom);
+      if (idx <= 0) break;
+      const normalized = normalizeTitleForMatch(rawTitle.substring(0, idx));
+      if (normalized) keys.add(normalized);
+      searchFrom = idx + delim.length;
+    }
+  }
+
+  return [...keys].sort((a, b) => b.length - a.length);
+};
+
+const getTitleMatchKeys = (title: string) => {
+  const keys = new Set<string>();
+  const full = normalizeTitleForMatch(title);
+  if (full) keys.add(full);
+  for (const key of getTitlePrefixKeys(title)) keys.add(key);
+  return [...keys];
+};
+
+const addCandidateToMap = (
+  map: Map<string, CatalogMatchCandidate[]>,
+  key: string,
+  candidate: CatalogMatchCandidate,
+) => {
+  if (!key) return;
+  if (!map.has(key)) map.set(key, []);
+  const entries = map.get(key)!;
+  if (!entries.some((entry) => entry.id === candidate.id)) entries.push(candidate);
+};
+
+const chooseBestCatalogCandidate = (
+  candidates: CatalogMatchCandidate[] | undefined,
+  expansionId: string,
+  preferredTitle?: string,
+) => {
+  if (!candidates || candidates.length === 0) return null;
+
+  const preferredKey = preferredTitle ? normalizeTitleForMatch(preferredTitle) : "";
+
+  return candidates
+    .filter((candidate) => candidate.id !== expansionId)
+    .sort((a, b) => {
+      const aExact = preferredKey && normalizeTitleForMatch(a.title) === preferredKey ? 1 : 0;
+      const bExact = preferredKey && normalizeTitleForMatch(b.title) === preferredKey ? 1 : 0;
+      if (aExact !== bExact) return bExact - aExact;
+
+      const aBaseGame = a.is_expansion === false ? 1 : 0;
+      const bBaseGame = b.is_expansion === false ? 1 : 0;
+      if (aBaseGame !== bBaseGame) return bBaseGame - aBaseGame;
+
+      return a.title.length - b.title.length;
+    })[0] ?? null;
+};
+
+const loadCatalogTitleMap = async (admin: any) => {
+  const titleMap = new Map<string, CatalogMatchCandidate[]>();
+  const pageSize = 1000;
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await admin
+      .from("game_catalog")
+      .select("id, title, is_expansion, bgg_id")
+      .range(offset, offset + pageSize - 1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    for (const row of data) {
+      for (const key of getTitleMatchKeys(row.title)) {
+        addCandidateToMap(titleMap, key, row);
+      }
+    }
+
+    if (data.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return titleMap;
+};
+
 /**
  * Catalog Backfill — populates game_catalog with designers, artists,
  * and enriched descriptions from BGG.
@@ -1108,48 +1217,11 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`[link-expansions] Processing ${expansions.length} orphaned expansions`);
 
-      // Load all base game titles into memory for matching
-      // Index by full title AND by every prefix (split on delimiters)
-      // so "Caverna: The Cave Farmers" is findable via "caverna" too
-      const baseGameMap = new Map<string, { id: string; title: string }[]>();
-      const addToMap = (key: string, bg: { id: string; title: string }) => {
-        if (!baseGameMap.has(key)) baseGameMap.set(key, []);
-        // Avoid duplicates
-        const arr = baseGameMap.get(key)!;
-        if (!arr.some(e => e.id === bg.id)) arr.push(bg);
-      };
-      const BG_DELIMITERS = [": ", " – ", " — ", " - "];
-      let bgOffset = 0;
-      const BG_PAGE = 1000;
-      while (true) {
-        const { data: bgPage } = await admin
-          .from("game_catalog")
-          .select("id, title")
-          .eq("is_expansion", false)
-          .range(bgOffset, bgOffset + BG_PAGE - 1);
-        if (!bgPage || bgPage.length === 0) break;
-        for (const bg of bgPage) {
-          const fullKey = bg.title.toLowerCase().trim();
-          addToMap(fullKey, bg);
-          // Also index by every prefix of the base game title
-          for (const delim of BG_DELIMITERS) {
-            let searchFrom = 0;
-            while (true) {
-              const idx = bg.title.indexOf(delim, searchFrom);
-              if (idx <= 0) break;
-              const prefix = bg.title.substring(0, idx).toLowerCase().trim();
-              addToMap(prefix, bg);
-              searchFrom = idx + delim.length;
-            }
-          }
-        }
-        if (bgPage.length < BG_PAGE) break;
-        bgOffset += BG_PAGE;
-      }
+      // Load all catalog titles into memory for matching.
+      // Prefer base games, but allow mis-flagged rows as fallback parents.
+      const catalogTitleMap = await loadCatalogTitleMap(admin);
 
-      console.log(`[link-expansions] Loaded ${baseGameMap.size} unique base game keys`);
-
-      const DELIMITERS = [": ", " – ", " — ", " - "];
+      console.log(`[link-expansions] Loaded ${catalogTitleMap.size} unique catalog title keys`);
 
       let linked = 0;
       let noMatch = 0;
@@ -1160,31 +1232,14 @@ const handler = async (req: Request): Promise<Response> => {
       for (const exp of expansions) {
         let matched = false;
 
-        // Collect ALL possible split points across all delimiters,
-        // then try from longest prefix to shortest
-        const splitPoints: number[] = [];
-        for (const delim of DELIMITERS) {
-          let searchFrom = 0;
-          while (true) {
-            const idx = exp.title.indexOf(delim, searchFrom);
-            if (idx <= 0) break;
-            splitPoints.push(idx);
-            searchFrom = idx + delim.length;
-          }
-        }
+        for (const prefixKey of getTitlePrefixKeys(exp.title)) {
+          const best = chooseBestCatalogCandidate(
+            catalogTitleMap.get(prefixKey),
+            exp.id,
+            prefixKey,
+          );
 
-        // Sort descending — try longest prefix first
-        splitPoints.sort((a, b) => b - a);
-
-        for (const splitIdx of splitPoints) {
-          const prefix = exp.title.substring(0, splitIdx).toLowerCase().trim();
-          const candidates = baseGameMap.get(prefix);
-
-          if (candidates && candidates.length > 0) {
-            // Prefer the best match — shortest title (most specific base game)
-            const best = candidates.reduce((a, b) =>
-              a.title.length <= b.title.length ? a : b
-            );
+          if (best) {
             updates.push({ id: exp.id, parent_catalog_id: best.id });
             if (samples.length < 20) {
               samples.push({ expansion: exp.title, parent: best.title });
@@ -1277,6 +1332,15 @@ const handler = async (req: Request): Promise<Response> => {
       let apiErrors = 0;
       const samples: { expansion: string; parent: string }[] = [];
       const noMatchSamples: string[] = [];
+      let catalogTitleMap: Map<string, CatalogMatchCandidate[]> | null = null;
+
+      const ensureCatalogTitleMap = async () => {
+        if (!catalogTitleMap) {
+          catalogTitleMap = await loadCatalogTitleMap(admin);
+          console.log(`[link-expansions-bgg] Loaded ${catalogTitleMap.size} catalog title keys for fallback matching`);
+        }
+        return catalogTitleMap;
+      };
 
       try {
         const url = `https://boardgamegeek.com/xmlapi2/thing?id=${bggIds}&stats=1`;
@@ -1343,24 +1407,22 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           // Find all inbound expansion links (these point to parent games)
-          const parentBggIds: string[] = [];
-          const linkRegex = /<link[^>]*type="boardgameexpansion"[^>]*id="(\d+)"[^>]*inbound="true"[^>]*\/?>/g;
-          const linkRegex2 = /<link[^>]*inbound="true"[^>]*type="boardgameexpansion"[^>]*id="(\d+)"[^>]*\/?>/g;
-          let linkMatch;
-          while ((linkMatch = linkRegex.exec(itemXml)) !== null) {
-            parentBggIds.push(linkMatch[1]);
-          }
-          if (parentBggIds.length === 0) {
-            while ((linkMatch = linkRegex2.exec(itemXml)) !== null) {
-              parentBggIds.push(linkMatch[1]);
-            }
+          const parentLinks: { bggId?: string; title?: string }[] = [];
+          for (const linkMatch of itemXml.matchAll(/<link\b[^>]*\/?>/g)) {
+            const tag = linkMatch[0];
+            const typeMatch = tag.match(/\btype="([^"]+)"/);
+            const inboundMatch = tag.match(/\binbound="([^"]+)"/);
+            if (typeMatch?.[1] !== "boardgameexpansion" || inboundMatch?.[1] !== "true") continue;
+
+            const idMatch = tag.match(/\bid="(\d+)"/);
+            const valueMatch = tag.match(/\bvalue="([^"]+)"/);
+            parentLinks.push({
+              bggId: idMatch?.[1],
+              title: valueMatch?.[1] ? decodeHtmlEntities(valueMatch[1]).trim() : undefined,
+            });
           }
 
-          if (parentBggIds.length === 0) {
-            noMatch++;
-            if (noMatchSamples.length < 10) noMatchSamples.push(exp.title);
-            continue;
-          }
+          const parentBggIds = [...new Set(parentLinks.map((link) => link.bggId).filter(Boolean))] as string[];
 
           // Find parent in catalog by bgg_id.
           // Self-hosted/legacy data can have the true parent row mis-flagged
@@ -1388,6 +1450,41 @@ const handler = async (req: Request): Promise<Response> => {
                   parent: parentCatalog.is_expansion
                     ? `${parentCatalog.title} [mis-flagged parent]`
                     : parentCatalog.title,
+                });
+              }
+              parentFound = true;
+              break;
+            }
+          }
+
+          if (!parentFound) {
+            const titleMap = await ensureCatalogTitleMap();
+            const parentTitleKeys = [...new Set(
+              parentLinks.flatMap((link) => link.title ? getTitleMatchKeys(link.title) : [])
+            )].sort((a, b) => b.length - a.length);
+
+            for (const parentTitleKey of parentTitleKeys) {
+              const best = chooseBestCatalogCandidate(
+                titleMap.get(parentTitleKey),
+                exp.id,
+                parentTitleKey,
+              );
+
+              if (!best) continue;
+
+              if (!dryRun) {
+                await admin
+                  .from("game_catalog")
+                  .update({ parent_catalog_id: best.id })
+                  .eq("id", exp.id);
+              }
+              linked++;
+              if (samples.length < 20) {
+                samples.push({
+                  expansion: exp.title,
+                  parent: best.is_expansion
+                    ? `${best.title} [mis-flagged parent via title fallback]`
+                    : `${best.title} [title fallback]`,
                 });
               }
               parentFound = true;
