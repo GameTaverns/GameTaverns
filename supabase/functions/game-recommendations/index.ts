@@ -5,6 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const CORTEX_ENDPOINT = "https://cortex.tzolak.com/api/lmstudio";
+
 interface ScoredGame {
   id: string;
   title: string;
@@ -14,27 +16,28 @@ interface ScoredGame {
   play_time: string | null;
   min_players: number | null;
   max_players: number | null;
+  genres: string[];
   reason: string;
   score: number;
-  /** Number of libraries that own this game (for bias metrics) */
   library_count?: number;
-  /** Normalized mechanic score (overlap / total mechanics on candidate) */
-  normalized_mechanic_score?: number;
+  signal_breakdown?: Record<string, number>;
 }
 
-/**
- * Anti-popularity-bias game recommendation engine.
- *
- * Four bias-mitigation strategies:
- * 1. Inverse popularity weighting — rare games get a scoring boost
- * 2. Normalized mechanic scoring — divides by candidate's total mechanics
- * 3. Diversity slot reservation — 1-2 slots reserved for low-ownership gems
- * 4. Random sampling from qualified pool — top-20 → random-5 for serendipity
- *
- * Returns two lists:
- * - discoveries: Games from the global catalog the user does NOT own
- * - collection_matches: Similar games already in the user's library
- */
+// ── Scoring weights ──
+const WEIGHTS = {
+  GENRE_PRIMARY:    12,   // Primary genre match (most important signal)
+  GENRE_SECONDARY:   6,   // Secondary/tertiary genre match
+  MECHANIC_FAMILY:   4,   // Mechanic family overlap
+  MECHANIC_EXACT:    2,   // Exact mechanic overlap
+  WEIGHT_CLOSE:      5,   // Weight within 0.5
+  WEIGHT_NEAR:       3,   // Weight within 1.0
+  WEIGHT_FAR:        1,   // Weight within 1.5
+  PLAYER_OVERLAP:    1,   // Per overlapping player count (max 3)
+  PLAYTIME_CLOSE:    3,   // Play time within 15 min
+  PLAYTIME_NEAR:     1,   // Play time within 30 min
+  INVERSE_POP_MAX:   4,   // Max bonus for rare/hidden gem games
+};
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -54,7 +57,7 @@ export default async function handler(req: Request): Promise<Response> {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Fetch the source game with its catalog link and mechanics
+    // ── 1. Fetch source game with mechanics ──
     const { data: sourceGame, error: sourceError } = await supabase
       .from("games")
       .select(`
@@ -72,47 +75,59 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Extract mechanic family IDs and names for scoring
     const sourceMechanics = (sourceGame.game_mechanics || [])
       .map((gm: any) => gm.mechanic)
       .filter(Boolean);
-    const sourceFamilyIds = new Set(
-      sourceMechanics.map((m: any) => m.family_id).filter(Boolean)
-    );
-    const sourceMechanicIds = new Set(
-      sourceMechanics.map((m: any) => m.id).filter(Boolean)
-    );
+    const sourceFamilyIds = new Set(sourceMechanics.map((m: any) => m.family_id).filter(Boolean));
+    const sourceMechanicIds = new Set(sourceMechanics.map((m: any) => m.id).filter(Boolean));
+    const sourceMechanicNames = sourceMechanics.map((m: any) => m.name).filter(Boolean);
 
-    // Get catalog-level info for weight/playtime if available
+    // ── 2. Fetch catalog data: weight, playtime, genres, description ──
     let sourceWeight: number | null = null;
     let sourcePlayTimeMinutes: number | null = null;
+    let sourceGenres: string[] = [];
+    let sourceCatalogDescription: string | null = null;
+
     if (sourceGame.catalog_id) {
-      const { data: catalogEntry } = await supabase
-        .from("game_catalog")
-        .select("weight, play_time_minutes, min_players, max_players")
-        .eq("id", sourceGame.catalog_id)
-        .single();
-      if (catalogEntry) {
-        sourceWeight = catalogEntry.weight;
-        sourcePlayTimeMinutes = catalogEntry.play_time_minutes;
+      // Parallel: catalog entry + genres
+      const [catalogResult, genreResult] = await Promise.all([
+        supabase
+          .from("game_catalog")
+          .select("weight, play_time_minutes, min_players, max_players, description")
+          .eq("id", sourceGame.catalog_id)
+          .single(),
+        supabase
+          .from("catalog_genres")
+          .select("genre, display_order")
+          .eq("catalog_id", sourceGame.catalog_id)
+          .order("display_order"),
+      ]);
+
+      if (catalogResult.data) {
+        sourceWeight = catalogResult.data.weight;
+        sourcePlayTimeMinutes = catalogResult.data.play_time_minutes;
+        sourceCatalogDescription = catalogResult.data.description;
+      }
+      if (genreResult.data) {
+        sourceGenres = genreResult.data.map((g: any) => g.genre);
       }
     }
 
+    const sourceDescription = sourceCatalogDescription || sourceGame.description || "";
     const sourceMinPlayers = sourceGame.min_players || 1;
     const sourceMaxPlayers = sourceGame.max_players || 4;
 
-    // Get all catalog_ids owned by this library (to exclude from discoveries)
+    console.log(`[rec-v2] Source: "${sourceGame.title}" genres=[${sourceGenres}] mechanics=[${sourceMechanicNames.slice(0, 5)}] weight=${sourceWeight}`);
+
+    // ── 3. Get owned catalog IDs to exclude ──
     const { data: ownedGames } = await supabase
       .from("games")
       .select("catalog_id")
       .eq("library_id", library_id)
       .not("catalog_id", "is", null);
-    const ownedCatalogIds = new Set(
-      (ownedGames || []).map((g: any) => g.catalog_id)
-    );
+    const ownedCatalogIds = new Set((ownedGames || []).map((g: any) => g.catalog_id));
 
-    // ── Fetch popularity data for inverse weighting ──
-    // Get library_count for candidates via catalog_popularity view
+    // ── 4. Get popularity data ──
     const popularityMap = new Map<string, number>();
     const { data: popData } = await supabase
       .from("catalog_popularity")
@@ -125,14 +140,113 @@ export default async function handler(req: Request): Promise<Response> {
         if (row.catalog_id) popularityMap.set(row.catalog_id, row.library_count || 0);
       }
     }
-
-    // Calculate percentile thresholds for diversity slots
     const allCounts = Array.from(popularityMap.values()).sort((a, b) => a - b);
     const p25 = allCounts[Math.floor(allCounts.length * 0.25)] || 1;
-    const medianCount = allCounts[Math.floor(allCounts.length * 0.5)] || 1;
     const maxCount = allCounts[allCounts.length - 1] || 1;
 
-    // ── SECTION 1: Collection Matches (games in user's library) ──
+    // ── 5. Find candidates: genre-first + mechanic-supplemented ──
+    // Strategy: find catalog entries sharing at least one genre OR one mechanic family
+    const candidateCatalogIds = new Set<string>();
+
+    // 5a. Genre-based candidates (primary discovery path)
+    if (sourceGenres.length > 0) {
+      const { data: genreMatches } = await supabase
+        .from("catalog_genres")
+        .select("catalog_id")
+        .in("genre", sourceGenres)
+        .limit(500);
+      if (genreMatches) {
+        for (const gm of genreMatches) {
+          if (gm.catalog_id !== sourceGame.catalog_id && !ownedCatalogIds.has(gm.catalog_id)) {
+            candidateCatalogIds.add(gm.catalog_id);
+          }
+        }
+      }
+    }
+
+    // 5b. Mechanic-based candidates (supplement)
+    if (sourceMechanicIds.size > 0) {
+      const { data: mechMatches } = await supabase
+        .from("catalog_mechanics")
+        .select("catalog_id")
+        .in("mechanic_id", Array.from(sourceMechanicIds))
+        .limit(300);
+      if (mechMatches) {
+        for (const mm of mechMatches) {
+          if (mm.catalog_id !== sourceGame.catalog_id && !ownedCatalogIds.has(mm.catalog_id)) {
+            candidateCatalogIds.add(mm.catalog_id);
+          }
+        }
+      }
+    }
+
+    console.log(`[rec-v2] Found ${candidateCatalogIds.size} unique candidates`);
+
+    // ── 6. Fetch candidate details (batch, capped) ──
+    const candidateIds = Array.from(candidateCatalogIds).slice(0, 300);
+    let allDiscoveryScored: ScoredGame[] = [];
+
+    if (candidateIds.length > 0) {
+      // Parallel: catalog entries + their genres + their mechanics
+      const [catalogResult, genresResult, mechanicsResult] = await Promise.all([
+        supabase
+          .from("game_catalog")
+          .select("id, title, slug, image_url, weight, play_time_minutes, min_players, max_players, description, is_expansion")
+          .in("id", candidateIds)
+          .eq("is_expansion", false)
+          .limit(300),
+        supabase
+          .from("catalog_genres")
+          .select("catalog_id, genre, display_order")
+          .in("catalog_id", candidateIds)
+          .order("display_order")
+          .limit(1000),
+        supabase
+          .from("catalog_mechanics")
+          .select("catalog_id, mechanic:mechanics(id, name, family_id)")
+          .in("catalog_id", candidateIds)
+          .limit(1000),
+      ]);
+
+      // Build lookup maps
+      const candidateGenreMap = new Map<string, string[]>();
+      if (genresResult.data) {
+        for (const row of genresResult.data) {
+          const arr = candidateGenreMap.get(row.catalog_id) || [];
+          arr.push(row.genre);
+          candidateGenreMap.set(row.catalog_id, arr);
+        }
+      }
+
+      const candidateMechanicMap = new Map<string, any[]>();
+      if (mechanicsResult.data) {
+        for (const row of mechanicsResult.data as any[]) {
+          if (!row.mechanic) continue;
+          const arr = candidateMechanicMap.get(row.catalog_id) || [];
+          arr.push(row.mechanic);
+          candidateMechanicMap.set(row.catalog_id, arr);
+        }
+      }
+
+      // Score each candidate
+      if (catalogResult.data) {
+        allDiscoveryScored = catalogResult.data.map((cg: any) => {
+          const genres = candidateGenreMap.get(cg.id) || [];
+          const mechanics = candidateMechanicMap.get(cg.id) || [];
+          return scoreCandidate(
+            cg, genres, mechanics,
+            sourceGenres, sourceFamilyIds, sourceMechanicIds,
+            sourceWeight, sourcePlayTimeMinutes, sourceMinPlayers, sourceMaxPlayers,
+            popularityMap, maxCount
+          );
+        }).filter((g) => g.score > 0)
+          .sort((a, b) => b.score - a.score);
+      }
+    }
+
+    console.log(`[rec-v2] Scored ${allDiscoveryScored.length} viable discoveries`);
+
+    // ── 7. Collection matches (games in user's library) ──
     const { data: libraryGames } = await supabase
       .from("games")
       .select(`
@@ -146,276 +260,114 @@ export default async function handler(req: Request): Promise<Response> {
       .eq("is_coming_soon", false)
       .limit(200);
 
-    const allCollectionScored = scoreGames(
-      libraryGames || [],
-      sourceFamilyIds,
-      sourceMechanicIds,
-      sourceMinPlayers,
-      sourceMaxPlayers,
-      sourceWeight,
-      sourcePlayTimeMinutes,
-      popularityMap,
-      maxCount,
-      "library"
-    );
-    // Collection matches: just use top scores (no anti-bias needed for your own library)
-    const collectionMatches = allCollectionScored.slice(0, limit);
+    // Fetch genres for library games that have catalog_ids
+    const libraryCatalogIds = (libraryGames || [])
+      .map((g: any) => g.catalog_id)
+      .filter(Boolean);
 
-    // ── SECTION 2: Discoveries (from global catalog, NOT owned) ──
-    let allDiscoveryScored: ScoredGame[] = [];
-
-    if (sourceMechanicIds.size > 0) {
-      const mechanicIdArray = Array.from(sourceMechanicIds);
-      const { data: matchingCatalogMechanics } = await supabase
-        .from("catalog_mechanics")
-        .select("catalog_id")
-        .in("mechanic_id", mechanicIdArray)
-        .limit(500);
-
-      if (matchingCatalogMechanics && matchingCatalogMechanics.length > 0) {
-        const candidateCatalogIds = [
-          ...new Set(
-            matchingCatalogMechanics
-              .map((cm: any) => cm.catalog_id)
-              .filter((cid: string) => !ownedCatalogIds.has(cid) && cid !== sourceGame.catalog_id)
-          ),
-        ].slice(0, 200); // increased cap for better sampling pool
-
-        if (candidateCatalogIds.length > 0) {
-          const { data: catalogGames } = await supabase
-            .from("game_catalog")
-            .select(`
-              id, title, slug, image_url, weight, play_time_minutes,
-              min_players, max_players, is_expansion,
-              catalog_mechanics(mechanic:mechanics(id, name, family_id))
-            `)
-            .in("id", candidateCatalogIds)
-            .eq("is_expansion", false)
-            .limit(200);
-
-          if (catalogGames) {
-            const mappedCatalogGames = catalogGames.map((cg: any) => ({
-              id: cg.id,
-              title: cg.title,
-              slug: cg.slug,
-              image_url: cg.image_url,
-              difficulty: weightToLabel(cg.weight),
-              play_time: cg.play_time_minutes ? `${cg.play_time_minutes} min` : null,
-              min_players: cg.min_players,
-              max_players: cg.max_players,
-              catalog_id: cg.id, // catalog entries: id IS catalog_id
-              game_mechanics: (cg.catalog_mechanics || []),
-            }));
-
-            allDiscoveryScored = scoreGames(
-              mappedCatalogGames,
-              sourceFamilyIds,
-              sourceMechanicIds,
-              sourceMinPlayers,
-              sourceMaxPlayers,
-              sourceWeight,
-              sourcePlayTimeMinutes,
-              popularityMap,
-              maxCount,
-              "catalog"
-            );
-          }
+    const libGenreMap = new Map<string, string[]>();
+    if (libraryCatalogIds.length > 0) {
+      const { data: libGenres } = await supabase
+        .from("catalog_genres")
+        .select("catalog_id, genre, display_order")
+        .in("catalog_id", libraryCatalogIds)
+        .order("display_order")
+        .limit(1000);
+      if (libGenres) {
+        for (const row of libGenres) {
+          const arr = libGenreMap.get(row.catalog_id) || [];
+          arr.push(row.genre);
+          libGenreMap.set(row.catalog_id, arr);
         }
       }
     }
 
-    // Fallback: if no mechanic-based discoveries, try weight/player-count similarity
-    if (allDiscoveryScored.length === 0 && sourceWeight !== null) {
-      const { data: fallbackCatalog } = await supabase
-        .from("game_catalog")
-        .select("id, title, slug, image_url, weight, play_time_minutes, min_players, max_players")
-        .eq("is_expansion", false)
-        .gte("weight", Math.max(1, (sourceWeight || 2) - 0.75))
-        .lte("weight", (sourceWeight || 2) + 0.75)
-        .gte("min_players", Math.max(1, sourceMinPlayers - 1))
-        .lte("max_players", sourceMaxPlayers + 2)
-        .limit(50);
+    const allCollectionScored = (libraryGames || []).map((g: any) => {
+      const mechanics = (g.game_mechanics || []).map((gm: any) => gm.mechanic).filter(Boolean);
+      const genres = g.catalog_id ? (libGenreMap.get(g.catalog_id) || []) : [];
+      return scoreCandidate(
+        { ...g, weight: labelToWeight(g.difficulty), play_time_minutes: null },
+        genres, mechanics,
+        sourceGenres, sourceFamilyIds, sourceMechanicIds,
+        sourceWeight, sourcePlayTimeMinutes, sourceMinPlayers, sourceMaxPlayers,
+        popularityMap, maxCount,
+        true // isLibrary — skip inverse popularity
+      );
+    }).filter((g) => g.score > 0)
+      .sort((a, b) => b.score - a.score);
 
-      if (fallbackCatalog) {
-        const filtered = fallbackCatalog.filter(
-          (cg: any) => !ownedCatalogIds.has(cg.id) && cg.id !== sourceGame.catalog_id
-        );
-        allDiscoveryScored = filtered.map((cg: any) => {
-          const libCount = popularityMap.get(cg.id) || 0;
-          return {
-            id: cg.id,
-            title: cg.title,
-            slug: cg.slug,
-            image_url: cg.image_url,
-            difficulty: weightToLabel(cg.weight),
-            play_time: cg.play_time_minutes ? `${cg.play_time_minutes} min` : null,
-            min_players: cg.min_players,
-            max_players: cg.max_players,
-            reason: "Similar complexity and player count",
-            score: 1,
-            library_count: libCount,
-            normalized_mechanic_score: 0,
-          };
-        });
-      }
-    }
+    const collectionMatches = allCollectionScored.slice(0, limit);
 
-    // ── STRATEGY 3: Diversity Slot Reservation ──
-    // Reserve 1-2 slots for low-popularity gems (below 25th percentile)
+    // ── 8. Anti-bias selection: diversity slots + weighted sampling ──
     const diversitySlots = limit >= 5 ? 2 : 1;
     const mainSlots = limit - diversitySlots;
 
-    const lowPopGems = allDiscoveryScored.filter(
-      (g) => (g.library_count || 0) <= p25 && g.score > 0
-    );
-    const regularPool = allDiscoveryScored.filter(
-      (g) => (g.library_count || 0) > p25
-    );
+    const lowPopGems = allDiscoveryScored.filter((g) => (g.library_count || 0) <= p25);
+    const regularPool = allDiscoveryScored.filter((g) => (g.library_count || 0) > p25);
 
-    // ── STRATEGY 4: Random sampling from qualified pool ──
-    // Instead of deterministic top-N, randomly sample from top-20
-    const sampledRegular = weightedRandomSample(regularPool.slice(0, 20), mainSlots);
-    const sampledDiversity = weightedRandomSample(lowPopGems.slice(0, 10), diversitySlots);
+    const sampledRegular = weightedRandomSample(regularPool.slice(0, 25), mainSlots);
+    const sampledDiversity = weightedRandomSample(lowPopGems.slice(0, 15), diversitySlots);
+    let discoveries = [...sampledRegular, ...sampledDiversity].slice(0, limit);
 
-    // Combine: regular picks + diversity picks
-    const discoveries = [...sampledRegular, ...sampledDiversity].slice(0, limit);
-
-    // ── Optional AI re-ranking via Cortex ──
-    const AI_RERANK_URL = Deno.env.get("AI_RERANK_URL") || "https://cortex.tzolak.com/api/recommend";
-    let rerankedDiscoveries = discoveries;
-    let rerankedCollectionMatches = collectionMatches;
-
-    console.log(`[recommendations] AI_RERANK_URL=${AI_RERANK_URL}, discoveries=${discoveries.length}, collection=${collectionMatches.length}`);
-
-    if (AI_RERANK_URL && (discoveries.length > 0 || collectionMatches.length > 0)) {
+    // ── 9. Cortex AI: generate natural language reasons ──
+    if (discoveries.length > 0 || collectionMatches.length > 0) {
       try {
-        console.log("[recommendations] Calling Cortex AI re-ranker...");
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const aiResults = await generateAIReasons(
+          sourceGame.title,
+          sourceDescription,
+          sourceGenres,
+          sourceMechanicNames,
+          sourceWeight,
+          discoveries,
+          collectionMatches
+        );
 
-        const aiPayload = {
-          source_game: {
-            title: sourceGame.title,
-            description: sourceGame.description || null,
-            difficulty: sourceGame.difficulty,
-            play_time: sourceGame.play_time,
-            game_type: sourceGame.game_type,
-            min_players: sourceMinPlayers,
-            max_players: sourceMaxPlayers,
-            mechanics: sourceMechanics.map((m: any) => m.name),
-          },
-          discoveries: discoveries.map((g) => ({
-            id: g.id,
-            title: g.title,
-            difficulty: g.difficulty,
-            play_time: g.play_time,
-            min_players: g.min_players,
-            max_players: g.max_players,
-            reason: g.reason,
-            score: g.score,
-          })),
-          collection_matches: collectionMatches.map((g) => ({
-            id: g.id,
-            title: g.title,
-            difficulty: g.difficulty,
-            play_time: g.play_time,
-            min_players: g.min_players,
-            max_players: g.max_players,
-            reason: g.reason,
-            score: g.score,
-          })),
-        };
-
-        const aiResponse = await fetch(AI_RERANK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(aiPayload),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-
-        console.log(`[recommendations] Cortex responded: ${aiResponse.status}`);
-
-        if (aiResponse.ok) {
-          const aiData = await aiResponse.json();
-          console.log(`[recommendations] AI returned: discoveries=${aiData.discoveries?.length ?? 0}, collection=${aiData.collection_matches?.length ?? 0}`);
-          if (aiData.discoveries && Array.isArray(aiData.discoveries)) {
-            rerankedDiscoveries = mergeAiResults(discoveries, aiData.discoveries);
+        if (aiResults) {
+          discoveries = applyAIReasons(discoveries, aiResults.discoveries || []);
+          // Also apply to collection matches if returned
+          if (aiResults.collection_matches) {
+            const enhancedCollection = applyAIReasons(collectionMatches, aiResults.collection_matches);
+            collectionMatches.splice(0, collectionMatches.length, ...enhancedCollection);
           }
-          if (aiData.collection_matches && Array.isArray(aiData.collection_matches)) {
-            rerankedCollectionMatches = mergeAiResults(collectionMatches, aiData.collection_matches);
-          }
-          console.log("[recommendations] AI re-rank applied successfully");
-        } else {
-          const errText = await aiResponse.text();
-          console.warn(`[recommendations] AI re-rank returned ${aiResponse.status}: ${errText}`);
         }
       } catch (aiErr) {
-        console.warn("[recommendations] AI re-rank failed:", aiErr instanceof Error ? `${aiErr.name}: ${aiErr.message}` : aiErr);
+        console.warn("[rec-v2] Cortex AI reasons failed, using deterministic reasons:", aiErr);
       }
-    } else {
-      console.log("[recommendations] Skipping AI re-rank (no URL or no results)");
     }
 
-    // ── Research Logging: Diversity & Bias Metrics ──
+    // ── 10. Logging ──
     try {
-      const discoveryLibCounts = rerankedDiscoveries.map((g) => g.library_count || 0);
-      const avgDiscoveryPopularity = discoveryLibCounts.length > 0
-        ? discoveryLibCounts.reduce((a, b) => a + b, 0) / discoveryLibCounts.length
+      const avgPop = discoveries.length > 0
+        ? discoveries.reduce((s, g) => s + (g.library_count || 0), 0) / discoveries.length
         : 0;
-      const diversityCount = rerankedDiscoveries.filter(
-        (g) => (g.library_count || 0) <= p25
-      ).length;
 
-      const biasMetrics = {
-        source_game: sourceGame.title,
-        source_catalog_id: sourceGame.catalog_id,
-        total_candidates: allDiscoveryScored.length,
-        low_pop_candidates: lowPopGems.length,
-        regular_candidates: regularPool.length,
-        discoveries_returned: rerankedDiscoveries.length,
-        collection_matches_returned: rerankedCollectionMatches.length,
-        diversity_slots_filled: diversityCount,
-        avg_discovery_library_count: Math.round(avgDiscoveryPopularity * 10) / 10,
-        median_catalog_library_count: medianCount,
-        p25_threshold: p25,
-        max_library_count: maxCount,
-        discovery_titles: rerankedDiscoveries.map((g) => ({
-          title: g.title,
-          library_count: g.library_count || 0,
-          score: g.score,
-          normalized_mechanic: g.normalized_mechanic_score || 0,
-        })),
-        ai_reranked: AI_RERANK_URL ? true : false,
-      };
-
-      console.log(`[recommendations] Bias metrics: avg_pop=${biasMetrics.avg_discovery_library_count}, diversity_slots=${diversityCount}/${diversitySlots}, candidates=${allDiscoveryScored.length}`);
-
-      // Fire-and-forget log to system_logs
-      supabase
-        .from("system_logs")
-        .insert({
-          level: "info",
-          source: "recommendations",
-          message: `Recommendation batch for "${sourceGame.title}" — diversity: ${diversityCount}/${diversitySlots}, avg_pop: ${biasMetrics.avg_discovery_library_count}`,
-          metadata: biasMetrics,
-          library_id: library_id,
-        })
-        .then(() => {});
-    } catch (logErr) {
-      console.warn("[recommendations] Metrics logging failed:", logErr);
-    }
+      supabase.from("system_logs").insert({
+        level: "info",
+        source: "recommendations-v2",
+        message: `Recs for "${sourceGame.title}" — ${discoveries.length} discoveries, ${collectionMatches.length} collection`,
+        metadata: {
+          source_game: sourceGame.title,
+          source_genres: sourceGenres,
+          candidates_found: candidateCatalogIds.size,
+          scored_viable: allDiscoveryScored.length,
+          avg_discovery_popularity: Math.round(avgPop * 10) / 10,
+          discovery_titles: discoveries.map((g) => ({ title: g.title, score: g.score, genres: g.genres })),
+          collection_titles: collectionMatches.map((g) => ({ title: g.title, score: g.score, genres: g.genres })),
+        },
+        library_id,
+      }).then(() => {});
+    } catch {}
 
     return new Response(
       JSON.stringify({
-        discoveries: rerankedDiscoveries,
-        collection_matches: rerankedCollectionMatches,
-        recommendations: [...rerankedDiscoveries, ...rerankedCollectionMatches].slice(0, limit),
+        discoveries,
+        collection_matches: collectionMatches,
+        recommendations: [...discoveries, ...collectionMatches].slice(0, limit),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Recommendations error:", error);
+    console.error("[rec-v2] Error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Failed to get recommendations" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -423,118 +375,244 @@ export default async function handler(req: Request): Promise<Response> {
   }
 }
 
-// ── Scoring with anti-popularity-bias ──
+// ══════════════════════════════════════════════════
+// Scoring: Genre-first, mechanic-supplemented
+// ══════════════════════════════════════════════════
 
-function scoreGames(
-  games: any[],
+function scoreCandidate(
+  candidate: any,
+  candidateGenres: string[],
+  candidateMechanics: any[],
+  sourceGenres: string[],
   sourceFamilyIds: Set<string>,
   sourceMechanicIds: Set<string>,
-  sourceMinPlayers: number,
-  sourceMaxPlayers: number,
   sourceWeight: number | null,
   sourcePlayTime: number | null,
+  sourceMinPlayers: number,
+  sourceMaxPlayers: number,
   popularityMap: Map<string, number>,
-  maxLibraryCount: number,
-  source: "library" | "catalog"
-): ScoredGame[] {
-  return games
-    .map((g: any) => {
-      const mechanics = (g.game_mechanics || [])
-        .map((gm: any) => gm.mechanic)
-        .filter(Boolean);
-      const familyIds = new Set(mechanics.map((m: any) => m.family_id).filter(Boolean));
-      const mechanicIds = new Set(mechanics.map((m: any) => m.id).filter(Boolean));
+  maxCount: number,
+  isLibrary = false
+): ScoredGame {
+  const signals: Record<string, number> = {};
 
-      // Family overlap (strongest signal, worth 5 points each)
-      let familyOverlap = 0;
-      for (const fid of familyIds) {
-        if (sourceFamilyIds.has(fid)) familyOverlap++;
+  // ── Genre scoring (strongest signal) ──
+  let genreScore = 0;
+  const sharedGenres: string[] = [];
+  for (let i = 0; i < candidateGenres.length; i++) {
+    if (sourceGenres.includes(candidateGenres[i])) {
+      sharedGenres.push(candidateGenres[i]);
+      // Primary genre match (index 0) is worth more
+      const isSourcePrimary = sourceGenres.indexOf(candidateGenres[i]) === 0;
+      const isCandidatePrimary = i === 0;
+      if (isSourcePrimary || isCandidatePrimary) {
+        genreScore += WEIGHTS.GENRE_PRIMARY;
+      } else {
+        genreScore += WEIGHTS.GENRE_SECONDARY;
       }
+    }
+  }
+  signals.genre = genreScore;
 
-      // Exact mechanic overlap (worth 2 points each)
-      let mechanicOverlap = 0;
-      for (const mid of mechanicIds) {
-        if (sourceMechanicIds.has(mid)) mechanicOverlap++;
-      }
+  // ── Mechanic family overlap ──
+  const candidateFamilyIds = new Set(candidateMechanics.map((m) => m.family_id).filter(Boolean));
+  const candidateMechIds = new Set(candidateMechanics.map((m) => m.id).filter(Boolean));
 
-      // ── STRATEGY 2: Normalized mechanic scoring ──
-      // Divide overlap by candidate's total mechanics to prevent well-tagged
-      // popular games from dominating just because they have more tags
-      const totalCandidateMechanics = mechanicIds.size || 1;
-      const normalizedMechanicScore = (familyOverlap * 5 + mechanicOverlap * 2) / totalCandidateMechanics;
+  let familyOverlap = 0;
+  for (const fid of candidateFamilyIds) {
+    if (sourceFamilyIds.has(fid)) familyOverlap++;
+  }
 
-      // Player count overlap (0-3 points)
-      const gMin = g.min_players || 1;
-      const gMax = g.max_players || 4;
-      const overlapMin = Math.max(sourceMinPlayers, gMin);
-      const overlapMax = Math.min(sourceMaxPlayers, gMax);
-      const playerOverlap = Math.max(0, Math.min(3, overlapMax - overlapMin + 1));
+  let mechOverlap = 0;
+  for (const mid of candidateMechIds) {
+    if (sourceMechanicIds.has(mid)) mechOverlap++;
+  }
 
-      // Weight similarity (0-3 points)
-      let weightScore = 0;
-      if (sourceWeight !== null && g.difficulty) {
-        const gWeight = labelToWeight(g.difficulty);
-        if (gWeight !== null) {
-          const diff = Math.abs(sourceWeight - gWeight);
-          weightScore = diff < 0.5 ? 3 : diff < 1.0 ? 2 : diff < 1.5 ? 1 : 0;
-        }
-      }
+  // Normalized: prevent well-tagged games from dominating
+  const totalMechs = candidateMechIds.size || 1;
+  const mechanicScore = ((familyOverlap * WEIGHTS.MECHANIC_FAMILY) + (mechOverlap * WEIGHTS.MECHANIC_EXACT)) / Math.max(1, Math.sqrt(totalMechs));
+  signals.mechanic = Math.round(mechanicScore * 10) / 10;
 
-      // ── STRATEGY 1: Inverse popularity weighting ──
-      // Games owned by fewer libraries get a scoring boost (0-5 points)
-      // Uses log scale so the boost decays smoothly
-      const catalogId = g.catalog_id || g.id;
-      const libCount = popularityMap.get(catalogId) || 0;
-      let popularityBonus = 0;
-      if (source === "catalog" && maxLibraryCount > 0) {
-        // Inverse log: rare games (low library_count) get up to 5 bonus points
-        // Popular games (high library_count) get 0
-        const popularityRatio = libCount / maxLibraryCount;
-        popularityBonus = Math.round(5 * (1 - Math.sqrt(popularityRatio)));
-      }
+  // ── Weight similarity ──
+  const cWeight = candidate.weight ?? null;
+  let weightScore = 0;
+  if (sourceWeight !== null && cWeight !== null) {
+    const diff = Math.abs(sourceWeight - cWeight);
+    weightScore = diff < 0.5 ? WEIGHTS.WEIGHT_CLOSE : diff < 1.0 ? WEIGHTS.WEIGHT_NEAR : diff < 1.5 ? WEIGHTS.WEIGHT_FAR : 0;
+  }
+  signals.weight = weightScore;
 
-      // Use normalized mechanic score instead of raw overlap
-      const totalScore = Math.round(normalizedMechanicScore * 3) + playerOverlap + weightScore + popularityBonus;
+  // ── Play time similarity ──
+  const cPlayTime = candidate.play_time_minutes ?? null;
+  let playTimeScore = 0;
+  if (sourcePlayTime !== null && cPlayTime !== null) {
+    const diff = Math.abs(sourcePlayTime - cPlayTime);
+    playTimeScore = diff <= 15 ? WEIGHTS.PLAYTIME_CLOSE : diff <= 30 ? WEIGHTS.PLAYTIME_NEAR : 0;
+  }
+  signals.playtime = playTimeScore;
 
-      // Build reason
-      const reasons: string[] = [];
-      if (familyOverlap > 0 || mechanicOverlap > 0) {
-        const sharedNames = mechanics
-          .filter((m: any) => sourceMechanicIds.has(m.id) || sourceFamilyIds.has(m.family_id))
-          .map((m: any) => m.name)
-          .slice(0, 3);
-        if (sharedNames.length > 0) reasons.push(`Shares: ${sharedNames.join(", ")}`);
-      }
-      if (playerOverlap >= 2) reasons.push("Similar player count");
-      if (weightScore >= 2) reasons.push("Similar complexity");
-      if (popularityBonus >= 3) reasons.push("Hidden gem");
-      if (reasons.length === 0) reasons.push(source === "catalog" ? "You might enjoy this" : "In your collection");
+  // ── Player count overlap ──
+  const cMin = candidate.min_players || 1;
+  const cMax = candidate.max_players || 4;
+  const overlapMin = Math.max(sourceMinPlayers, cMin);
+  const overlapMax = Math.min(sourceMaxPlayers, cMax);
+  const playerOverlap = Math.max(0, Math.min(3, overlapMax - overlapMin + 1));
+  signals.players = playerOverlap * WEIGHTS.PLAYER_OVERLAP;
 
-      return {
-        id: g.id,
-        title: g.title,
-        slug: g.slug,
-        image_url: g.image_url,
-        difficulty: g.difficulty,
-        play_time: g.play_time,
-        min_players: g.min_players,
-        max_players: g.max_players,
-        reason: reasons.join(" · "),
-        score: totalScore,
-        library_count: libCount,
-        normalized_mechanic_score: Math.round(normalizedMechanicScore * 100) / 100,
-      };
-    })
-    .filter((g) => g.score > 0)
-    .sort((a, b) => b.score - a.score);
+  // ── Inverse popularity ──
+  const catalogId = candidate.catalog_id || candidate.id;
+  const libCount = popularityMap.get(catalogId) || 0;
+  let popBonus = 0;
+  if (!isLibrary && maxCount > 0) {
+    const ratio = libCount / maxCount;
+    popBonus = Math.round(WEIGHTS.INVERSE_POP_MAX * (1 - Math.sqrt(ratio)));
+  }
+  signals.rarity = popBonus;
+
+  // ── Total ──
+  const totalScore = Object.values(signals).reduce((a, b) => a + b, 0);
+
+  // ── Build deterministic reason (Cortex will override if available) ──
+  const reasons: string[] = [];
+  if (sharedGenres.length > 0) reasons.push(`${sharedGenres.join(", ")}`);
+
+  const sharedMechNames = candidateMechanics
+    .filter((m) => sourceMechanicIds.has(m.id) || sourceFamilyIds.has(m.family_id))
+    .map((m) => m.name)
+    .slice(0, 2);
+  if (sharedMechNames.length > 0) reasons.push(sharedMechNames.join(", "));
+  if (weightScore >= WEIGHTS.WEIGHT_NEAR) reasons.push("Similar complexity");
+  if (playerOverlap >= 2) reasons.push("Similar player count");
+  if (popBonus >= 3) reasons.push("Hidden gem");
+  if (reasons.length === 0) reasons.push("Related game");
+
+  return {
+    id: candidate.id,
+    title: candidate.title,
+    slug: candidate.slug,
+    image_url: candidate.image_url,
+    difficulty: candidate.difficulty || weightToLabel(cWeight),
+    play_time: candidate.play_time || (cPlayTime ? `${cPlayTime} min` : null),
+    min_players: candidate.min_players,
+    max_players: candidate.max_players,
+    genres: candidateGenres,
+    reason: reasons.join(" · "),
+    score: Math.round(totalScore),
+    library_count: libCount,
+    signal_breakdown: signals,
+  };
 }
 
-/**
- * STRATEGY 4: Weighted random sampling from a qualified pool.
- * Instead of deterministic top-N, randomly samples from the pool
- * with probability proportional to score. This adds serendipity
- * and prevents the same popular games from always appearing.
- */
+// ══════════════════════════════════════════════════
+// Cortex AI: Natural language "vibe" reasons
+// ══════════════════════════════════════════════════
+
+async function generateAIReasons(
+  sourceTitle: string,
+  sourceDescription: string,
+  sourceGenres: string[],
+  sourceMechanics: string[],
+  sourceWeight: number | null,
+  discoveries: ScoredGame[],
+  collectionMatches: ScoredGame[]
+): Promise<{ discoveries?: Array<{ id: string; reason: string }>; collection_matches?: Array<{ id: string; reason: string }> } | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+  try {
+    const systemPrompt = `You generate short, natural recommendation reasons for board games. Each reason should explain WHY someone who likes the source game would enjoy the recommended game. Focus on shared vibes, themes, play feel, and strategic overlap — not just listing shared mechanics.
+
+Rules:
+- Each reason: 1-2 sentences, max 120 characters
+- Be specific about what connects the games emotionally/thematically
+- Never start with "Both" or "Also"
+- Use language a board gamer would use casually
+- If you can't find a genuine connection, say "Worth exploring"
+
+Respond with valid JSON only. Schema:
+{
+  "discoveries": [{"id": "...", "reason": "..."}],
+  "collection_matches": [{"id": "...", "reason": "..."}]
+}`;
+
+    const userPrompt = `Source game: "${sourceTitle}"
+Description: ${sourceDescription.slice(0, 300)}
+Genres: ${sourceGenres.join(", ") || "Unknown"}
+Mechanics: ${sourceMechanics.slice(0, 6).join(", ")}
+Weight: ${sourceWeight ?? "Unknown"}
+
+Discoveries to explain:
+${discoveries.map((g) => `- ID: ${g.id} | "${g.title}" | Genres: ${g.genres.join(", ")} | Deterministic: ${g.reason}`).join("\n")}
+
+Collection matches to explain:
+${collectionMatches.map((g) => `- ID: ${g.id} | "${g.title}" | Genres: ${g.genres.join(", ")} | Deterministic: ${g.reason}`).join("\n")}`;
+
+    const response = await fetch(CORTEX_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.warn(`[rec-v2] Cortex returned ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    // Parse JSON from response
+    try {
+      return JSON.parse(content);
+    } catch {
+      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[1].trim());
+      }
+      // Try finding JSON object in the text
+      const objMatch = content.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        return JSON.parse(objMatch[0]);
+      }
+      return null;
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      console.warn("[rec-v2] Cortex timed out for AI reasons");
+    } else {
+      console.warn("[rec-v2] Cortex AI reasons error:", err);
+    }
+    return null;
+  }
+}
+
+function applyAIReasons(
+  games: ScoredGame[],
+  aiReasons: Array<{ id: string; reason: string }>
+): ScoredGame[] {
+  if (!aiReasons || aiReasons.length === 0) return games;
+
+  const reasonMap = new Map(aiReasons.map((r) => [r.id, r.reason]));
+  return games.map((g) => {
+    const aiReason = reasonMap.get(g.id);
+    return aiReason ? { ...g, reason: aiReason } : g;
+  });
+}
+
+// ══════════════════════════════════════════════════
+// Utilities
+// ══════════════════════════════════════════════════
+
 function weightedRandomSample(pool: ScoredGame[], count: number): ScoredGame[] {
   if (pool.length <= count) return [...pool];
 
@@ -567,50 +645,13 @@ function weightToLabel(weight: number | null): string | null {
   return "Heavy";
 }
 
-function labelToWeight(label: string): number | null {
+function labelToWeight(label: string | null): number | null {
+  if (!label) return null;
   const map: Record<string, number> = {
-    light: 1.0,
-    "medium light": 2.0,
-    medium: 3.0,
-    "medium heavy": 3.75,
-    heavy: 4.5,
+    light: 1.0, "medium light": 2.0, medium: 3.0, "medium heavy": 3.75, heavy: 4.5,
   };
   return map[label.toLowerCase()] ?? null;
 }
-
-/**
- * Merge AI re-ranked results back onto the full game objects.
- * AI returns ordered IDs with optional enhanced reasons.
- * Falls back to original order for any IDs not in the AI response.
- */
-function mergeAiResults(
-  originals: ScoredGame[],
-  aiList: Array<{ id: string; reason?: string }>
-): ScoredGame[] {
-  const origMap = new Map(originals.map((g) => [g.id, g]));
-  const merged: ScoredGame[] = [];
-  const seen = new Set<string>();
-
-  for (const aiItem of aiList) {
-    const orig = origMap.get(aiItem.id);
-    if (orig) {
-      merged.push({
-        ...orig,
-        reason: aiItem.reason || orig.reason,
-      });
-      seen.add(aiItem.id);
-    }
-  }
-
-  for (const orig of originals) {
-    if (!seen.has(orig.id)) {
-      merged.push(orig);
-    }
-  }
-
-  return merged;
-}
-
 
 if (import.meta.main) {
   Deno.serve(handler);
