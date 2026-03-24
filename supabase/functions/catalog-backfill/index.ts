@@ -705,7 +705,17 @@ const handler = async (req: Request): Promise<Response> => {
         aOffset += D_PAGE;
       }
 
-      console.log(`[catalog-backfill] fix-missing: Cached ${designerCache.size} designers, ${artistCache.size} artists`);
+      const mechanicCache = new Map<string, string>();
+      let mOffset = 0;
+      while (true) {
+        const { data: mPage } = await admin.from("mechanics").select("id, name").range(mOffset, mOffset + D_PAGE - 1);
+        if (!mPage || mPage.length === 0) break;
+        for (const m of mPage) mechanicCache.set(m.name, m.id);
+        if (mPage.length < D_PAGE) break;
+        mOffset += D_PAGE;
+      }
+
+      console.log(`[catalog-backfill] fix-missing: Cached ${designerCache.size} designers, ${artistCache.size} artists, ${mechanicCache.size} mechanics`);
 
       let processed = 0;
       let designersAdded = 0;
