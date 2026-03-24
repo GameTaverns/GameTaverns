@@ -45,6 +45,7 @@ interface CatalogGame {
   artists: string[];
   mechanics: string[];
   publishers: string[];
+  genres: string[];
   community_rating: number | null;
   community_rating_count: number;
 }
