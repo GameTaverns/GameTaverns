@@ -670,33 +670,15 @@ async function generateAIReasons(
   const timeoutId = setTimeout(() => controller.abort(), 12000);
 
   try {
-    const systemPrompt = `You generate short, natural recommendation reasons for board games. Each reason should explain WHY someone who likes the source game would enjoy the recommended game. Focus on shared vibes, themes, play feel, and strategic overlap — not just listing shared mechanics.
+    const systemPrompt = `Write brief board game recommendation reasons. Max 80 chars each. Casual tone. Never start with "Both". For 0-session games say "unplayed". Reply JSON only: {"discoveries":[{"id":"...","reason":"..."}],"collection_matches":[{"id":"...","reason":"..."}]}`;
 
-Rules:
-- Each reason: 1-2 sentences, max 120 characters
-- Be specific about what connects the games emotionally/thematically
-- Never start with "Both" or "Also"
-- Use language a board gamer would use casually
-- For collection_matches with 0 sessions played, ALWAYS mention it's unplayed and encourage trying it
-- If you can't find a genuine connection, say "Worth exploring"
+    const userPrompt = `Source: "${sourceTitle}" [${sourceGenres.join(",")}] [${sourceMechanics.slice(0, 4).join(",")}]
 
-Respond with valid JSON only. Schema:
-{
-  "discoveries": [{"id": "...", "reason": "..."}],
-  "collection_matches": [{"id": "...", "reason": "..."}]
-}`;
+Discoveries:
+${discoveries.map((g) => `${g.id}|${g.title}|${g.genres.join(",")}`).join("\n")}
 
-    const userPrompt = `Source game: "${sourceTitle}"
-Description: ${sourceDescription.slice(0, 300)}
-Genres: ${sourceGenres.join(", ") || "Unknown"}
-Mechanics: ${sourceMechanics.slice(0, 6).join(", ")}
-Weight: ${sourceWeight ?? "Unknown"}
-
-Discoveries to explain:
-${discoveries.map((g) => `- ID: ${g.id} | "${g.title}" | Genres: ${g.genres.join(", ")} | Deterministic: ${g.reason}`).join("\n")}
-
-Collection matches to explain:
-${collectionMatches.map((g) => `- ID: ${g.id} | "${g.title}" | Genres: ${g.genres.join(", ")} | Sessions: ${g.session_count ?? "?"} | Deterministic: ${g.reason}`).join("\n")}`;
+Collection:
+${collectionMatches.map((g) => `${g.id}|${g.title}|${g.genres.join(",")}|s=${g.session_count ?? 0}`).join("\n")}`;
 
     const response = await fetch(CORTEX_ENDPOINT, {
       method: "POST",
