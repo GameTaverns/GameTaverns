@@ -148,9 +148,13 @@ export function GameRecommendations({ gameId, gameTitle }: GameRecommendationsPr
 
   if (!isLoading && !hasDiscoveries && !hasCollectionMatches) return null;
 
-  const buildGameUrl = (slug: string | null, id: string) => {
+  const buildLibraryGameUrl = (slug: string | null, id: string) => {
     const path = `/game/${slug || id}`;
     return tenantSlug ? getLibraryUrl(tenantSlug, path) : path;
+  };
+
+  const buildCatalogUrl = (slug: string | null, id: string) => {
+    return `/catalog/${slug || id}`;
   };
 
   return (
@@ -165,7 +169,7 @@ export function GameRecommendations({ gameId, gameTitle }: GameRecommendationsPr
           {isLoading ? (
             <LoadingSkeleton count={3} />
           ) : (
-            <RecommendationGrid games={data!.collection_matches} buildGameUrl={buildGameUrl} />
+            <RecommendationGrid games={data!.collection_matches} buildGameUrl={buildLibraryGameUrl} />
           )}
         </CollapsibleSection>
       )}
@@ -183,7 +187,7 @@ export function GameRecommendations({ gameId, gameTitle }: GameRecommendationsPr
             Unable to load recommendations right now.
           </p>
         ) : hasDiscoveries ? (
-          <RecommendationGrid games={data!.discoveries} buildGameUrl={buildGameUrl} />
+          <RecommendationGrid games={data!.discoveries} buildGameUrl={buildCatalogUrl} />
         ) : (
           <p className="text-sm text-muted-foreground">
             No new discoveries found for this game yet.
