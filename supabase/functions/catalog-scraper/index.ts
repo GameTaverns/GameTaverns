@@ -485,6 +485,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       for (const game of games) {
         try {
+          let entryId: string | null = null;
           // Check if already exists by bgg_id
           const { data: existing } = await admin
             .from("game_catalog").select("id, description").eq("bgg_id", game.bggId).maybeSingle();
