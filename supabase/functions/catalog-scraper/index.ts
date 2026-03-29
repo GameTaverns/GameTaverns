@@ -540,6 +540,7 @@ const handler = async (req: Request): Promise<Response> => {
             }, { onConflict: "bgg_id" }).select("id").single();
             entryId = data?.id || null;
           }
+          } // end if (!entryId)
 
           if (entryId) {
             // Upsert mechanics, publishers, designers, artists
