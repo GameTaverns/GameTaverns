@@ -1063,10 +1063,11 @@ RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanation
 
     const games = parseBggItems(xml);
 
-    if (games.length === 0 && newIds.length > 0) {
-      const GAP_JUMP = 100;
-      currentId += GAP_JUMP;
-      totalSkipped += GAP_JUMP;
+    if (games.length === 0) {
+      // No gap jumping — just move to next batch normally
+      // Games may exist at these IDs but BGG returned empty (202, timeout, etc.)
+      currentId += BATCH_SIZE;
+      totalSkipped += BATCH_SIZE;
       continue;
     }
 
