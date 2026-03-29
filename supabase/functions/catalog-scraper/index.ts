@@ -563,20 +563,56 @@ const handler = async (req: Request): Promise<Response> => {
 
             // ---- AI Description Condensing ----
             try {
-              const currentDesc = game.description;
-              if (currentDesc && currentDesc.length >= 200 && !isDescriptionFormatted(currentDesc)) {
+              // Always check the current DB description — it may already be formatted from a previous run
+              const { data: descCheck } = await admin.from("game_catalog").select("description").eq("id", entryId).single();
+              const dbDesc = descCheck?.description || "";
+              const rawDesc = game.description || "";
+              // Use raw BGG description as source material, but only condense if DB isn't already formatted
+              const sourceDesc = rawDesc.length > dbDesc.length ? rawDesc : dbDesc;
+              if (sourceDesc && sourceDesc.length >= 100 && !isDescriptionFormatted(dbDesc)) {
+                console.log(`[fetch_ids] Condensing description for "${game.title}" (${sourceDesc.length} chars)...`);
                 const cortexUrl = Deno.env.get("CORTEX_BASE_URL") || "https://cortex.tzolak.com/api/lmstudio";
                 const descCtrl = new AbortController();
-                const descTimer = setTimeout(() => descCtrl.abort(), 30000);
+                const descTimer = setTimeout(() => descCtrl.abort(), 45000);
                 const descRes = await fetch(cortexUrl, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     messages: [
-                      { role: "system", content: `Condense board game descriptions. Format:\n1. 2-3 sentence intro\n2. "## Quick Gameplay Overview" header\n3. Bullets: **Goal:** **On Your Turn:** **End Game:** **Winner:**\nMax 150-200 words. One line per bullet. No verbose explanations.` },
-                      { role: "user", content: `Condense for "${game.title}":\n\n${currentDesc.slice(0, 3000)}` }
+                      { role: "system", content: `You condense board game descriptions into a specific template. Output ONLY the condensed description, no commentary.
+
+TEMPLATE (follow exactly):
+[2-3 sentence intro about the game theme and what makes it special]
+
+## Quick Gameplay Overview
+
+- **Goal:** [one sentence]
+- **On Your Turn:** [or "Each Round:"]
+  - [action 1 - one line]
+  - [action 2 - one line]
+  - [action 3 - one line]
+- **End Game:** [one sentence]
+- **Winner:** [one sentence]
+
+[Optional: one closing sentence about edition/components]
+
+EXAMPLE OUTPUT:
+Taco Cat Goat Cheese Pizza unleashes reactive chaos for 2-8 as players flip cards chanting a mantra, slapping word-image matches amid gesture specials. Fast reflexes and penalties drive hilarious pile-grabbing frenzy.
+
+## Quick Gameplay Overview
+
+- **Goal:** Shed cards first by slapping correctly.
+- **On Your Turn:**
+  - Flip card, say next word (taco-cat-goat-cheese-pizza).
+  - Gesture on specials; slap matches.
+  - Misses take pile.
+- **End Game:** One out and slaps.
+- **Winner:** First cardless slapper.
+
+RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanations. Use markdown formatting exactly as shown.` },
+                      { role: "user", content: `Condense for "${game.title}":\n\n${sourceDesc.slice(0, 3000)}` }
                     ],
-                    max_tokens: 500,
+                    max_tokens: 600,
                   }),
                   signal: descCtrl.signal,
                 });
@@ -584,14 +620,20 @@ const handler = async (req: Request): Promise<Response> => {
                 if (descRes.ok) {
                   const descData = await descRes.json();
                   const condensed = descData?.choices?.[0]?.message?.content?.trim();
-                  if (condensed && condensed.length > 50) {
+                  if (condensed && condensed.length > 50 && condensed.includes("Quick Gameplay Overview")) {
                     await admin.from("game_catalog").update({ description: condensed }).eq("id", entryId);
-                    console.log(`[fetch_ids] Condensed description for "${game.title}" (${currentDesc.length} → ${condensed.length} chars)`);
+                    console.log(`[fetch_ids] ✓ Condensed description for "${game.title}" (${sourceDesc.length} → ${condensed.length} chars)`);
+                  } else {
+                    console.warn(`[fetch_ids] Condensed output didn't match template for "${game.title}", skipping`);
                   }
+                } else {
+                  console.warn(`[fetch_ids] Cortex returned ${descRes.status} for description condensing`);
                 }
+              } else if (isDescriptionFormatted(dbDesc)) {
+                console.log(`[fetch_ids] Description already formatted for "${game.title}", skipping`);
               }
             } catch (descErr) {
-              console.warn(`[fetch_ids] Description condensing failed for "${game.title}":`, descErr);
+              console.warn(`[fetch_ids] Description condensing failed for "${game.title}":`, descErr instanceof Error ? descErr.message : descErr);
             }
 
             // ---- AI Genre Classification ----
