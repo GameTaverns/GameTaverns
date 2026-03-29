@@ -485,6 +485,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       for (const game of games) {
         try {
+          let entryId: string | null = null;
           // Check if already exists by bgg_id
           const { data: existing } = await admin
             .from("game_catalog").select("id, description").eq("bgg_id", game.bggId).maybeSingle();
@@ -507,16 +508,17 @@ const handler = async (req: Request): Promise<Response> => {
               updateData.description = game.description;
             }
             await admin.from("game_catalog").update(updateData).eq("id", existing.id);
-            results.push({ bgg_id: Number(game.bggId), title: game.title, status: "updated" });
+            // Fall through to enrichment using existing entry ID
+            entryId = existing.id;
             totalSkipped++;
-            continue;
           }
 
+          let wasUpdate = !!entryId;
+
+          if (!entryId) {
           // Check for NULL-bgg_id title match
           const { data: titleMatch } = await admin
             .from("game_catalog").select("id, description").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
-
-          let entryId: string | null = null;
           if (titleMatch) {
             const titleUpdateData: Record<string, any> = {
               bgg_id: game.bggId, image_url: game.imageUrl,
@@ -538,6 +540,7 @@ const handler = async (req: Request): Promise<Response> => {
             }, { onConflict: "bgg_id" }).select("id").single();
             entryId = data?.id || null;
           }
+          } // end if (!entryId)
 
           if (entryId) {
             // Upsert mechanics, publishers, designers, artists
@@ -657,8 +660,8 @@ const handler = async (req: Request): Promise<Response> => {
               console.warn(`[fetch_ids] Mechanic family check failed:`, mechFamErr);
             }
 
-            results.push({ bgg_id: Number(game.bggId), title: game.title, status: "added" });
-            totalAdded++;
+            results.push({ bgg_id: Number(game.bggId), title: game.title, status: wasUpdate ? "updated" : "added" });
+            if (!wasUpdate) totalAdded++;
           }
         } catch (e) {
           results.push({ bgg_id: Number(game.bggId), status: "error", error: e instanceof Error ? e.message : String(e) });
