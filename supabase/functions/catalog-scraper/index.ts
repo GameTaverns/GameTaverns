@@ -147,6 +147,28 @@ function isDescriptionFormatted(desc: string | null | undefined): boolean {
   return !!desc && desc.includes("Quick Gameplay Overview");
 }
 
+async function syncDescriptionToLinkedGames(
+  admin: ReturnType<typeof createClient>,
+  entryId: string,
+  bggId: string,
+  description: string,
+) {
+  const trimmedDescription = description.trim();
+  if (!trimmedDescription) return;
+
+  const [catalogLinkedResult, bggLinkedResult] = await Promise.all([
+    admin.from("games").update({ description: trimmedDescription }).eq("catalog_id", entryId),
+    admin.from("games").update({ description: trimmedDescription }).eq("bgg_id", bggId),
+  ]);
+
+  if (catalogLinkedResult.error) {
+    console.warn(`[fetch_ids] Failed syncing description by catalog_id for ${bggId}: ${catalogLinkedResult.error.message}`);
+  }
+  if (bggLinkedResult.error) {
+    console.warn(`[fetch_ids] Failed syncing description by bgg_id for ${bggId}: ${bggLinkedResult.error.message}`);
+  }
+}
+
 interface ParsedGame {
   bggId: string;
   title: string;
@@ -622,7 +644,8 @@ RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanation
                   const condensed = descData?.choices?.[0]?.message?.content?.trim();
                   if (condensed && condensed.length > 50 && condensed.includes("Quick Gameplay Overview")) {
                     await admin.from("game_catalog").update({ description: condensed }).eq("id", entryId);
-                    console.log(`[fetch_ids] ✓ Condensed description for "${game.title}" (${sourceDesc.length} → ${condensed.length} chars)`);
+                    await syncDescriptionToLinkedGames(admin, entryId, game.bggId, condensed);
+                    console.log(`[fetch_ids] ✓ Condensed description for "${game.title}" (${sourceDesc.length} → ${condensed.length} chars) and synced to linked games`);
                   } else {
                     console.warn(`[fetch_ids] Condensed output didn't match template for "${game.title}", skipping`);
                   }
@@ -630,7 +653,8 @@ RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanation
                   console.warn(`[fetch_ids] Cortex returned ${descRes.status} for description condensing`);
                 }
               } else if (isDescriptionFormatted(dbDesc)) {
-                console.log(`[fetch_ids] Description already formatted for "${game.title}", skipping`);
+                await syncDescriptionToLinkedGames(admin, entryId, game.bggId, dbDesc);
+                console.log(`[fetch_ids] Description already formatted for "${game.title}", synced to linked games`);
               }
             } catch (descErr) {
               console.warn(`[fetch_ids] Description condensing failed for "${game.title}":`, descErr instanceof Error ? descErr.message : descErr);
