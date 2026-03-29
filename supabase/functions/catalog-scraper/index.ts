@@ -68,48 +68,30 @@ function parseBggItems(xml: string) {
       continue;
     }
 
-    // Secondary filter: skip entries with non-board-game categories
-    const EXCLUDED_CATEGORIES = [
-      "Electronic", "Video Game",
-      "Book",  // RPG sourcebooks, supplements
-    ];
-    const hasExcludedCategory = categories.some(c => EXCLUDED_CATEGORIES.includes(c));
+    // Minimal filter: only skip entries that are PURELY non-board-game categories
+    // with zero board game signals whatsoever
+    const categoryMatches = block.matchAll(/<link[^>]*type="boardgamecategory"[^>]*value="([^"]+)"/g);
+    const categories = [...categoryMatches].map((m) => decodeHtmlEntities(m[1]));
     
-    // Also check for RPG-only items: type "boardgame" on BGG but actually RPG supplements
-    const RPG_ONLY_CATEGORIES = ["Role Playing"];
-    const isRpgOnly = categories.length > 0 && 
-      categories.every(c => RPG_ONLY_CATEGORIES.includes(c) || c === "Expansion for Base-game");
-
-    // Board game indicators that override exclusion
-    const BOARD_GAME_INDICATORS = [
-      "Card Game", "Dice", "Board Game", "Miniatures", "Party Game", 
-      "Wargame", "Abstract Strategy", "Collectible Components", "Trivia",
-      "Children's Game", "Puzzle", "Deduction", "Word Game",
-    ];
-    const hasBoardGameIndicator = categories.some(c => BOARD_GAME_INDICATORS.includes(c));
+    const PURE_NON_BOARDGAME = ["Video Game", "Electronic"];
+    const isPureNonBoardgame = categories.length > 0 && 
+      categories.every(c => PURE_NON_BOARDGAME.includes(c)) && 
+      mechanics.length === 0;
     
-    // Skip if: has excluded category without board game indicators, OR is RPG-only with no mechanics
-    if ((hasExcludedCategory && !hasBoardGameIndicator && mechanics.length === 0) ||
-        (isRpgOnly && !hasBoardGameIndicator && mechanics.length === 0 && designers.length === 0)) {
+    if (isPureNonBoardgame) {
       console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — non-board-game: "${title}" (categories: ${categories.join(", ")})`);
       continue;
     }
 
-    // Quality gate: skip ghost entries with no image, no description, and no ratings
+    // Ghost filter: only skip entries with NO title, NO image, NO description, AND 0 ratings
+    // This catches truly empty placeholder IDs on BGG
     const usersRatedMatch = block.match(/<usersrated\s+value="([^"]+)"/);
     const usersRated = usersRatedMatch ? parseInt(usersRatedMatch[1]) || 0 : 0;
     const hasImage = !!imageMatch;
     const hasDescription = !!descMatch && descMatch[1].trim().length > 20;
 
-    // Skip entries that are essentially empty placeholders on BGG
-    if (!hasImage && !hasDescription && usersRated === 0) {
-      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — ghost entry: "${title}" (no image, no desc, 0 ratings)`);
-      continue;
-    }
-
-    // Skip obscure fan-made items with <3 ratings and no mechanics (likely spam/placeholders)
-    if (usersRated < 3 && mechanics.length === 0 && !hasDescription) {
-      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — low-quality: "${title}" (${usersRated} ratings, no mechanics)`);
+    if (!hasImage && !hasDescription && usersRated === 0 && mechanics.length === 0 && title.length < 3) {
+      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — ghost entry: "${title}"`);
       continue;
     }
 
