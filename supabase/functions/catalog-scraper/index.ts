@@ -70,9 +70,6 @@ function parseBggItems(xml: string) {
 
     // Minimal filter: only skip entries that are PURELY non-board-game categories
     // with zero board game signals whatsoever
-    const categoryMatches = block.matchAll(/<link[^>]*type="boardgamecategory"[^>]*value="([^"]+)"/g);
-    const categories = [...categoryMatches].map((m) => decodeHtmlEntities(m[1]));
-    
     const PURE_NON_BOARDGAME = ["Video Game", "Electronic"];
     const isPureNonBoardgame = categories.length > 0 && 
       categories.every(c => PURE_NON_BOARDGAME.includes(c)) && 
@@ -130,7 +127,7 @@ function isDescriptionFormatted(desc: string | null | undefined): boolean {
 }
 
 async function syncDescriptionToLinkedGames(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   entryId: string,
   bggId: string,
   description: string,
