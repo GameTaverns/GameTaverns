@@ -561,44 +561,83 @@ const handler = async (req: Request): Promise<Response> => {
               if (a?.id) await admin.from("catalog_artists").upsert({ catalog_id: entryId, artist_id: a.id }, { onConflict: "catalog_id,artist_id" });
             }
 
-            // ---- Inline genre classification (heuristic) ----
+            // ---- AI Description Condensing ----
             try {
-              const heuristicGenreRules = [
-                { genre: "Fantasy", keywords: ["fantasy", "dragon", "wizard", "magic", "orc", "elf", "dungeon"] },
-                { genre: "Sci-Fi", keywords: ["sci-fi", "science fiction", "space", "alien", "galaxy", "robot", "cyber"] },
-                { genre: "Historical", keywords: ["historical", "history", "medieval", "renaissance", "ancient", "victorian"] },
-                { genre: "Horror", keywords: ["horror", "zombie", "vampire", "monster", "haunted", "terror", "eldritch"] },
-                { genre: "Mystery", keywords: ["mystery", "detective", "murder", "investigation", "whodunit", "crime"] },
-                { genre: "Adventure", keywords: ["adventure", "explore", "exploration", "journey", "expedition", "quest"] },
-                { genre: "War", keywords: ["war", "battle", "military", "combat", "army", "naval", "wwii"] },
-                { genre: "Political", keywords: ["politic", "election", "government", "senate", "diplomacy", "negotiation"] },
-                { genre: "Party", keywords: ["party", "charades", "social", "laugh", "drawing", "guessing"] },
-                { genre: "Trivia", keywords: ["trivia", "quiz", "knowledge", "facts"] },
-                { genre: "Sports", keywords: ["sports", "soccer", "football", "baseball", "basketball", "racing"] },
-                { genre: "Educational", keywords: ["educational", "learn", "teaching", "math", "spelling", "science"] },
-                { genre: "Nature", keywords: ["nature", "animal", "wildlife", "forest", "ocean", "ecosystem"] },
-                { genre: "Humor", keywords: ["humor", "funny", "comedy", "joke", "silly"] },
-                { genre: "Deck Building", keywords: ["deck building", "deckbuilder", "cards in deck", "card drafting"] },
-                { genre: "Cooperative", keywords: ["cooperative", "co-op", "team up", "work together"] },
-                { genre: "Family", keywords: ["family", "kids", "children", "all ages"] },
-                { genre: "Abstract", keywords: ["abstract", "pattern", "spatial", "tile placement"] },
-                { genre: "Strategy", keywords: ["strategy", "economic", "engine building", "resource management", "area control"] },
-              ];
-              const corpus = `${game.title} ${game.description || ""} ${game.mechanics.join(" ")}`.toLowerCase();
-              const genreMatches = heuristicGenreRules
-                .filter(({ keywords }) => keywords.some((kw) => corpus.includes(kw)))
-                .map(({ genre }) => genre);
-              const genres = genreMatches.length > 0 ? [...new Set(genreMatches)].slice(0, 3) : ["Other"];
+              const currentDesc = game.description;
+              if (currentDesc && currentDesc.length >= 200 && !isDescriptionFormatted(currentDesc)) {
+                const cortexUrl = Deno.env.get("CORTEX_BASE_URL") || "https://cortex.tzolak.com/api/lmstudio";
+                const descCtrl = new AbortController();
+                const descTimer = setTimeout(() => descCtrl.abort(), 30000);
+                const descRes = await fetch(cortexUrl, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    messages: [
+                      { role: "system", content: `Condense board game descriptions. Format:\n1. 2-3 sentence intro\n2. "## Quick Gameplay Overview" header\n3. Bullets: **Goal:** **On Your Turn:** **End Game:** **Winner:**\nMax 150-200 words. One line per bullet. No verbose explanations.` },
+                      { role: "user", content: `Condense for "${game.title}":\n\n${currentDesc.slice(0, 3000)}` }
+                    ],
+                    max_tokens: 500,
+                  }),
+                  signal: descCtrl.signal,
+                });
+                clearTimeout(descTimer);
+                if (descRes.ok) {
+                  const descData = await descRes.json();
+                  const condensed = descData?.choices?.[0]?.message?.content?.trim();
+                  if (condensed && condensed.length > 50) {
+                    await admin.from("game_catalog").update({ description: condensed }).eq("id", entryId);
+                    console.log(`[fetch_ids] Condensed description for "${game.title}" (${currentDesc.length} → ${condensed.length} chars)`);
+                  }
+                }
+              }
+            } catch (descErr) {
+              console.warn(`[fetch_ids] Description condensing failed for "${game.title}":`, descErr);
+            }
 
-              // Delete existing genres for this entry, then insert fresh
-              await admin.from("catalog_genres").delete().eq("catalog_id", entryId);
-              const genreRows = genres.map((g, idx) => ({ catalog_id: entryId, genre: g, display_order: idx }));
-              await admin.from("catalog_genres").insert(genreRows);
-              // Mirror primary genre to catalog column
-              await admin.from("game_catalog").update({ genre: genres[0] }).eq("id", entryId);
-              console.log(`[fetch_ids] Genres for "${game.title}": ${genres.join(", ")}`);
+            // ---- AI Genre Classification ----
+            try {
+              const cortexUrl = Deno.env.get("CORTEX_BASE_URL") || "https://cortex.tzolak.com/api/lmstudio";
+              const VALID_GENRES = ["Fantasy","Sci-Fi","Historical","Horror","Mystery","Adventure","Strategy","Abstract","Humor","Nature","War","Political","Party","Trivia","Sports","Educational","Cooperative","Family","Deck Building","Other"];
+              const genreCtrl = new AbortController();
+              const genreTimer = setTimeout(() => genreCtrl.abort(), 15000);
+              const genreRes = await fetch(cortexUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  messages: [
+                    { role: "system", content: `Classify board games into 1-3 genres from: ${VALID_GENRES.join(", ")}. Reply ONLY with JSON: {"genres":["Genre1","Genre2"]}. Rules: Economic→Strategy. Journey/travel→Adventure. Gateway games→Strategy. Cooperative only if major defining feature.` },
+                    { role: "user", content: `"${game.title}" - Mechanics: ${game.mechanics.join(", ") || "none"}. Desc: ${(game.description || "").slice(0, 500)}` }
+                  ],
+                  temperature: 0.1, max_tokens: 100,
+                }),
+                signal: genreCtrl.signal,
+              });
+              clearTimeout(genreTimer);
+              if (genreRes.ok) {
+                const genreData = await genreRes.json();
+                const content = genreData?.choices?.[0]?.message?.content || "";
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                  const parsed = JSON.parse(jsonMatch[0]);
+                  const aiGenres = (parsed.genres || []).filter((g: string) => VALID_GENRES.includes(g)).slice(0, 3);
+                  if (aiGenres.length > 0) {
+                    await admin.from("catalog_genres").delete().eq("catalog_id", entryId);
+                    const genreRows = aiGenres.map((g: string, idx: number) => ({ catalog_id: entryId, genre: g, display_order: idx }));
+                    await admin.from("catalog_genres").insert(genreRows);
+                    await admin.from("game_catalog").update({ genre: aiGenres[0] }).eq("id", entryId);
+                    console.log(`[fetch_ids] AI Genres for "${game.title}": ${aiGenres.join(", ")}`);
+                  }
+                }
+              }
             } catch (genreErr) {
-              console.warn(`[fetch_ids] Genre classification failed for "${game.title}":`, genreErr);
+              console.warn(`[fetch_ids] AI genre classification failed for "${game.title}":`, genreErr);
+              // Fallback to basic heuristic
+              const corpus = `${game.title} ${game.description || ""}`.toLowerCase();
+              const fallbackGenre = corpus.includes("fantasy") ? "Fantasy" : corpus.includes("sci-fi") || corpus.includes("space") ? "Sci-Fi" : corpus.includes("war") || corpus.includes("battle") ? "War" : "Strategy";
+              await admin.from("catalog_genres").delete().eq("catalog_id", entryId);
+              await admin.from("catalog_genres").insert([{ catalog_id: entryId, genre: fallbackGenre, display_order: 0 }]);
+              await admin.from("game_catalog").update({ genre: fallbackGenre }).eq("id", entryId);
+              console.log(`[fetch_ids] Fallback genre for "${game.title}": ${fallbackGenre}`);
             }
 
             // ---- Ensure mechanic family resolution ----
