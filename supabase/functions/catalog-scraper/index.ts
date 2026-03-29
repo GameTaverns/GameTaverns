@@ -512,11 +512,12 @@ const handler = async (req: Request): Promise<Response> => {
             totalSkipped++;
           }
 
+          let wasUpdate = !!entryId;
+
+          if (!entryId) {
           // Check for NULL-bgg_id title match
           const { data: titleMatch } = await admin
             .from("game_catalog").select("id, description").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
-
-          let entryId: string | null = null;
           if (titleMatch) {
             const titleUpdateData: Record<string, any> = {
               bgg_id: game.bggId, image_url: game.imageUrl,
