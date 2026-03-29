@@ -68,48 +68,30 @@ function parseBggItems(xml: string) {
       continue;
     }
 
-    // Secondary filter: skip entries with non-board-game categories
-    const EXCLUDED_CATEGORIES = [
-      "Electronic", "Video Game",
-      "Book",  // RPG sourcebooks, supplements
-    ];
-    const hasExcludedCategory = categories.some(c => EXCLUDED_CATEGORIES.includes(c));
+    // Minimal filter: only skip entries that are PURELY non-board-game categories
+    // with zero board game signals whatsoever
+    const categoryMatches = block.matchAll(/<link[^>]*type="boardgamecategory"[^>]*value="([^"]+)"/g);
+    const categories = [...categoryMatches].map((m) => decodeHtmlEntities(m[1]));
     
-    // Also check for RPG-only items: type "boardgame" on BGG but actually RPG supplements
-    const RPG_ONLY_CATEGORIES = ["Role Playing"];
-    const isRpgOnly = categories.length > 0 && 
-      categories.every(c => RPG_ONLY_CATEGORIES.includes(c) || c === "Expansion for Base-game");
-
-    // Board game indicators that override exclusion
-    const BOARD_GAME_INDICATORS = [
-      "Card Game", "Dice", "Board Game", "Miniatures", "Party Game", 
-      "Wargame", "Abstract Strategy", "Collectible Components", "Trivia",
-      "Children's Game", "Puzzle", "Deduction", "Word Game",
-    ];
-    const hasBoardGameIndicator = categories.some(c => BOARD_GAME_INDICATORS.includes(c));
+    const PURE_NON_BOARDGAME = ["Video Game", "Electronic"];
+    const isPureNonBoardgame = categories.length > 0 && 
+      categories.every(c => PURE_NON_BOARDGAME.includes(c)) && 
+      mechanics.length === 0;
     
-    // Skip if: has excluded category without board game indicators, OR is RPG-only with no mechanics
-    if ((hasExcludedCategory && !hasBoardGameIndicator && mechanics.length === 0) ||
-        (isRpgOnly && !hasBoardGameIndicator && mechanics.length === 0 && designers.length === 0)) {
+    if (isPureNonBoardgame) {
       console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — non-board-game: "${title}" (categories: ${categories.join(", ")})`);
       continue;
     }
 
-    // Quality gate: skip ghost entries with no image, no description, and no ratings
+    // Ghost filter: only skip entries with NO title, NO image, NO description, AND 0 ratings
+    // This catches truly empty placeholder IDs on BGG
     const usersRatedMatch = block.match(/<usersrated\s+value="([^"]+)"/);
     const usersRated = usersRatedMatch ? parseInt(usersRatedMatch[1]) || 0 : 0;
     const hasImage = !!imageMatch;
     const hasDescription = !!descMatch && descMatch[1].trim().length > 20;
 
-    // Skip entries that are essentially empty placeholders on BGG
-    if (!hasImage && !hasDescription && usersRated === 0) {
-      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — ghost entry: "${title}" (no image, no desc, 0 ratings)`);
-      continue;
-    }
-
-    // Skip obscure fan-made items with <3 ratings and no mechanics (likely spam/placeholders)
-    if (usersRated < 3 && mechanics.length === 0 && !hasDescription) {
-      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — low-quality: "${title}" (${usersRated} ratings, no mechanics)`);
+    if (!hasImage && !hasDescription && usersRated === 0 && mechanics.length === 0 && title.length < 3) {
+      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — ghost entry: "${title}"`);
       continue;
     }
 
@@ -790,6 +772,132 @@ RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanation
 
   // =========================================================================
   // SWEEP — Weekly smart scan for newly added BGG games
+  // =========================================================================
+  // GAP_FILL — Re-scan a range of BGG IDs to catch anything previously missed
+  // Usage: { "action": "gap_fill", "start": 380000, "end": 390000 }
+  // Will check each ID in the range and fetch any not already in the catalog
+  // =========================================================================
+  if (action === "gap_fill") {
+    const startId = Number(body.start) || 1;
+    const endId = Number(body.end) || startId + 10000;
+    const BATCH_SIZE = 20;
+    const maxBatches = Math.ceil((endId - startId) / BATCH_SIZE);
+
+    const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
+    const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+    const bggHeaders: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      Accept: "application/xml",
+      Referer: "https://boardgamegeek.com/",
+      Origin: "https://boardgamegeek.com",
+    };
+    if (bggApiToken) bggHeaders["Authorization"] = `Bearer ${bggApiToken}`;
+    if (bggCookie) bggHeaders["Cookie"] = bggCookie;
+
+    let currentId = startId;
+    let totalAdded = 0;
+    let totalSkipped = 0;
+    let totalErrors = 0;
+    let lastError: string | null = null;
+
+    console.log(`[catalog-scraper] GAP_FILL: scanning ${startId}–${endId} (${maxBatches} batches)`);
+
+    for (let batch = 0; batch < maxBatches && currentId < endId; batch++) {
+      const batchEnd = Math.min(currentId + BATCH_SIZE, endId);
+      const ids = Array.from({ length: batchEnd - currentId }, (_, i) => currentId + i);
+
+      // Check which IDs already exist
+      const { data: existing } = await admin
+        .from("game_catalog")
+        .select("bgg_id")
+        .in("bgg_id", ids.map(String));
+      const existingIds = new Set((existing || []).map(e => e.bgg_id));
+
+      const missingIds = ids.filter(id => !existingIds.has(String(id)));
+      if (missingIds.length === 0) {
+        totalSkipped += ids.length;
+        currentId = batchEnd;
+        continue;
+      }
+
+      // Fetch only missing IDs from BGG
+      const url = `https://boardgamegeek.com/xmlapi2/thing?id=${missingIds.join(",")}&type=boardgame,boardgameexpansion&stats=1`;
+      let xml: string | null = null;
+      let fetchAttempts = 0;
+
+      while (fetchAttempts < 3) {
+        fetchAttempts++;
+        try {
+          const res = await fetch(url, { headers: bggHeaders });
+          if (res.status === 429) { await sleep(fetchAttempts * 3000); continue; }
+          if (res.status === 202) { await sleep(5000); continue; }
+          if (!res.ok) { lastError = `HTTP ${res.status}`; totalErrors++; break; }
+          xml = await res.text();
+          break;
+        } catch (e) {
+          lastError = e instanceof Error ? e.message : String(e);
+          if (fetchAttempts < 3) await sleep(2000);
+        }
+      }
+
+      if (!xml) { totalErrors++; currentId = batchEnd; continue; }
+
+      const games = parseBggItems(xml);
+
+      for (const game of games) {
+        if (existingIds.has(game.bggId)) { totalSkipped++; continue; }
+        try {
+          const { data: entry } = await admin.from("game_catalog").upsert({
+            bgg_id: game.bggId, bgg_verified_type: game.bggVerifiedType,
+            title: game.title, description: game.description, image_url: game.imageUrl,
+            min_players: game.minPlayers, max_players: game.maxPlayers,
+            play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
+            year_published: game.yearPublished,
+            weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
+          }, { onConflict: "bgg_id" }).select("id").single();
+
+          if (entry?.id) {
+            for (const mechName of game.mechanics) {
+              const { data: mech } = await admin.from("mechanics").upsert({ name: mechName }, { onConflict: "name" }).select("id").single();
+              if (mech?.id) await admin.from("catalog_mechanics").upsert({ catalog_id: entry.id, mechanic_id: mech.id }, { onConflict: "catalog_id,mechanic_id" });
+            }
+            if (game.publisher) {
+              const { data: pub } = await admin.from("publishers").upsert({ name: game.publisher }, { onConflict: "name" }).select("id").single();
+              if (pub?.id) await admin.from("catalog_publishers").upsert({ catalog_id: entry.id, publisher_id: pub.id }, { onConflict: "catalog_id,publisher_id" });
+            }
+            for (const name of game.designers) {
+              const { data: d } = await admin.from("designers").upsert({ name }, { onConflict: "name" }).select("id").single();
+              if (d?.id) await admin.from("catalog_designers").upsert({ catalog_id: entry.id, designer_id: d.id }, { onConflict: "catalog_id,designer_id" });
+            }
+            for (const name of game.artists) {
+              const { data: a } = await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single();
+              if (a?.id) await admin.from("catalog_artists").upsert({ catalog_id: entry.id, artist_id: a.id }, { onConflict: "catalog_id,artist_id" });
+            }
+            totalAdded++;
+            console.log(`[gap_fill] Added: ${game.title} (BGG ${game.bggId})`);
+          }
+        } catch (e) {
+          totalErrors++;
+          lastError = `${game.bggId}: ${e instanceof Error ? e.message : String(e)}`;
+        }
+      }
+
+      totalSkipped += missingIds.length - games.filter(g => !existingIds.has(g.bggId)).length;
+      currentId = batchEnd;
+      if (batch < maxBatches - 1) await sleep(1500);
+    }
+
+    console.log(`[catalog-scraper] GAP_FILL complete: added=${totalAdded}, skipped=${totalSkipped}, errors=${totalErrors}`);
+    return new Response(JSON.stringify({
+      success: true, action: "gap_fill",
+      range: `${startId}–${endId}`,
+      added: totalAdded, skipped: totalSkipped, errors: totalErrors,
+      last_error: lastError,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // =========================================================================
+  // SWEEP — Weekly forward scan for new BGG entries
   // Instead of grinding through millions of IDs, this:
   // 1. Finds the max BGG ID currently in our catalog
   // 2. Scans forward from there to catch brand new entries
@@ -1081,10 +1189,11 @@ RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanation
 
     const games = parseBggItems(xml);
 
-    if (games.length === 0 && newIds.length > 0) {
-      const GAP_JUMP = 100;
-      currentId += GAP_JUMP;
-      totalSkipped += GAP_JUMP;
+    if (games.length === 0) {
+      // No gap jumping — just move to next batch normally
+      // Games may exist at these IDs but BGG returned empty (202, timeout, etc.)
+      currentId += BATCH_SIZE;
+      totalSkipped += BATCH_SIZE;
       continue;
     }
 
