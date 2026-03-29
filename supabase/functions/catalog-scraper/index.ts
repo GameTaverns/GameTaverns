@@ -6,6 +6,10 @@ const corsHeaders = {
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const GAP_FILL_REQUEST_BUDGET_MS = 35_000;
+const DEFAULT_GAP_FILL_BATCHES = 10;
+const MAX_GAP_FILL_BATCHES = 25;
+const BGG_FETCH_TIMEOUT_MS = 15_000;
 
 const decodeHtmlEntities = (input: string) =>
   input
@@ -778,7 +782,18 @@ RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanation
     const startId = Number(body.start) || 1;
     const endId = Number(body.end) || startId + 10000;
     const BATCH_SIZE = 20;
-    const maxBatches = Math.ceil((endId - startId) / BATCH_SIZE);
+    const requestedBatches = Number(body.batches ?? body.max_batches) || DEFAULT_GAP_FILL_BATCHES;
+    const maxBatches = Math.max(1, Math.min(
+      Math.ceil((endId - startId) / BATCH_SIZE),
+      MAX_GAP_FILL_BATCHES,
+      requestedBatches,
+    ));
+
+    if (endId <= startId) {
+      return new Response(JSON.stringify({ error: "end must be greater than start" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
     const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
@@ -796,10 +811,18 @@ RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanation
     let totalSkipped = 0;
     let totalErrors = 0;
     let lastError: string | null = null;
+    let completedBatches = 0;
+    let stoppedReason: "complete" | "batch_limit" | "request_budget" = "complete";
+    const deadline = Date.now() + GAP_FILL_REQUEST_BUDGET_MS;
 
-    console.log(`[catalog-scraper] GAP_FILL: scanning ${startId}–${endId} (${maxBatches} batches)`);
+    console.log(`[catalog-scraper] GAP_FILL: scanning ${startId}–${endId} (${maxBatches} batches this request)`);
 
     for (let batch = 0; batch < maxBatches && currentId < endId; batch++) {
+      if (Date.now() >= deadline) {
+        stoppedReason = "request_budget";
+        break;
+      }
+
       const batchEnd = Math.min(currentId + BATCH_SIZE, endId);
       const ids = Array.from({ length: batchEnd - currentId }, (_, i) => currentId + i);
 
@@ -824,8 +847,10 @@ RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanation
 
       while (fetchAttempts < 3) {
         fetchAttempts++;
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), BGG_FETCH_TIMEOUT_MS);
         try {
-          const res = await fetch(url, { headers: bggHeaders });
+          const res = await fetch(url, { headers: bggHeaders, signal: ctrl.signal });
           if (res.status === 429) { await sleep(fetchAttempts * 3000); continue; }
           if (res.status === 202) { await sleep(5000); continue; }
           if (!res.ok) { lastError = `HTTP ${res.status}`; totalErrors++; break; }
@@ -834,10 +859,12 @@ RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanation
         } catch (e) {
           lastError = e instanceof Error ? e.message : String(e);
           if (fetchAttempts < 3) await sleep(2000);
+        } finally {
+          clearTimeout(timer);
         }
       }
 
-      if (!xml) { totalErrors++; currentId = batchEnd; continue; }
+      if (!xml) { totalErrors++; currentId = batchEnd; completedBatches++; continue; }
 
       const games = parseBggItems(xml);
 
@@ -881,13 +908,29 @@ RULES: Max 150-200 words total. Each bullet ONE line max. No verbose explanation
 
       totalSkipped += missingIds.length - games.filter(g => !existingIds.has(g.bggId)).length;
       currentId = batchEnd;
+      completedBatches++;
       if (batch < maxBatches - 1) await sleep(1500);
     }
+
+    if (currentId < endId && stoppedReason === "complete") {
+      stoppedReason = completedBatches >= maxBatches ? "batch_limit" : "request_budget";
+    }
+
+    const hasMore = currentId < endId;
+    const processedUntil = currentId > startId ? currentId - 1 : startId - 1;
 
     console.log(`[catalog-scraper] GAP_FILL complete: added=${totalAdded}, skipped=${totalSkipped}, errors=${totalErrors}`);
     return new Response(JSON.stringify({
       success: true, action: "gap_fill",
-      range: `${startId}–${endId}`,
+      requested_range: `${startId}–${endId}`,
+      processed_range: processedUntil >= startId ? `${startId}–${processedUntil}` : null,
+      next_start: hasMore ? currentId : null,
+      has_more: hasMore,
+      partial: hasMore,
+      batches_completed: completedBatches,
+      batches_requested: maxBatches,
+      batch_size: BATCH_SIZE,
+      stopped_reason: stoppedReason,
       added: totalAdded, skipped: totalSkipped, errors: totalErrors,
       last_error: lastError,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
