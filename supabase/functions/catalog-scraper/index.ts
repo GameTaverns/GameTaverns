@@ -127,7 +127,7 @@ function isDescriptionFormatted(desc: string | null | undefined): boolean {
 }
 
 async function syncDescriptionToLinkedGames(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   entryId: string,
   bggId: string,
   description: string,
