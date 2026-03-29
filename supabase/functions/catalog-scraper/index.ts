@@ -507,9 +507,9 @@ const handler = async (req: Request): Promise<Response> => {
               updateData.description = game.description;
             }
             await admin.from("game_catalog").update(updateData).eq("id", existing.id);
-            results.push({ bgg_id: Number(game.bggId), title: game.title, status: "updated" });
+            // Fall through to enrichment using existing entry ID
+            entryId = existing.id;
             totalSkipped++;
-            continue;
           }
 
           // Check for NULL-bgg_id title match
