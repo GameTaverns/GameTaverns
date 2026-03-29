@@ -557,6 +557,106 @@ const handler = async (req: Request): Promise<Response> => {
               const { data: a } = await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single();
               if (a?.id) await admin.from("catalog_artists").upsert({ catalog_id: entryId, artist_id: a.id }, { onConflict: "catalog_id,artist_id" });
             }
+
+            // ---- Inline genre classification (heuristic) ----
+            try {
+              const heuristicGenreRules = [
+                { genre: "Fantasy", keywords: ["fantasy", "dragon", "wizard", "magic", "orc", "elf", "dungeon"] },
+                { genre: "Sci-Fi", keywords: ["sci-fi", "science fiction", "space", "alien", "galaxy", "robot", "cyber"] },
+                { genre: "Historical", keywords: ["historical", "history", "medieval", "renaissance", "ancient", "victorian"] },
+                { genre: "Horror", keywords: ["horror", "zombie", "vampire", "monster", "haunted", "terror", "eldritch"] },
+                { genre: "Mystery", keywords: ["mystery", "detective", "murder", "investigation", "whodunit", "crime"] },
+                { genre: "Adventure", keywords: ["adventure", "explore", "exploration", "journey", "expedition", "quest"] },
+                { genre: "War", keywords: ["war", "battle", "military", "combat", "army", "naval", "wwii"] },
+                { genre: "Political", keywords: ["politic", "election", "government", "senate", "diplomacy", "negotiation"] },
+                { genre: "Party", keywords: ["party", "charades", "social", "laugh", "drawing", "guessing"] },
+                { genre: "Trivia", keywords: ["trivia", "quiz", "knowledge", "facts"] },
+                { genre: "Sports", keywords: ["sports", "soccer", "football", "baseball", "basketball", "racing"] },
+                { genre: "Educational", keywords: ["educational", "learn", "teaching", "math", "spelling", "science"] },
+                { genre: "Nature", keywords: ["nature", "animal", "wildlife", "forest", "ocean", "ecosystem"] },
+                { genre: "Humor", keywords: ["humor", "funny", "comedy", "joke", "silly"] },
+                { genre: "Deck Building", keywords: ["deck building", "deckbuilder", "cards in deck", "card drafting"] },
+                { genre: "Cooperative", keywords: ["cooperative", "co-op", "team up", "work together"] },
+                { genre: "Family", keywords: ["family", "kids", "children", "all ages"] },
+                { genre: "Abstract", keywords: ["abstract", "pattern", "spatial", "tile placement"] },
+                { genre: "Strategy", keywords: ["strategy", "economic", "engine building", "resource management", "area control"] },
+              ];
+              const corpus = `${game.title} ${game.description || ""} ${game.mechanics.join(" ")}`.toLowerCase();
+              const genreMatches = heuristicGenreRules
+                .filter(({ keywords }) => keywords.some((kw) => corpus.includes(kw)))
+                .map(({ genre }) => genre);
+              const genres = genreMatches.length > 0 ? [...new Set(genreMatches)].slice(0, 3) : ["Other"];
+
+              // Delete existing genres for this entry, then insert fresh
+              await admin.from("catalog_genres").delete().eq("catalog_id", entryId);
+              const genreRows = genres.map((g, idx) => ({ catalog_id: entryId, genre: g, display_order: idx }));
+              await admin.from("catalog_genres").insert(genreRows);
+              // Mirror primary genre to catalog column
+              await admin.from("game_catalog").update({ genre: genres[0] }).eq("id", entryId);
+              console.log(`[fetch_ids] Genres for "${game.title}": ${genres.join(", ")}`);
+            } catch (genreErr) {
+              console.warn(`[fetch_ids] Genre classification failed for "${game.title}":`, genreErr);
+            }
+
+            // ---- Ensure mechanic family resolution ----
+            // For any newly upserted mechanics that lack a family_id, try to resolve via mechanic_families
+            try {
+              const { data: unfamilied } = await admin
+                .from("mechanics")
+                .select("id, name")
+                .is("family_id", null)
+                .in("name", game.mechanics);
+              if (unfamilied && unfamilied.length > 0) {
+                console.log(`[fetch_ids] ${unfamilied.length} mechanics without family for "${game.title}", attempting Cortex resolution`);
+                // Load family names for matching
+                const { data: families } = await admin.from("mechanic_families").select("id, name");
+                if (families && families.length > 0) {
+                  const cortexUrl = Deno.env.get("CORTEX_BASE_URL") || "https://cortex.tzolak.com/api/lmstudio";
+                  const familyNames = families.map(f => f.name);
+                  const prompt = `Classify these board game mechanics into families. Mechanics: ${unfamilied.map(m => m.name).join(", ")}. Families: ${familyNames.join(", ")}. Reply ONLY with JSON: {"mappings":[{"mechanic":"name","family":"family_name"}]}`;
+                  try {
+                    const ctrl = new AbortController();
+                    const timer = setTimeout(() => ctrl.abort(), 15000);
+                    const cortexRes = await fetch(cortexUrl, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        model: "qwen2.5-14b-instruct",
+                        messages: [{ role: "user", content: prompt }],
+                        temperature: 0.1, max_tokens: 500,
+                      }),
+                      signal: ctrl.signal,
+                    });
+                    clearTimeout(timer);
+                    if (cortexRes.ok) {
+                      const cortexData = await cortexRes.json();
+                      const content = cortexData?.choices?.[0]?.message?.content || "";
+                      const jsonMatch = content.match(/\{[\s\S]*\}/);
+                      if (jsonMatch) {
+                        const parsed = JSON.parse(jsonMatch[0]);
+                        const mappings = parsed.mappings || [];
+                        const familyLookup = new Map(families.map(f => [f.name.toLowerCase(), f.id]));
+                        for (const m of mappings) {
+                          const familyId = familyLookup.get(m.family?.toLowerCase());
+                          if (familyId) {
+                            const mechRow = unfamilied.find(u => u.name.toLowerCase() === m.mechanic?.toLowerCase());
+                            if (mechRow) {
+                              await admin.from("mechanics").update({ family_id: familyId }).eq("id", mechRow.id);
+                              console.log(`[fetch_ids] Mapped mechanic "${mechRow.name}" → family "${m.family}"`);
+                            }
+                          }
+                        }
+                      }
+                    }
+                  } catch (cortexErr) {
+                    console.warn(`[fetch_ids] Cortex mechanic family resolution failed:`, cortexErr);
+                  }
+                }
+              }
+            } catch (mechFamErr) {
+              console.warn(`[fetch_ids] Mechanic family check failed:`, mechFamErr);
+            }
+
             results.push({ bgg_id: Number(game.bggId), title: game.title, status: "added" });
             totalAdded++;
           }
