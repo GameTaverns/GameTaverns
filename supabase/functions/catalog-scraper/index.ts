@@ -660,8 +660,8 @@ const handler = async (req: Request): Promise<Response> => {
               console.warn(`[fetch_ids] Mechanic family check failed:`, mechFamErr);
             }
 
-            results.push({ bgg_id: Number(game.bggId), title: game.title, status: "added" });
-            totalAdded++;
+            results.push({ bgg_id: Number(game.bggId), title: game.title, status: wasUpdate ? "updated" : "added" });
+            if (!wasUpdate) totalAdded++;
           }
         } catch (e) {
           results.push({ bgg_id: Number(game.bggId), status: "error", error: e instanceof Error ? e.message : String(e) });
