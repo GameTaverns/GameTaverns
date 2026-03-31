@@ -62,6 +62,11 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
+    // Check if caller is authenticated — skip expensive Cortex AI for anonymous/bot traffic
+    const authHeader = req.headers.get("Authorization") || "";
+    const hasAuth = authHeader.startsWith("Bearer ") && authHeader.length > 20;
+    const skipCortex = !hasAuth;
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
