@@ -1,11 +1,13 @@
 -- Catalog format descriptions cron job
--- Processes 150 games per invocation (3 workers × 50 items/batch)
--- Runs every minute to keep pace with scraper throughput (~144k/day)
--- At $0.005/request + token costs, batching 50 items amortizes the per-request fee
+-- Processes 3 games per invocation (1 worker × 3 items)
+-- Runs every 30 minutes — gentle on Cortex, only targets unformatted entries
+
+SELECT cron.unschedule('catalog-format-descriptions-cron')
+WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-format-descriptions-cron');
 
 SELECT cron.schedule(
   'catalog-format-descriptions-cron',
-  '* * * * *',
+  '*/30 * * * *',
   $$
   SELECT net.http_post(
     url := 'http://kong:8000/functions/v1/catalog-format-descriptions',
@@ -13,7 +15,7 @@ SELECT cron.schedule(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
     ),
-    body := '{"batchSize": 50, "workers": 3, "totalLimit": 150}'::jsonb
+    body := '{"batchSize": 3, "workers": 1, "totalLimit": 3}'::jsonb
   ) AS request_id;
   $$
 );
