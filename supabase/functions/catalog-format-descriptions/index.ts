@@ -175,8 +175,11 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
   return results;
 }
 
-/** Max items per single AI call — keeps response within token limits */
-const AI_CALL_CHUNK_SIZE = 20;
+/** Max items per single AI call — small to fit Cortex 16k context (prompt + output) */
+const AI_CALL_CHUNK_SIZE = 3;
+
+/** Delay between sequential AI calls to let Cortex finish before queuing more */
+const INTER_CHUNK_DELAY_MS = 3_000;
 
 /** Process a single chunk of games through AI (max AI_CALL_CHUNK_SIZE items) */
 async function processAiChunk(
@@ -189,7 +192,7 @@ async function processAiChunk(
       { role: "system", content: FORMAT_SYSTEM_PROMPT },
       { role: "user", content: `Rewrite the following ${chunk.length} board game descriptions and return a JSON array. Each element must have "title" (exact match) and "description" (formatted markdown):\n\n${batchPrompt}` },
     ],
-    max_tokens: chunk.length * 600, // ~600 tokens per game (description + JSON overhead)
+    max_tokens: 2048, // Conservative: fits within Cortex 16k context alongside prompt
   });
 
   if (!aiResult.success || !aiResult.content) {
