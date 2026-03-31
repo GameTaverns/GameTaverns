@@ -427,9 +427,9 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  const batchSize = Math.min(Math.max(body.batchSize || 50, 1), 75);
-  const workers = Math.min(Math.max(body.workers || 3, 1), 5);
-  const totalLimit = Math.min(body.totalLimit || batchSize * workers, 500);
+  const batchSize = Math.min(Math.max(body.batchSize || 9, 1), 30);   // default 9 (3 chunks of 3)
+  const workers = Math.min(Math.max(body.workers || 1, 1), 2);       // default 1 worker — sequential
+  const totalLimit = Math.min(body.totalLimit || batchSize * workers, 100);
   const dryRun = body.dryRun === true;
 
   // Fetch candidates: games that DON'T already have the correct format.
