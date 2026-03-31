@@ -7,6 +7,10 @@ const corsHeaders = {
 
 const CORTEX_ENDPOINT = "https://cortex.tzolak.com/api/lmstudio";
 
+// ── In-memory cache for AI reasons (survives across requests within same Deno isolate) ──
+const aiReasonsCache = new Map<string, { data: any; ts: number }>();
+const AI_CACHE_TTL_MS = 30 * 60_000; // 30 minutes
+
 interface ScoredGame {
   id: string;
   title: string;
