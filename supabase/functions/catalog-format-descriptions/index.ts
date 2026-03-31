@@ -537,9 +537,9 @@ export default async function handler(req: Request): Promise<Response> {
       }
     }
 
-    // Small delay between waves to avoid rate limits
+    // Longer delay between waves to let Cortex fully clear KV cache
     if (wave + workers < batches.length) {
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 5000));
     }
   }
 
