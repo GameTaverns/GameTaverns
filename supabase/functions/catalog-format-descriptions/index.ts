@@ -299,6 +299,10 @@ async function processBatch(
         continue;
       }
 
+      await Promise.all([
+        admin.from("games").update({ description: newDescription }).eq("catalog_id", entry.id),
+      ]);
+
       updatedCount++;
       results.push({ title: entry.title, status: "updated" });
     }
