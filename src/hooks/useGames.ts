@@ -461,14 +461,14 @@ export function useGame(slugOrId: string | undefined) {
         .eq("game_id", game.id);
       let artists = gameArtists?.map((ga: any) => ga.artist).filter(Boolean) || [];
 
-      // Fall back to catalog data if game-level designers/artists/publisher/upc/mechanics/genre are empty
+      // Fall back to catalog data if game-level designers/artists/publisher/upc/mechanics/genre/description are empty or stale
       const catalogId = game.catalog_id;
       const needsCatalogFallback = catalogId && (
         designers.length === 0 || artists.length === 0 || !game.publisher || !game.upc ||
-        mechanics.length === 0 || !game.genre
+        mechanics.length === 0 || !game.genre || !game.description || !String(game.description).includes("Quick Gameplay Overview")
       );
       if (catalogId && needsCatalogFallback) {
-        const [catDesigners, catArtists, catPublishers, catUpc, catMechanics, catGenres] = await Promise.all([
+        const [catDesigners, catArtists, catPublishers, catUpc, catMechanics, catGenres, catDescription] = await Promise.all([
           designers.length === 0
             ? supabase.from("catalog_designers").select("designer:designers(id, name)").eq("catalog_id", catalogId)
             : Promise.resolve({ data: null }),
@@ -486,6 +486,9 @@ export function useGame(slugOrId: string | undefined) {
             : Promise.resolve({ data: null }),
           !game.genre
             ? (supabase as any).from("catalog_genres").select("genre").eq("catalog_id", catalogId).order("genre")
+            : Promise.resolve({ data: null }),
+          !game.description || !String(game.description).includes("Quick Gameplay Overview")
+            ? supabase.from("game_catalog").select("description").eq("id", catalogId).maybeSingle()
             : Promise.resolve({ data: null }),
         ]);
 
@@ -517,6 +520,9 @@ export function useGame(slugOrId: string | undefined) {
         }
         if (catGenres.data && catGenres.data.length > 0 && !game.genre) {
           game.genre = catGenres.data.map((g: any) => g.genre).join(", ");
+        }
+        if (catDescription.data?.description && String(catDescription.data.description).includes("Quick Gameplay Overview")) {
+          game.description = catDescription.data.description;
         }
       }
 
