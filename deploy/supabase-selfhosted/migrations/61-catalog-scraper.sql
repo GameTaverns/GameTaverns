@@ -42,23 +42,22 @@ SELECT cron.unschedule('catalog-scraper-cron')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-scraper-cron');
 
 -- ─────────────────────────────────────────────────────────────────────
--- Weekly sweep: Sundays at 1 AM — scan forward from max known BGG ID
--- to catch newly published games. Lightweight and targeted.
+-- DISABLED: All catalog crons paused for stabilization.
 -- ─────────────────────────────────────────────────────────────────────
 SELECT cron.unschedule('catalog-scraper-sweep')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-scraper-sweep');
 
-SELECT cron.schedule(
-  'catalog-scraper-sweep',
-  '0 1 * * 0',
-  $$
-  SELECT net.http_post(
-    url := 'http://kong:8000/functions/v1/catalog-scraper',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
-    ),
-    body := '{"action":"sweep","batches":25,"forward_buffer":5000}'::jsonb
-  );
-  $$
-);
+-- SELECT cron.schedule(
+--   'catalog-scraper-sweep',
+--   '0 1 * * 0',
+--   $$
+--   SELECT net.http_post(
+--     url := 'http://kong:8000/functions/v1/catalog-scraper',
+--     headers := jsonb_build_object(
+--       'Content-Type', 'application/json',
+--       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
+--     ),
+--     body := '{"action":"sweep","batches":25,"forward_buffer":5000}'::jsonb
+--   );
+--   $$
+-- );
