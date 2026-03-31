@@ -220,12 +220,16 @@ async function processBatch(
       chunks.push(entries.slice(i, i + AI_CALL_CHUNK_SIZE));
     }
 
-    // Process sub-chunks sequentially within a batch to avoid rate limits
+    // Process sub-chunks sequentially with delays to protect Cortex from concurrency exhaustion
     const parsed = new Map<string, string>();
-    for (const chunk of chunks) {
-      const chunkResult = await processAiChunk(chunk);
+    for (let ci = 0; ci < chunks.length; ci++) {
+      const chunkResult = await processAiChunk(chunks[ci]);
       for (const [title, desc] of chunkResult) {
         parsed.set(title, desc);
+      }
+      // Delay between chunks so Cortex can free its KV cache slots
+      if (ci < chunks.length - 1) {
+        await new Promise(r => setTimeout(r, INTER_CHUNK_DELAY_MS));
       }
     }
 
