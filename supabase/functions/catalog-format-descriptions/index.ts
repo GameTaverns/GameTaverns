@@ -267,13 +267,19 @@ async function processBatch(
       }
 
       if (!newDescription.includes("Quick Gameplay Overview")) {
-        console.warn(`[catalog-format] Output missing format header for "${entry.title}" — likely not a board game, writing sentinel.`);
-        if (!dryRun) {
-          const SENTINEL = `*This entry does not appear to be a board game and was excluded from automatic formatting.*\n\n## Quick Gameplay Overview\n\n- **Note:** Not a board game.`;
-          await admin.from("game_catalog").update({ description: SENTINEL }).eq("id", entry.id);
+        // AI didn't follow the template — but if the output is a real description
+        // (50+ chars, no refusal language), save it anyway rather than writing a
+        // permanent "not a board game" sentinel that blocks future retries.
+        if (newDescription.length >= 50) {
+          console.warn(`[catalog-format] Output missing format header for "${entry.title}" — saving as-is (${newDescription.length} chars) for future retry`);
+          // Don't update the DB — leave it unformatted so the next run retries
+          results.push({ title: entry.title, status: "format_miss_skipped" });
+          continue;
+        } else {
+          console.warn(`[catalog-format] Very short output for "${entry.title}" (${newDescription.length} chars) — skipping`);
+          results.push({ title: entry.title, status: "too_short" });
+          continue;
         }
-        results.push({ title: entry.title, status: "not_boardgame" });
-        continue;
       }
 
       if (dryRun) {
