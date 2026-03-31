@@ -464,7 +464,7 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  const batchSize = Math.min(Math.max(body.batchSize || 9, 1), 30);   // default 9 (3 chunks of 3)
+  const batchSize = Math.min(Math.max(body.batchSize || 12, 1), 30);   // default 12 (4 chunks of 3)
   const workers = Math.min(Math.max(body.workers || 1, 1), 2);       // default 1 worker — sequential
   const totalLimit = Math.min(body.totalLimit || batchSize * workers, 100);
   const dryRun = body.dryRun === true;
