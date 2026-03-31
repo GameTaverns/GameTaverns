@@ -175,8 +175,11 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
   return results;
 }
 
-/** Max items per single AI call — keeps response within token limits */
-const AI_CALL_CHUNK_SIZE = 20;
+/** Max items per single AI call — small to fit Cortex 16k context (prompt + output) */
+const AI_CALL_CHUNK_SIZE = 3;
+
+/** Delay between sequential AI calls to let Cortex finish before queuing more */
+const INTER_CHUNK_DELAY_MS = 3_000;
 
 /** Process a single chunk of games through AI (max AI_CALL_CHUNK_SIZE items) */
 async function processAiChunk(
@@ -189,7 +192,7 @@ async function processAiChunk(
       { role: "system", content: FORMAT_SYSTEM_PROMPT },
       { role: "user", content: `Rewrite the following ${chunk.length} board game descriptions and return a JSON array. Each element must have "title" (exact match) and "description" (formatted markdown):\n\n${batchPrompt}` },
     ],
-    max_tokens: chunk.length * 600, // ~600 tokens per game (description + JSON overhead)
+    max_tokens: 2048, // Conservative: fits within Cortex 16k context alongside prompt
   });
 
   if (!aiResult.success || !aiResult.content) {
@@ -217,12 +220,16 @@ async function processBatch(
       chunks.push(entries.slice(i, i + AI_CALL_CHUNK_SIZE));
     }
 
-    // Process sub-chunks sequentially within a batch to avoid rate limits
+    // Process sub-chunks sequentially with delays to protect Cortex from concurrency exhaustion
     const parsed = new Map<string, string>();
-    for (const chunk of chunks) {
-      const chunkResult = await processAiChunk(chunk);
+    for (let ci = 0; ci < chunks.length; ci++) {
+      const chunkResult = await processAiChunk(chunks[ci]);
       for (const [title, desc] of chunkResult) {
         parsed.set(title, desc);
+      }
+      // Delay between chunks so Cortex can free its KV cache slots
+      if (ci < chunks.length - 1) {
+        await new Promise(r => setTimeout(r, INTER_CHUNK_DELAY_MS));
       }
     }
 
@@ -420,9 +427,9 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  const batchSize = Math.min(Math.max(body.batchSize || 50, 1), 75);
-  const workers = Math.min(Math.max(body.workers || 3, 1), 5);
-  const totalLimit = Math.min(body.totalLimit || batchSize * workers, 500);
+  const batchSize = Math.min(Math.max(body.batchSize || 9, 1), 30);   // default 9 (3 chunks of 3)
+  const workers = Math.min(Math.max(body.workers || 1, 1), 2);       // default 1 worker — sequential
+  const totalLimit = Math.min(body.totalLimit || batchSize * workers, 100);
   const dryRun = body.dryRun === true;
 
   // Fetch candidates: games that DON'T already have the correct format.
@@ -530,9 +537,9 @@ export default async function handler(req: Request): Promise<Response> {
       }
     }
 
-    // Small delay between waves to avoid rate limits
+    // Longer delay between waves to let Cortex fully clear KV cache
     if (wave + workers < batches.length) {
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 5000));
     }
   }
 
