@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase, isSelfHostedMode, apiClient } from "@/integrations/backend/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/hooks/useAuth";
 import { getSupabaseConfig } from "@/config/runtime";
 
 export interface GameRecommendation {
@@ -22,6 +23,7 @@ export interface GameRecommendationsResult {
 
 export function useGameRecommendations(gameId: string | undefined, enabled = true) {
   const { library } = useTenant();
+  const { user } = useAuth();
 
   return useQuery({
     queryKey: ["game-recommendations", gameId, library?.id],
@@ -70,8 +72,10 @@ export function useGameRecommendations(gameId: string | undefined, enabled = tru
         collection_matches: data.collection_matches || [],
       };
     },
-    enabled: enabled && !!gameId && !!library?.id,
-    staleTime: 1000 * 60 * 10,
+    // Only fire for authenticated users to prevent bot/crawler Cortex spam
+    enabled: enabled && !!gameId && !!library?.id && !!user,
+    staleTime: 1000 * 60 * 30, // 30 min — recommendations don't change often
+    gcTime: 1000 * 60 * 60,    // Keep in cache for 1 hour
     retry: 1,
   });
 }

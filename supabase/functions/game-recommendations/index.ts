@@ -7,6 +7,10 @@ const corsHeaders = {
 
 const CORTEX_ENDPOINT = "https://cortex.tzolak.com/api/lmstudio";
 
+// ── In-memory cache for AI reasons (survives across requests within same Deno isolate) ──
+const aiReasonsCache = new Map<string, { data: any; ts: number }>();
+const AI_CACHE_TTL_MS = 30 * 60_000; // 30 minutes
+
 interface ScoredGame {
   id: string;
   title: string;
@@ -57,6 +61,11 @@ export default async function handler(req: Request): Promise<Response> {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Check if caller is authenticated — skip expensive Cortex AI for anonymous/bot traffic
+    const authHeader = req.headers.get("Authorization") || "";
+    const hasAuth = authHeader.startsWith("Bearer ") && authHeader.length > 20;
+    const skipCortex = !hasAuth;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
@@ -415,18 +424,14 @@ export default async function handler(req: Request): Promise<Response> {
     let discoveries = [...sampledRegular, ...sampledDiversity].slice(0, limit);
 
     // ── 9. Cortex AI: generate natural language reasons ──
-    if (discoveries.length > 0 || collectionMatches.length > 0) {
-      try {
-        const aiResults = await generateAIReasons(
-          sourceGame.title,
-          sourceDescription,
-          sourceGenres,
-          sourceMechanicNames,
-          sourceWeight,
-          discoveries,
-          collectionMatches
-        );
-
+    // Skip Cortex for anonymous/bot traffic to protect self-hosted hardware
+    if (!skipCortex && (discoveries.length > 0 || collectionMatches.length > 0)) {
+      const cacheKey = `${game_id}:${discoveries.map(g=>g.id).sort().join(",")}:${collectionMatches.map(g=>g.id).sort().join(",")}`;
+      const cached = aiReasonsCache.get(cacheKey);
+      
+      if (cached && (Date.now() - cached.ts) < AI_CACHE_TTL_MS) {
+        // Use cached AI reasons
+        const aiResults = cached.data;
         if (aiResults) {
           discoveries = applyAIReasons(discoveries, aiResults.discoveries || []);
           if (aiResults.collection_matches) {
@@ -434,8 +439,34 @@ export default async function handler(req: Request): Promise<Response> {
             collectionMatches.splice(0, collectionMatches.length, ...enhancedCollection);
           }
         }
-      } catch (aiErr) {
-        console.warn("[rec-v2] Cortex AI reasons failed, using deterministic reasons:", aiErr);
+      } else {
+        try {
+          const aiResults = await generateAIReasons(
+            sourceGame.title,
+            sourceDescription,
+            sourceGenres,
+            sourceMechanicNames,
+            sourceWeight,
+            discoveries,
+            collectionMatches
+          );
+
+          if (aiResults) {
+            aiReasonsCache.set(cacheKey, { data: aiResults, ts: Date.now() });
+            // Evict old entries to prevent memory leaks (keep max 200)
+            if (aiReasonsCache.size > 200) {
+              const oldest = [...aiReasonsCache.entries()].sort((a, b) => a[1].ts - b[1].ts);
+              for (let i = 0; i < 50; i++) aiReasonsCache.delete(oldest[i][0]);
+            }
+            discoveries = applyAIReasons(discoveries, aiResults.discoveries || []);
+            if (aiResults.collection_matches) {
+              const enhancedCollection = applyAIReasons(collectionMatches, aiResults.collection_matches);
+              collectionMatches.splice(0, collectionMatches.length, ...enhancedCollection);
+            }
+          }
+        } catch (aiErr) {
+          console.warn("[rec-v2] Cortex AI reasons failed, using deterministic reasons:", aiErr);
+        }
       }
     }
 
