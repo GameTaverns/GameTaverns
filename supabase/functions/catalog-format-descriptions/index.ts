@@ -185,6 +185,10 @@ const INTER_CHUNK_DELAY_MS = 3_000;
 async function processAiChunk(
   chunk: { id: string; title: string; description: string | null }[],
 ): Promise<Map<string, string>> {
+  console.log(
+    `[catalog-format] AI chunk start (${chunk.length}): ${chunk.map((entry) => entry.title).join(" | ")}`,
+  );
+
   const batchPrompt = buildBatchPrompt(chunk);
 
   const aiResult = await aiComplete({
@@ -200,7 +204,23 @@ async function processAiChunk(
     return new Map();
   }
 
-  return parseBatchResponse(aiResult.content, chunk);
+  const parsed = parseBatchResponse(aiResult.content, chunk);
+  const parsedTitles = chunk
+    .filter((entry) => parsed.has(entry.title))
+    .map((entry) => entry.title);
+  const missingTitles = chunk
+    .filter((entry) => !parsed.has(entry.title))
+    .map((entry) => entry.title);
+
+  console.log(
+    `[catalog-format] AI chunk parsed ${parsed.size}/${chunk.length}: ${parsedTitles.join(" | ") || "none"}`,
+  );
+
+  if (missingTitles.length > 0) {
+    console.warn(`[catalog-format] AI chunk missing titles: ${missingTitles.join(" | ")}`);
+  }
+
+  return parsed;
 }
 
 /** Process a single batch of games through AI (splits into sub-chunks to avoid token limits) */
@@ -239,6 +259,7 @@ async function processBatch(
       if (!newDescription) {
         errors.push(`No parsed output for ${entry.title}`);
         results.push({ title: entry.title, status: "parse_miss" });
+        console.warn(`[catalog-format] ${entry.title}: parse_miss`);
         continue;
       }
 
@@ -263,6 +284,7 @@ async function processBatch(
         }
 
         results.push({ title: entry.title, status: "ai_refusal" });
+        console.warn(`[catalog-format] ${entry.title}: ai_refusal`);
         continue;
       }
 
@@ -274,10 +296,12 @@ async function processBatch(
           console.warn(`[catalog-format] Output missing format header for "${entry.title}" — saving as-is (${newDescription.length} chars) for future retry`);
           // Don't update the DB — leave it unformatted so the next run retries
           results.push({ title: entry.title, status: "format_miss_skipped" });
+          console.warn(`[catalog-format] ${entry.title}: format_miss_skipped`);
           continue;
         } else {
           console.warn(`[catalog-format] Very short output for "${entry.title}" (${newDescription.length} chars) — skipping`);
           results.push({ title: entry.title, status: "too_short" });
+          console.warn(`[catalog-format] ${entry.title}: too_short`);
           continue;
         }
       }
@@ -285,6 +309,7 @@ async function processBatch(
       if (dryRun) {
         results.push({ title: entry.title, status: "dry_run" });
         updatedCount++;
+        console.log(`[catalog-format] ${entry.title}: dry_run`);
         continue;
       }
 
@@ -296,6 +321,7 @@ async function processBatch(
       if (updateErr) {
         errors.push(`Update failed for ${entry.title}: ${updateErr.message}`);
         results.push({ title: entry.title, status: "update_error" });
+        console.error(`[catalog-format] ${entry.title}: update_error (${updateErr.message})`);
         continue;
       }
 
@@ -305,6 +331,7 @@ async function processBatch(
 
       updatedCount++;
       results.push({ title: entry.title, status: "updated" });
+      console.log(`[catalog-format] ${entry.title}: updated`);
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
