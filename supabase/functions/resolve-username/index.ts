@@ -18,11 +18,56 @@ async function handler(req: Request): Promise<Response> {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // ---- Authentication: require a valid user ----
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.slice("Bearer ".length).trim();
+    if (!token || token === anonKey) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- Authorization: require admin role ----
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: roleData } = await adminClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (!roleData) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- Resolve username to email ----
     const { username }: ResolveRequest = await req.json();
-    
+
     if (!username) {
       return new Response(JSON.stringify({ error: "Username required" }), {
         status: 400,
@@ -31,7 +76,7 @@ async function handler(req: Request): Promise<Response> {
     }
 
     // Lookup user_id from profile by username
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await adminClient
       .from("user_profiles")
       .select("user_id")
       .eq("username", username.toLowerCase())
@@ -46,9 +91,9 @@ async function handler(req: Request): Promise<Response> {
     }
 
     // Get user email from auth.users
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(profile.user_id);
+    const { data: userData, error: fetchError } = await adminClient.auth.admin.getUserById(profile.user_id);
 
-    if (userError || !userData?.user?.email) {
+    if (fetchError || !userData?.user?.email) {
       return new Response(JSON.stringify({ email: null }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
