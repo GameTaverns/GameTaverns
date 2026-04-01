@@ -99,12 +99,12 @@ router.post('/register', loginLimiter, async (req: Request, res: Response) => {
     
     const passwordHash = await hashPassword(password);
     
-    // Create user (email_verified defaults to false)
+    // Create user (auto-verified since email confirmation is disabled)
     const result = await pool.query(
       `INSERT INTO users (email, password_hash, email_verified) 
-       VALUES ($1, $2, $3) 
+       VALUES ($1, $2, true) 
        RETURNING id, email, email_verified, created_at`,
-      [normalizedEmail, passwordHash, !isEmailConfigured()] // Auto-verify if no email configured
+      [normalizedEmail, passwordHash]
     );
     
     const user = result.rows[0];
@@ -129,45 +129,13 @@ router.post('/register', loginLimiter, async (req: Request, res: Response) => {
         [user.id, profileDisplayName]
       );
       
-      // Send verification email if SMTP is configured
-      if (isEmailConfigured()) {
-        const token = generateToken();
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-        
-        await pool.query(
-          `INSERT INTO email_confirmation_tokens (user_id, email, token, expires_at)
-           VALUES ($1, $2, $3, $4)`,
-          [user.id, normalizedEmail, token, expiresAt]
-        );
-        
-        try {
-          const emailContent = buildVerificationEmail(normalizedEmail, token);
-          await sendEmail({
-            to: normalizedEmail,
-            subject: emailContent.subject,
-            html: emailContent.html,
-          });
-        } catch (emailError) {
-          console.error('Email sending failed:', emailError);
-          // Rollback the user since email failed
-          await rollbackUser();
-          res.status(500).json({ error: 'Failed to send confirmation email. Please try again.' });
-          return;
-        }
-        
-        res.status(201).json({
-          message: 'Registration successful. Please check your email to verify your account.',
-          requiresVerification: true,
-        });
-      } else {
-        // No email configured - auto-login
-        const token = signToken({ sub: user.id, email: user.email });
-        res.status(201).json({
-          user: { id: user.id, email: user.email },
-          token,
-          requiresVerification: false,
-        });
-      }
+      // Auto-login on registration
+      const token = signToken({ sub: user.id, email: user.email });
+      res.status(201).json({
+        user: { id: user.id, email: user.email },
+        token,
+        requiresVerification: false,
+      });
     } catch (innerError) {
       console.error('Registration inner error:', innerError);
       await rollbackUser();
