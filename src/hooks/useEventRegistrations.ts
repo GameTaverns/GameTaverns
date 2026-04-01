@@ -24,13 +24,22 @@ export function useEventRegistrations(eventId: string | undefined) {
     queryKey: ["event-registrations", eventId],
     queryFn: async () => {
       if (!eventId) return [];
+      // Try raw table first (works for authenticated hosts/admins who can see emails)
       const { data, error } = await db
         .from("event_registrations")
         .select("*")
         .eq("event_id", eventId)
         .order("registered_at", { ascending: true });
-      if (error) throw error;
-      return (data || []) as EventRegistration[];
+      if (!error) return (data || []) as EventRegistration[];
+
+      // Fall back to public view (anon users / non-hosts — no attendee_email)
+      const { data: pubData, error: pubError } = await db
+        .from("public_event_registrations")
+        .select("*")
+        .eq("event_id", eventId)
+        .order("registered_at", { ascending: true });
+      if (pubError) throw pubError;
+      return (pubData || []) as EventRegistration[];
     },
     enabled: !!eventId,
   });
