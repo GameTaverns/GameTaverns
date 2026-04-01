@@ -76,7 +76,7 @@ export function useRegisterForEvent() {
       let waitlistPosition: number | null = null;
       if (isWaitlisted) {
         const { count: wlCount } = await db
-          .from("event_registrations")
+          .from("public_event_registrations")
           .select("*", { count: "exact", head: true })
           .eq("event_id", input.event_id)
           .eq("status", "waitlisted");
