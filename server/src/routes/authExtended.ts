@@ -113,7 +113,6 @@ router.post('/register', loginLimiter, async (req: Request, res: Response) => {
     const rollbackUser = async () => {
       console.error(`Rolling back user ${user.id} due to registration failure`);
       try {
-        await pool.query('DELETE FROM email_confirmation_tokens WHERE user_id = $1', [user.id]);
         await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [user.id]);
         await pool.query('DELETE FROM user_roles WHERE user_id = $1', [user.id]);
         await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
