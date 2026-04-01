@@ -294,7 +294,7 @@ const handler = async (req: Request): Promise<Response> => {
               'user_follows & library_followers',
               'referrals & referral_badges',
               'TOTP settings & push_subscriptions',
-              'password_reset_tokens & email_confirmation_tokens',
+              'password_reset_tokens',
               'login_attempts & audit_log',
               'auth account',
             ],

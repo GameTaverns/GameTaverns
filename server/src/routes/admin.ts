@@ -213,7 +213,7 @@ router.delete('/users/:id', async (req: Request, res: Response) => {
     await client.query('DELETE FROM notification_log WHERE user_id = $1', [id]);
     await client.query('DELETE FROM user_totp_settings WHERE user_id = $1', [id]);
     await client.query('DELETE FROM refresh_tokens WHERE user_id = $1', [id]);
-    await client.query('DELETE FROM email_confirmation_tokens WHERE user_id = $1', [id]);
+    
     await client.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [id]);
     await client.query('DELETE FROM activity_events WHERE user_id = $1', [id]);
     await client.query('DELETE FROM activity_reactions WHERE user_id = $1', [id]);

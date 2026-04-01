@@ -170,7 +170,6 @@ export default async function handler(req: Request): Promise<Response> {
           { table: "notification_log", column: "user_id" },
           { table: "user_totp_settings", column: "user_id" },
           { table: "refresh_tokens", column: "user_id" },
-          { table: "email_confirmation_tokens", column: "user_id" },
           { table: "password_reset_tokens", column: "user_id" },
         ];
 

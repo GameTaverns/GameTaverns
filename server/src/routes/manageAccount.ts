@@ -179,7 +179,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
         await pool.query('DELETE FROM notification_log WHERE user_id = $1', [userId]);
         await pool.query('DELETE FROM user_totp_settings WHERE user_id = $1', [userId]);
         await pool.query('DELETE FROM refresh_tokens WHERE user_id = $1', [userId]);
-        await pool.query('DELETE FROM email_confirmation_tokens WHERE user_id = $1', [userId]);
+        
         await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [userId]);
 
         // Finally, delete the user
