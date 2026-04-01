@@ -61,8 +61,9 @@ export function useRegisterForEvent() {
       guest_count?: number;
     }) => {
       // Check current count to determine registered vs waitlisted
+      // Use public view for count (works for both anon and authenticated)
       const { count, error: countError } = await db
-        .from("event_registrations")
+        .from("public_event_registrations")
         .select("*", { count: "exact", head: true })
         .eq("event_id", input.event_id)
         .eq("status", "registered");
