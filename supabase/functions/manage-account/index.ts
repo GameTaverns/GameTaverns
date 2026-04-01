@@ -256,7 +256,6 @@ const handler = async (req: Request): Promise<Response> => {
         await adminClient.from('user_totp_settings').delete().eq('user_id', userId);
         await adminClient.from('push_subscriptions').delete().eq('user_id', userId);
         await adminClient.from('password_reset_tokens').delete().eq('user_id', userId);
-        await adminClient.from('email_confirmation_tokens').delete().eq('user_id', userId);
         await adminClient.from('login_attempts').delete().eq('email', user.email?.toLowerCase() || '');
         await adminClient.from('audit_log').delete().eq('user_id', userId);
         await adminClient.from('library_members').delete().eq('user_id', userId);
@@ -295,7 +294,7 @@ const handler = async (req: Request): Promise<Response> => {
               'user_follows & library_followers',
               'referrals & referral_badges',
               'TOTP settings & push_subscriptions',
-              'password_reset_tokens & email_confirmation_tokens',
+              'password_reset_tokens',
               'login_attempts & audit_log',
               'auth account',
             ],

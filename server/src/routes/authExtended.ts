@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { pool } from '../services/db.js';
 import { hashPassword, verifyPassword, validatePasswordStrength } from '../utils/password.js';
 import { signToken, verifyToken } from '../utils/jwt.js';
-import { sendEmail, buildVerificationEmail, buildPasswordResetEmail, isEmailConfigured } from '../services/email.js';
+import { sendEmail, buildPasswordResetEmail, isEmailConfigured } from '../services/email.js';
 import { generateToken } from '../services/encryption.js';
 import { loginLimiter } from '../middleware/rateLimit.js';
 import { authMiddleware } from '../middleware/auth.js';
@@ -99,12 +99,12 @@ router.post('/register', loginLimiter, async (req: Request, res: Response) => {
     
     const passwordHash = await hashPassword(password);
     
-    // Create user (email_verified defaults to false)
+    // Create user (auto-verified since email confirmation is disabled)
     const result = await pool.query(
       `INSERT INTO users (email, password_hash, email_verified) 
-       VALUES ($1, $2, $3) 
+       VALUES ($1, $2, true) 
        RETURNING id, email, email_verified, created_at`,
-      [normalizedEmail, passwordHash, !isEmailConfigured()] // Auto-verify if no email configured
+      [normalizedEmail, passwordHash]
     );
     
     const user = result.rows[0];
@@ -113,7 +113,6 @@ router.post('/register', loginLimiter, async (req: Request, res: Response) => {
     const rollbackUser = async () => {
       console.error(`Rolling back user ${user.id} due to registration failure`);
       try {
-        await pool.query('DELETE FROM email_confirmation_tokens WHERE user_id = $1', [user.id]);
         await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [user.id]);
         await pool.query('DELETE FROM user_roles WHERE user_id = $1', [user.id]);
         await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
@@ -130,45 +129,13 @@ router.post('/register', loginLimiter, async (req: Request, res: Response) => {
         [user.id, profileDisplayName]
       );
       
-      // Send verification email if SMTP is configured
-      if (isEmailConfigured()) {
-        const token = generateToken();
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-        
-        await pool.query(
-          `INSERT INTO email_confirmation_tokens (user_id, email, token, expires_at)
-           VALUES ($1, $2, $3, $4)`,
-          [user.id, normalizedEmail, token, expiresAt]
-        );
-        
-        try {
-          const emailContent = buildVerificationEmail(normalizedEmail, token);
-          await sendEmail({
-            to: normalizedEmail,
-            subject: emailContent.subject,
-            html: emailContent.html,
-          });
-        } catch (emailError) {
-          console.error('Email sending failed:', emailError);
-          // Rollback the user since email failed
-          await rollbackUser();
-          res.status(500).json({ error: 'Failed to send confirmation email. Please try again.' });
-          return;
-        }
-        
-        res.status(201).json({
-          message: 'Registration successful. Please check your email to verify your account.',
-          requiresVerification: true,
-        });
-      } else {
-        // No email configured - auto-login
-        const token = signToken({ sub: user.id, email: user.email });
-        res.status(201).json({
-          user: { id: user.id, email: user.email },
-          token,
-          requiresVerification: false,
-        });
-      }
+      // Auto-login on registration
+      const token = signToken({ sub: user.id, email: user.email });
+      res.status(201).json({
+        user: { id: user.id, email: user.email },
+        token,
+        requiresVerification: false,
+      });
     } catch (innerError) {
       console.error('Registration inner error:', innerError);
       await rollbackUser();
@@ -184,117 +151,7 @@ router.post('/register', loginLimiter, async (req: Request, res: Response) => {
   }
 });
 
-// =====================
-// Email Verification
-// =====================
-
-router.post('/verify-email', async (req: Request, res: Response) => {
-  try {
-    const { token } = z.object({ token: z.string() }).parse(req.body);
-    
-    // Find valid token
-    const tokenResult = await pool.query(
-      `SELECT * FROM email_confirmation_tokens 
-       WHERE token = $1 AND confirmed_at IS NULL AND expires_at > NOW()`,
-      [token]
-    );
-    
-    if (tokenResult.rows.length === 0) {
-      res.status(400).json({ error: 'Invalid or expired token' });
-      return;
-    }
-    
-    const tokenData = tokenResult.rows[0];
-    
-    // Mark email as verified
-    await pool.query('UPDATE users SET email_verified = TRUE WHERE id = $1', [tokenData.user_id]);
-    
-    // Mark token as used
-    await pool.query(
-      'UPDATE email_confirmation_tokens SET confirmed_at = NOW() WHERE id = $1',
-      [tokenData.id]
-    );
-    
-    // Get user for login
-    const userResult = await pool.query(
-      'SELECT id, email FROM users WHERE id = $1',
-      [tokenData.user_id]
-    );
-    
-    const user = userResult.rows[0];
-    const authToken = signToken({ sub: user.id, email: user.email });
-    
-    res.json({
-      message: 'Email verified successfully',
-      user: { id: user.id, email: user.email },
-      token: authToken,
-    });
-  } catch (error) {
-    console.error('Verify email error:', error);
-    res.status(500).json({ error: 'Verification failed' });
-  }
-});
-
-// Resend verification email
-router.post('/resend-verification', loginLimiter, async (req: Request, res: Response) => {
-  try {
-    const { email } = z.object({ email: z.string().email() }).parse(req.body);
-    
-    const normalizedEmail = email.toLowerCase();
-    
-    // Find user
-    const userResult = await pool.query(
-      'SELECT id, email, email_verified FROM users WHERE email = $1',
-      [normalizedEmail]
-    );
-    
-    if (userResult.rows.length === 0) {
-      // Don't reveal if user exists
-      res.json({ message: 'If an account exists, a verification email has been sent.' });
-      return;
-    }
-    
-    const user = userResult.rows[0];
-    
-    if (user.email_verified) {
-      res.json({ message: 'Email is already verified. You can log in.' });
-      return;
-    }
-    
-    if (!isEmailConfigured()) {
-      res.status(400).json({ error: 'Email service not configured' });
-      return;
-    }
-    
-    // Invalidate old tokens
-    await pool.query(
-      'DELETE FROM email_confirmation_tokens WHERE user_id = $1 AND confirmed_at IS NULL',
-      [user.id]
-    );
-    
-    // Create new token
-    const token = generateToken();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    
-    await pool.query(
-      `INSERT INTO email_confirmation_tokens (user_id, email, token, expires_at)
-       VALUES ($1, $2, $3, $4)`,
-      [user.id, normalizedEmail, token, expiresAt]
-    );
-    
-    const emailContent = buildVerificationEmail(normalizedEmail, token);
-    await sendEmail({
-      to: normalizedEmail,
-      subject: emailContent.subject,
-      html: emailContent.html,
-    });
-    
-    res.json({ message: 'Verification email sent.' });
-  } catch (error) {
-    console.error('Resend verification error:', error);
-    res.status(500).json({ error: 'Failed to resend verification email' });
-  }
-});
+// Email verification routes removed — email confirmation is no longer used
 
 // =====================
 // Password Reset
