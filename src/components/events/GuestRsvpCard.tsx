@@ -78,7 +78,7 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
       if (maxAttendees && registrationCount >= maxAttendees) {
         status = "waitlisted";
         const { count } = await db
-          .from("event_registrations")
+          .from("public_event_registrations")
           .select("*", { count: "exact", head: true })
           .eq("event_id", eventId)
           .eq("status", "waitlisted");
