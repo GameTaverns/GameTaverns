@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { pool } from '../services/db.js';
 import { hashPassword, verifyPassword, validatePasswordStrength } from '../utils/password.js';
 import { signToken, verifyToken } from '../utils/jwt.js';
-import { sendEmail, buildVerificationEmail, buildPasswordResetEmail, isEmailConfigured } from '../services/email.js';
+import { sendEmail, buildPasswordResetEmail, isEmailConfigured } from '../services/email.js';
 import { generateToken } from '../services/encryption.js';
 import { loginLimiter } from '../middleware/rateLimit.js';
 import { authMiddleware } from '../middleware/auth.js';
