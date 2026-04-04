@@ -10,7 +10,6 @@ const corsHeaders = {
 interface AuthEmailRequest {
   type: 'password_reset' | 'email_confirmation';
   email: string;
-  redirectUrl?: string;
   userId?: string; // Optional: skip listUsers() when caller already knows the user ID
 }
 
@@ -81,7 +80,7 @@ export default async function handler(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { type, email, redirectUrl, userId: passedUserId }: AuthEmailRequest = await req.json();
+    const { type, email, userId: passedUserId }: AuthEmailRequest = await req.json();
 
     if (!email || !type) {
       return new Response(
@@ -158,8 +157,8 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
 
-      // Build reset URL
-      const baseUrl = redirectUrl || 'https://gametaverns.com';
+      // Always use SITE_URL — never trust client-provided redirect URLs
+      const baseUrl = Deno.env.get("SITE_URL") || 'https://gametaverns.com';
       const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
       await sendEmailSafely(async () => {
