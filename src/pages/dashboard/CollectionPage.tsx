@@ -29,6 +29,8 @@ export default function CollectionPage() {
   const { library, myLibraries, activeLibraryId, setActiveLibraryId } = useActiveLibrary();
   const { data: maxLibraries = 1 } = useMaxLibrariesPerUser();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [showBulkImport, setShowBulkImport] = useState(false);
 
   const { data: viewStats } = useLibraryViewStats(library?.id ?? "");
   const { data: gameCount } = useQuery({
