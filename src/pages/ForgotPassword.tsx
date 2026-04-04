@@ -111,10 +111,9 @@ export default function ForgotPassword() {
                 />
               </div>
               {!isNative && (
-                <TurnstileWidget
-                  key={turnstileKey}
-                  onVerify={setTurnstileToken}
-                  onExpire={() => setTurnstileToken(null)}
+                <RecaptchaWidget
+                  action="forgot_password"
+                  onVerify={setCaptchaToken}
                 />
               )}
               <Button
