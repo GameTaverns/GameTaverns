@@ -97,6 +97,8 @@ interface BulkImportDialogProps {
   isDemo?: boolean;
   onDemoImport?: (games: any[]) => void;
   defaultMode?: ImportMode;
+  /** Explicit library ID override — used when there's no tenant context (e.g. dashboard) */
+  libraryId?: string;
 }
 
 export function BulkImportDialog({
