@@ -10,7 +10,6 @@ const corsHeaders = {
 interface AuthEmailRequest {
   type: 'password_reset' | 'email_confirmation';
   email: string;
-  redirectUrl?: string;
   userId?: string; // Optional: skip listUsers() when caller already knows the user ID
 }
 
