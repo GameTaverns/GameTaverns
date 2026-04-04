@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -19,7 +19,8 @@ import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { CatalogDiscoveryCard } from "@/components/dashboard/CatalogDiscoveryCard";
 import { HotnessLeaderboard } from "@/components/games/HotnessLeaderboard";
-import { useQuery } from "@tanstack/react-query";
+import { BulkImportDialog } from "@/components/games/BulkImportDialog";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 
 export default function CollectionPage() {
@@ -28,6 +29,8 @@ export default function CollectionPage() {
   const { library, myLibraries, activeLibraryId, setActiveLibraryId } = useActiveLibrary();
   const { data: maxLibraries = 1 } = useMaxLibrariesPerUser();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [showBulkImport, setShowBulkImport] = useState(false);
 
   const { data: viewStats } = useLibraryViewStats(library?.id ?? "");
   const { data: gameCount } = useQuery({
@@ -140,6 +143,9 @@ export default function CollectionPage() {
               <BookOpen className="h-3.5 w-3.5" /> {t('collection.browseCatalog')}
             </Button>
           </Link>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setShowBulkImport(true)}>
+            <Upload className="h-3.5 w-3.5" /> Import Games
+          </Button>
           <TenantLink href={getLibraryUrl(library.slug, "/catalog-print")}>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs">
               <QrCode className="h-3.5 w-3.5" /> {t('collection.qrPrintCards')}
@@ -147,6 +153,19 @@ export default function CollectionPage() {
           </TenantLink>
         </div>
       </div>
+
+      {/* Bulk Import Dialog */}
+      <BulkImportDialog
+        open={showBulkImport}
+        onOpenChange={setShowBulkImport}
+        defaultMode="csv"
+        onImportComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["games"] });
+          queryClient.invalidateQueries({ queryKey: ["games-flat"] });
+          queryClient.invalidateQueries({ queryKey: ["collection-game-count"] });
+          setShowBulkImport(false);
+        }}
+      />
 
       {/* Import Progress (conditional — only shows when relevant) */}
       <ImportProgressWidget libraryIds={myLibraries.map(l => l.id)} />
