@@ -158,8 +158,8 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
 
-      // Build reset URL
-      const baseUrl = redirectUrl || 'https://gametaverns.com';
+      // Always use SITE_URL — never trust client-provided redirect URLs
+      const baseUrl = Deno.env.get("SITE_URL") || 'https://gametaverns.com';
       const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
       await sendEmailSafely(async () => {
