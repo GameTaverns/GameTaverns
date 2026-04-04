@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { TurnstileWidget } from "@/components/games/TurnstileWidget";
+import { RecaptchaWidget } from "@/components/games/RecaptchaWidget";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail } from "lucide-react";
@@ -19,13 +19,12 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
-  const [turnstileKey, setTurnstileKey] = useState(0);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(isNative ? "bypass" : null);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isNative && !turnstileToken) {
+    if (!isNative && !captchaToken) {
       toast({ title: t('signup.pleaseCompleteVerification'), variant: "destructive" });
       return;
     }
@@ -39,7 +38,7 @@ export default function ForgotPassword() {
           body: {
             type: 'password_reset',
             email: email,
-            redirectUrl: window.location.origin,
+            redirectUrl: 'https://gametaverns.com',
           },
         });
         if (error) throw error;
@@ -112,16 +111,15 @@ export default function ForgotPassword() {
                 />
               </div>
               {!isNative && (
-                <TurnstileWidget
-                  key={turnstileKey}
-                  onVerify={setTurnstileToken}
-                  onExpire={() => setTurnstileToken(null)}
+                <RecaptchaWidget
+                  action="forgot_password"
+                  onVerify={setCaptchaToken}
                 />
               )}
               <Button
                 type="submit"
                 className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
-                disabled={isLoading || (!isNative && !turnstileToken)}
+                disabled={isLoading || (!isNative && !captchaToken)}
               >
                 {isLoading ? t('forgotPassword.sending') : t('forgotPassword.sendResetLink')}
               </Button>
