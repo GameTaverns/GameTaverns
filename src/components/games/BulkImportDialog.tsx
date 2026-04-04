@@ -1416,7 +1416,7 @@ export function BulkImportDialog({
         <DialogHeader>
           <DialogTitle>Bulk Import Games</DialogTitle>
           <DialogDescription>
-            Import multiple games at once from CSV, BGG collection, or BGG links
+            Import multiple games at once from CSV or BGG collection
           </DialogDescription>
           <p className="text-xs text-muted-foreground mt-1">
             💡 Once started, your import runs on the server — you can safely close this dialog and your games will appear as they're processed.
@@ -1424,8 +1424,8 @@ export function BulkImportDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
-          <Tabs value={mode} onValueChange={(v) => setMode(v as ImportMode)} className="h-full">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs value={mode === "bgg_links" ? "csv" : mode} onValueChange={(v) => setMode(v as ImportMode)} className="h-full">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="csv" className="gap-2" disabled={isImporting}>
                 <FileText className="h-4 w-4" />
                 File Import
@@ -1433,10 +1433,6 @@ export function BulkImportDialog({
               <TabsTrigger value="bgg_collection" className="gap-2" disabled={isImporting}>
                 <Users className="h-4 w-4" />
                 BGG Collection
-              </TabsTrigger>
-              <TabsTrigger value="bgg_links" className="gap-2" disabled={isImporting}>
-                <Link className="h-4 w-4" />
-                BGG Links
               </TabsTrigger>
             </TabsList>
 
