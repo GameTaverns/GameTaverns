@@ -81,7 +81,7 @@ export default async function handler(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { type, email, redirectUrl, userId: passedUserId }: AuthEmailRequest = await req.json();
+    const { type, email, userId: passedUserId }: AuthEmailRequest = await req.json();
 
     if (!email || !type) {
       return new Response(
