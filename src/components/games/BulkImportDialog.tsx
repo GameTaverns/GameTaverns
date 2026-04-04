@@ -97,6 +97,8 @@ interface BulkImportDialogProps {
   isDemo?: boolean;
   onDemoImport?: (games: any[]) => void;
   defaultMode?: ImportMode;
+  /** Explicit library ID override — used when there's no tenant context (e.g. dashboard) */
+  libraryId?: string;
 }
 
 export function BulkImportDialog({
@@ -106,6 +108,7 @@ export function BulkImportDialog({
   isDemo = false,
   onDemoImport,
   defaultMode = "csv",
+  libraryId: libraryIdProp,
 }: BulkImportDialogProps) {
   const { toast } = useToast();
   const { library } = useTenant();
@@ -728,7 +731,7 @@ export function BulkImportDialog({
     try {
       const payload: any = {
         mode,
-        library_id: library?.id,
+        library_id: libraryIdProp || library?.id,
         enhance_with_bgg: enhanceWithBgg,
         enhance_with_ai: enhanceWithAi,
         default_options: {

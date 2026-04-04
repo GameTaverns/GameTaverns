@@ -159,6 +159,7 @@ export default function CollectionPage() {
         open={showBulkImport}
         onOpenChange={setShowBulkImport}
         defaultMode="csv"
+        libraryId={library?.id}
         onImportComplete={() => {
           queryClient.invalidateQueries({ queryKey: ["games"] });
           queryClient.invalidateQueries({ queryKey: ["games-flat"] });
