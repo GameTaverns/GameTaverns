@@ -19,8 +19,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
-  const [turnstileKey, setTurnstileKey] = useState(0);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(isNative ? "bypass" : null);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
