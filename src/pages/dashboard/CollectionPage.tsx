@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -19,7 +19,8 @@ import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { CatalogDiscoveryCard } from "@/components/dashboard/CatalogDiscoveryCard";
 import { HotnessLeaderboard } from "@/components/games/HotnessLeaderboard";
-import { useQuery } from "@tanstack/react-query";
+import { BulkImportDialog } from "@/components/games/BulkImportDialog";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 
 export default function CollectionPage() {
