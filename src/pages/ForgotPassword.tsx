@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { TurnstileWidget } from "@/components/games/TurnstileWidget";
+import { RecaptchaWidget } from "@/components/games/RecaptchaWidget";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail } from "lucide-react";
