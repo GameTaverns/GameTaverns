@@ -1585,20 +1585,6 @@ Ticket to Ride,9209`}
                 )}
               </TabsContent>
 
-              <TabsContent value="bgg_links" className="mt-0 space-y-4">
-                <div className="space-y-2">
-                  <Label>BoardGameGeek URLs (one per line)</Label>
-                  <Textarea
-                    placeholder={`https://boardgamegeek.com/boardgame/266192/wingspan
-https://boardgamegeek.com/boardgame/13/catan
-https://boardgamegeek.com/boardgame/9209/ticket-to-ride`}
-                    value={bggLinks}
-                    onChange={(e) => setBggLinks(e.target.value)}
-                    rows={6}
-                    disabled={isImporting}
-                  />
-                </div>
-              </TabsContent>
 
               {/* Common options */}
               {!progress && (
