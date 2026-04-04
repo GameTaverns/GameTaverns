@@ -38,7 +38,7 @@ export default function ForgotPassword() {
           body: {
             type: 'password_reset',
             email: email,
-            redirectUrl: window.location.origin,
+            redirectUrl: 'https://gametaverns.com',
           },
         });
         if (error) throw error;
