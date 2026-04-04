@@ -119,7 +119,7 @@ export default function ForgotPassword() {
               <Button
                 type="submit"
                 className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
-                disabled={isLoading || (!isNative && !turnstileToken)}
+                disabled={isLoading || (!isNative && !captchaToken)}
               >
                 {isLoading ? t('forgotPassword.sending') : t('forgotPassword.sendResetLink')}
               </Button>
