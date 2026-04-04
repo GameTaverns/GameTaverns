@@ -731,7 +731,7 @@ export function BulkImportDialog({
     try {
       const payload: any = {
         mode,
-        library_id: library?.id,
+        library_id: libraryIdProp || library?.id,
         enhance_with_bgg: enhanceWithBgg,
         enhance_with_ai: enhanceWithAi,
         default_options: {
