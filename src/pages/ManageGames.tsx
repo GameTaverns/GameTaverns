@@ -15,12 +15,22 @@ import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { useQueryClient } from "@tanstack/react-query";
 
+type ImportMode = "csv" | "bgg_collection" | "bgg_links";
+
 export default function ManageGames() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { library, settings, isLoading, isOwner } = useTenant();
   const { buildUrl } = useTenantUrl();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("collection");
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkImportMode, setBulkImportMode] = useState<ImportMode>("csv");
+
+  const openBulkImport = useCallback((mode: ImportMode) => {
+    setBulkImportMode(mode);
+    setShowBulkImport(true);
+  }, []);
 
   const getMainPlatformUrl = (path: string = "/dashboard"): string => {
     const hostname = window.location.hostname;
@@ -87,12 +97,18 @@ export default function ManageGames() {
             <h1 className="text-2xl sm:text-3xl font-display font-bold">{t('manageGames.title')}</h1>
             <p className="text-muted-foreground text-sm">{t('manageGames.subtitle')}</p>
           </div>
-          <TenantLink href={buildUrl("/add")}>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('manageGames.addGameManually')}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => openBulkImport("csv")}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import Games
             </Button>
-          </TenantLink>
+            <TenantLink href={buildUrl("/add")}>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                {t('manageGames.addGameManually')}
+              </Button>
+            </TenantLink>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -122,6 +138,17 @@ export default function ManageGames() {
             <CategoryManager />
           </TabsContent>
         </Tabs>
+
+        <BulkImportDialog
+          open={showBulkImport}
+          onOpenChange={setShowBulkImport}
+          defaultMode={bulkImportMode}
+          onImportComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["games"] });
+            queryClient.invalidateQueries({ queryKey: ["games-flat"] });
+            setShowBulkImport(false);
+          }}
+        />
       </div>
     </Layout>
   );
