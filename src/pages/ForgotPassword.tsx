@@ -24,7 +24,7 @@ export default function ForgotPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isNative && !turnstileToken) {
+    if (!isNative && !captchaToken) {
       toast({ title: t('signup.pleaseCompleteVerification'), variant: "destructive" });
       return;
     }
