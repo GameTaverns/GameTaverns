@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Tag, Loader2, Plus } from "lucide-react";
+import { Tag, Loader2, Plus, Upload } from "lucide-react";
 import { BackLink } from "@/components/navigation/BackLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +10,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout/Layout";
 import { CategoryManager } from "@/components/games/CategoryManager";
 import { GameCollectionTable } from "@/components/games/GameCollectionTable";
+import { BulkImportDialog } from "@/components/games/BulkImportDialog";
 import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function ManageGames() {
   const { t } = useTranslation();
