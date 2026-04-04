@@ -108,6 +108,7 @@ export function BulkImportDialog({
   isDemo = false,
   onDemoImport,
   defaultMode = "csv",
+  libraryId: libraryIdProp,
 }: BulkImportDialogProps) {
   const { toast } = useToast();
   const { library } = useTenant();
